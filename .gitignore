@@ -37,7 +37,8 @@ yarn-error.log*
 # local data (sqlite db, encryption key)
 /data/
 
-# claude code session artifacts (brainstorm files, etc.)
+# claude code config + session artifacts (per-developer, not shared)
+/.claude/
 /.superpowers/
 
 # menu bar app build outputs
