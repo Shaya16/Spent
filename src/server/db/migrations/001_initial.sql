@@ -20,8 +20,7 @@ INSERT INTO categories (name, color, icon) VALUES
   ('Transfers', '#B0AB95', 'arrow-left-right'),
   ('Insurance', '#BC6F62', 'shield'),
   ('Home', '#D78C5F', 'home'),
-  ('Personal Care', '#E5A8C6', 'sparkles'),
-  ('Other', '#ADA396', 'circle-dot');
+  ('Personal Care', '#E5A8C6', 'sparkles');
 
 CREATE TABLE bank_credentials (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

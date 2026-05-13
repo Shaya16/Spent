@@ -25,7 +25,7 @@ interface ApplyBody {
   approvedNewCategoryNames: string[];
   /**
    * Optional per-name mapping when the user chose to redirect a proposed new
-   * category onto an existing one ("Pet supplies" → "Other" for example).
+   * category onto an existing one (e.g., "Pet supplies" → "Subscriptions").
    */
   rejectionFallbacks?: Record<string, string>;
 }
