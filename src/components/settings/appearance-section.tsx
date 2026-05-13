@@ -8,10 +8,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useIsHydrated } from "@/hooks/use-is-hydrated";
 import { SectionShell, SettingCard } from "./section-shell";
+
+const OPTIONS = [
+  {
+    value: "light" as const,
+    label: "Light",
+    description: "Cream background, dark text",
+  },
+  {
+    value: "dark" as const,
+    label: "Dark",
+    description: "Warm dark background, light text",
+  },
+  {
+    value: "system" as const,
+    label: "System",
+    description: "Follow your OS preference",
+  },
+];
 
 export function AppearanceSection() {
   const { theme, setTheme } = useTheme();
+  const hydrated = useIsHydrated();
+  // Until hydration we don't know what theme is active (might be system,
+  // might be a value persisted in localStorage). Render every card in its
+  // neutral state on both server and the matching first client render to
+  // avoid a mismatch, then flip the active one in.
+  const active = hydrated ? (theme ?? "system") : null;
 
   return (
     <SectionShell
@@ -19,35 +44,34 @@ export function AppearanceSection() {
       description="Choose how Spent looks. System matches your OS setting and updates automatically."
     >
       <SettingCard title="Theme">
-        <div className="grid gap-2 sm:grid-cols-3" suppressHydrationWarning>
-          {(["light", "dark", "system"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTheme(t)}
-              className={`rounded-xl border p-4 text-left transition-colors ${
-                (theme ?? "system") === t
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50"
-              }`}
-            >
-              <div className="font-medium capitalize">{t}</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {t === "system"
-                  ? "Follow your OS preference"
-                  : t === "light"
-                    ? "Cream background, dark text"
-                    : "Warm dark background, light text"}
-              </div>
-            </button>
-          ))}
+        <div className="grid gap-2 sm:grid-cols-3">
+          {OPTIONS.map((o) => {
+            const isActive = active === o.value;
+            return (
+              <button
+                key={o.value}
+                onClick={() => setTheme(o.value)}
+                className={`rounded-xl border p-4 text-left transition-colors ${
+                  isActive
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <div className="font-medium">{o.label}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {o.description}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </SettingCard>
 
       <SettingCard title="Quick switch">
-        <div className="flex items-center gap-3" suppressHydrationWarning>
+        <div className="flex items-center gap-3">
           <span className="text-sm">Current</span>
           <Select
-            value={theme ?? "system"}
+            value={hydrated ? (theme ?? "system") : "system"}
             onValueChange={(v) => v && setTheme(v)}
           >
             <SelectTrigger className="w-[180px]">
