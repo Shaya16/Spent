@@ -111,7 +111,7 @@ export function BudgetDetailSheet({
     >
       <SheetContent
         side="right"
-        className="w-full p-0 sm:max-w-lg md:max-w-xl lg:max-w-2xl"
+        className="w-full p-0 sm:max-w-xl md:max-w-2xl lg:max-w-4xl"
       >
         {detailQuery.isLoading || !detailQuery.data ? (
           <DetailSkeleton />
