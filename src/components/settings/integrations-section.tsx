@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   listIntegrations,
   deleteIntegration,
   saveBankCredentials,
   testBankConnection,
+  getIntegrationCredentials,
+  startSync,
+  type SyncProgressEvent,
 } from "@/lib/api";
 import { BANK_PROVIDERS, type BankProviderInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -131,7 +134,8 @@ function IntegrationCard({
           )}
         </div>
         {!editing && connected && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <SyncIntegrationButton provider={connected.provider} />
             <Button variant="outline" size="sm" onClick={onEdit}>
               Edit
             </Button>
@@ -142,24 +146,102 @@ function IntegrationCard({
 
       {editing && (
         <div className="mt-4 border-t pt-4">
-          <CredentialsForm info={info} onCancel={onCancel} onSaved={onSaved} />
+          <CredentialsForm
+            info={info}
+            isEdit={!!connected}
+            onCancel={onCancel}
+            onSaved={onSaved}
+          />
         </div>
       )}
     </div>
   );
 }
 
+function SyncIntegrationButton({ provider }: { provider: string }) {
+  const queryClient = useQueryClient();
+  const [syncing, setSyncing] = useState(false);
+  const [stage, setStage] = useState("");
+
+  const handleSync = () => {
+    setSyncing(true);
+    setStage("Connecting...");
+    startSync(provider, (event: SyncProgressEvent) => {
+      if (event.type === "progress") {
+        setStage((event.data.message as string) ?? "");
+      } else if (event.type === "complete") {
+        setSyncing(false);
+        setStage("");
+        const { added, updated, categorized } = event.data as {
+          added: number;
+          updated: number;
+          categorized: number;
+        };
+        toast.success(
+          `Sync complete: ${added} new, ${updated} updated, ${categorized} categorized`
+        );
+        queryClient.invalidateQueries({ queryKey: ["integrations"] });
+        queryClient.invalidateQueries({ queryKey: ["summary"] });
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      } else if (event.type === "error") {
+        setSyncing(false);
+        setStage("");
+        toast.error((event.data.message as string) ?? "Sync failed", {
+          duration: Infinity,
+          closeButton: true,
+        });
+      }
+    });
+  };
+
+  if (syncing) {
+    return (
+      <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+        <svg
+          className="h-3.5 w-3.5 animate-spin"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
+        </svg>
+        <span className="animate-pulse">{stage}</span>
+      </span>
+    );
+  }
+
+  return (
+    <Button size="sm" onClick={handleSync}>
+      Sync now
+    </Button>
+  );
+}
+
 function CredentialsForm({
   info,
+  isEdit,
   onCancel,
   onSaved,
 }: {
   info: BankProviderInfo;
+  isEdit: boolean;
   onCancel: () => void;
   onSaved: () => void;
 }) {
   const queryClient = useQueryClient();
   const [credentials, setCredentials] = useState<Record<string, string>>({});
+  const [loaded, setLoaded] = useState(!isEdit);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{
@@ -167,8 +249,34 @@ function CredentialsForm({
     message: string;
   } | null>(null);
 
+  // When editing, pre-fill non-password fields from the server.
+  useEffect(() => {
+    if (!isEdit) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { credentials: existing } = await getIntegrationCredentials(
+          info.id
+        );
+        if (cancelled) return;
+        if (existing) setCredentials(existing);
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, info.id]);
+
+  const isPasswordField = (key: string) =>
+    info.credentialFields.find((f) => f.key === key)?.type === "password";
+
+  // For password fields on edit, blank means "keep existing".
+  // For non-password fields, treat blank as invalid (must have a value).
   const allValid = info.credentialFields.every((f) => {
     const v = credentials[f.key]?.trim() ?? "";
+    if (isEdit && isPasswordField(f.key)) return true;
     if (!v) return false;
     if (f.exactLength != null && v.length !== f.exactLength) return false;
     return true;
@@ -203,14 +311,31 @@ function CredentialsForm({
     }
   };
 
+  if (!loaded) {
+    return (
+      <div className="py-6 text-sm text-muted-foreground">
+        Loading current values...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {info.credentialFields.map((field) => {
         const value = credentials[field.key] ?? "";
+        const isPassword = field.type === "password";
         const tooShort =
           field.exactLength != null &&
           value.length > 0 &&
           value.length !== field.exactLength;
+        const placeholder =
+          isEdit && isPassword
+            ? "Leave blank to keep current password"
+            : (field.placeholder ?? field.label);
+        const hint =
+          isEdit && isPassword
+            ? "Only enter a value here if you want to change the password."
+            : field.hint;
         return (
           <div key={field.key} className="space-y-1.5">
             <Label htmlFor={`${info.id}-${field.key}`}>{field.label}</Label>
@@ -228,11 +353,11 @@ function CredentialsForm({
                 if (field.maxLength) next = next.slice(0, field.maxLength);
                 setCredentials((prev) => ({ ...prev, [field.key]: next }));
               }}
-              placeholder={field.placeholder ?? field.label}
+              placeholder={placeholder}
               aria-invalid={tooShort || undefined}
             />
-            {field.hint && (
-              <p className="text-xs text-muted-foreground">{field.hint}</p>
+            {hint && (
+              <p className="text-xs text-muted-foreground">{hint}</p>
             )}
             {tooShort && (
               <p className="text-xs text-destructive">

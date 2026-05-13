@@ -138,6 +138,12 @@ export function deleteIntegration(provider: string) {
   });
 }
 
+export function getIntegrationCredentials(provider: string) {
+  return fetchJSON<{ credentials: Record<string, string> | null }>(
+    `/api/integrations/${provider}`
+  );
+}
+
 export interface SyncProgressEvent {
   type: "progress" | "complete" | "error";
   data: Record<string, unknown>;
