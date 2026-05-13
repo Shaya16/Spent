@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTheme } from "next-themes";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sheet,
@@ -129,6 +130,8 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
           </SelectContent>
         </Select>
       </div>
+
+      <ThemeSelect />
 
       <div className="space-y-2">
         <Label>Payday (day of month)</Label>
@@ -329,4 +332,23 @@ function ordinal(n: number): string {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function ThemeSelect() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <div className="space-y-2" suppressHydrationWarning>
+      <Label>Appearance</Label>
+      <Select value={theme ?? "system"} onValueChange={(v) => v && setTheme(v)}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="light">Light</SelectItem>
+          <SelectItem value="dark">Dark</SelectItem>
+          <SelectItem value="system">Follow system</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }

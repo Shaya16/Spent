@@ -54,12 +54,12 @@
 }
 
 :root {
-  /* Warm cream/sand light theme */
-  --background: oklch(0.96 0.018 85);
+  /* Warm cream/sand light theme - matches the reference #e8e2d2 base */
+  --background: oklch(0.905 0.022 85);
   --foreground: oklch(0.18 0.012 60);
-  --card: oklch(0.995 0.008 85);
+  --card: oklch(0.985 0.012 85);
   --card-foreground: oklch(0.18 0.012 60);
-  --popover: oklch(0.995 0.008 85);
+  --popover: oklch(0.985 0.012 85);
   --popover-foreground: oklch(0.18 0.012 60);
   --primary: oklch(0.55 0.07 145);
   --primary-foreground: oklch(0.98 0.012 90);

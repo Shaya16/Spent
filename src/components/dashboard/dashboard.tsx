@@ -83,6 +83,7 @@ export function Dashboard() {
         <CategoryGrid
           categories={summary?.categoriesWithData ?? []}
           loading={summaryQuery.isLoading}
+          periodTotal={summary?.periodTotal ?? 0}
         />
 
         <TransactionsTable

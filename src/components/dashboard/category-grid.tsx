@@ -18,6 +18,7 @@ type Sort = "most-spent" | "least-spent" | "alphabetical" | "over-pace";
 interface CategoryGridProps {
   categories: CategoryWithData[];
   loading: boolean;
+  periodTotal: number;
 }
 
 const FILTER_LABELS: { id: Filter; label: string }[] = [
@@ -28,27 +29,38 @@ const FILTER_LABELS: { id: Filter; label: string }[] = [
   { id: "plenty-left", label: "Plenty left" },
 ];
 
-export function CategoryGrid({ categories, loading }: CategoryGridProps) {
+export function CategoryGrid({
+  categories,
+  loading,
+  periodTotal,
+}: CategoryGridProps) {
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("most-spent");
 
+  // Drop categories with no spending AND no explicit budget - nothing to show.
+  const activeCategories = useMemo(
+    () =>
+      categories.filter((c) => c.spent > 0 || (!c.isAutoBudget && c.budget > 0)),
+    [categories]
+  );
+
   const counts = useMemo(() => {
     const c: Record<Filter, number> = {
-      all: categories.length,
+      all: activeCategories.length,
       "on-track": 0,
       "heads-up": 0,
       over: 0,
       "plenty-left": 0,
     };
-    for (const cat of categories) c[cat.status]++;
+    for (const cat of activeCategories) c[cat.status]++;
     return c;
-  }, [categories]);
+  }, [activeCategories]);
 
   const filtered = useMemo(() => {
     const list =
       filter === "all"
-        ? [...categories]
-        : categories.filter((c) => c.status === filter);
+        ? [...activeCategories]
+        : activeCategories.filter((c) => c.status === filter);
 
     switch (sort) {
       case "most-spent":
@@ -65,7 +77,7 @@ export function CategoryGrid({ categories, loading }: CategoryGridProps) {
         break;
     }
     return list;
-  }, [categories, filter, sort]);
+  }, [activeCategories, filter, sort]);
 
   if (loading) {
     return (
@@ -73,6 +85,55 @@ export function CategoryGrid({ categories, loading }: CategoryGridProps) {
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-44 rounded-2xl" />
         ))}
+      </div>
+    );
+  }
+
+  if (activeCategories.length === 0) {
+    const hasUncategorized = periodTotal > 0;
+    return (
+      <div className="space-y-5">
+        <h2 className="font-serif text-2xl">Manual categories</h2>
+        <div className="rounded-3xl bg-card p-10 md:p-14">
+          <div className="mx-auto max-w-md text-center">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.75}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+                />
+              </svg>
+            </div>
+            {hasUncategorized ? (
+              <>
+                <h3 className="font-serif text-2xl">
+                  Transactions aren&apos;t categorized yet
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  You have spending this month, but none of it is assigned to a
+                  category yet. Enable an AI provider in settings and sync, or
+                  assign categories manually from the transactions table below.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="font-serif text-2xl">No spending yet</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  When you sync transactions and they get categorized, each
+                  category will show up here with its own budget, pace, and
+                  recent activity.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
