@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Input } from "@/components/ui/input";
+import { Input, InputGroup } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getSummary, updateBudget } from "@/lib/api";
 import { getMonthRange } from "@/lib/formatters";
@@ -135,15 +135,16 @@ function BudgetRow({
             Reset to auto
           </Button>
         )}
-        <span className="text-xs text-muted-foreground">₪</span>
-        <Input
-          type="number"
-          className="h-9 w-28 text-right tabular-nums"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={handleBlur}
-          min={0}
-        />
+        <InputGroup prefix="₪" className="w-32">
+          <Input
+            type="number"
+            className="text-right tabular-nums"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={handleBlur}
+            min={0}
+          />
+        </InputGroup>
       </div>
     </div>
   );
