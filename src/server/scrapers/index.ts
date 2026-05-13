@@ -136,6 +136,14 @@ async function runScrape(
     // Only enable when the user is also showing the browser (= they're debugging).
     verbose: showBrowser,
     timeout: 60000,
+    // Force a fresh Chromium profile each run so cookies / cached login state
+    // never persist between scrapes (defense in depth - the lib already
+    // launches a temp profile, but we pin it explicitly).
+    args: [
+      "--no-sandbox",
+      "--disable-blink-features=AutomationControlled",
+      "--disable-features=IsolateOrigins,site-per-process",
+    ],
   });
 
   // credentials shape varies by provider; the library accepts different types per bank
