@@ -148,9 +148,14 @@ export interface CredentialField {
   numeric?: boolean;
 }
 
+export type BankKind = "bank" | "card";
+
 export interface BankProviderInfo {
   id: BankProvider;
   name: string;
+  kind: BankKind;
+  color: string;
+  blurb: string;
   credentialFields: CredentialField[];
   enabled: boolean;
 }
@@ -190,6 +195,9 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
   {
     id: "isracard",
     name: "Isracard",
+    kind: "card",
+    color: "#E50019",
+    blurb: "Israeli Mastercard / Visa",
     credentialFields: [
       {
         key: "id",
@@ -221,7 +229,10 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
   },
   {
     id: "cal",
-    name: "Cal",
+    name: "Visa Cal",
+    kind: "card",
+    color: "#1B4E97",
+    blurb: "Cal-branded cards",
     credentialFields: [
       { key: "username", label: "Username", type: "text" },
       { key: "password", label: "Password", type: "password" },
@@ -231,6 +242,9 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
   {
     id: "max",
     name: "Max",
+    kind: "card",
+    color: "#FF6B00",
+    blurb: "Formerly Leumi Card",
     credentialFields: [
       { key: "username", label: "Username", type: "text" },
       { key: "password", label: "Password", type: "password" },
@@ -240,6 +254,9 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
   {
     id: "hapoalim",
     name: "Bank Hapoalim",
+    kind: "bank",
+    color: "#E2231A",
+    blurb: "Includes Poalim wallets",
     credentialFields: [
       { key: "userCode", label: "User Code", type: "text" },
       { key: "password", label: "Password", type: "password" },
@@ -249,6 +266,9 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
   {
     id: "leumi",
     name: "Bank Leumi",
+    kind: "bank",
+    color: "#1976A4",
+    blurb: "Personal & business accounts",
     credentialFields: [
       { key: "username", label: "Username", type: "text" },
       { key: "password", label: "Password", type: "password" },
