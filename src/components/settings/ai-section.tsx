@@ -25,7 +25,7 @@ export function AISection() {
   });
   if (!settings) {
     return (
-      <SectionShell title="AI">
+      <SectionShell title="AI & automation">
         <SettingCard>
           <div className="text-sm text-muted-foreground">Loading...</div>
         </SettingCard>
@@ -34,8 +34,8 @@ export function AISection() {
   }
   return (
     <SectionShell
-      title="AI"
-      description="Spent uses AI to auto-categorize new transactions on every sync. Pick a provider, or skip it entirely."
+      title="AI & automation"
+      description="How Spent organizes new transactions. Switch any time — your existing categorizations stay."
     >
       <AIForm key={settings.aiProvider} settings={settings} />
     </SectionShell>

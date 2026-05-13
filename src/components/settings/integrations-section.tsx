@@ -35,8 +35,8 @@ export function IntegrationsSection() {
 
   return (
     <SectionShell
-      title="Integrations"
-      description="Connect banks and credit cards. Credentials are encrypted with AES-256-GCM and never leave your machine."
+      title="Bank accounts"
+      description="Spent imports transactions from these accounts. Credentials are encrypted with AES-256-GCM and never leave your machine."
     >
       {integrations.length === 0 && !adding && (
         <SettingCard>

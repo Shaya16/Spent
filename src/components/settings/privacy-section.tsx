@@ -16,7 +16,7 @@ export function PrivacySection() {
 
   if (!settings) {
     return (
-      <SectionShell title="Privacy & Debug">
+      <SectionShell title="Data & privacy">
         <SettingCard>
           <div className="text-sm text-muted-foreground">Loading...</div>
         </SettingCard>
@@ -26,7 +26,7 @@ export function PrivacySection() {
 
   return (
     <SectionShell
-      title="Privacy & Debug"
+      title="Data & privacy"
       description="Spent runs locally. Your credentials are encrypted at rest and never leave your machine."
     >
       <ShowBrowserCard initial={settings.showBrowser} />

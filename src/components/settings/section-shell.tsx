@@ -12,14 +12,14 @@ export function SectionShell({
   children,
 }: SectionShellProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h2 className="font-serif text-3xl">{title}</h2>
+        <h2 className="text-xl font-bold tracking-tight">{title}</h2>
         {description && (
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         )}
       </div>
-      <div className="space-y-6">{children}</div>
+      <div className="space-y-4">{children}</div>
     </div>
   );
 }
