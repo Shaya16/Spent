@@ -15,6 +15,7 @@ import { getAllCategories } from "@/server/db/queries/categories";
 import { scrapeBank } from "@/server/scrapers";
 import { createAIProvider } from "@/server/ai/factory";
 import { ensureOllamaRunning } from "@/server/ai/ollama-manager";
+import { toLocalISODate } from "@/server/lib/date-utils";
 import type { BankProvider } from "@/lib/types";
 
 function sseEvent(
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
 
         const syncRunId = createSyncRun(
           provider,
-          startDate.toISOString().slice(0, 10)
+          toLocalISODate(startDate)
         );
 
         send("progress", {

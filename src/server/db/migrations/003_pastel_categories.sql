@@ -1,0 +1,16 @@
+UPDATE categories SET color = '#8FAE8B', icon = 'shopping-basket' WHERE name = 'Groceries';
+UPDATE categories SET color = '#E29C7D', icon = 'utensils-crossed' WHERE name = 'Restaurants';
+UPDATE categories SET color = '#85A8C4', icon = 'tram-front' WHERE name = 'Transport';
+UPDATE categories SET color = '#D8B681', icon = 'shopping-bag' WHERE name = 'Shopping';
+UPDATE categories SET color = '#D49AA0', icon = 'ticket' WHERE name = 'Entertainment';
+UPDATE categories SET color = '#7FB8A8', icon = 'heart-pulse' WHERE name = 'Health';
+UPDATE categories SET color = '#9CA3D6', icon = 'graduation-cap' WHERE name = 'Education';
+UPDATE categories SET color = '#AEA89A', icon = 'receipt' WHERE name = 'Bills & Utilities';
+UPDATE categories SET color = '#B5A0CF', icon = 'refresh-cw' WHERE name = 'Subscriptions';
+UPDATE categories SET color = '#82B4C7', icon = 'plane' WHERE name = 'Travel';
+UPDATE categories SET color = '#D8C281', icon = 'banknote' WHERE name = 'Cash & ATM';
+UPDATE categories SET color = '#A8AAB5', icon = 'arrow-left-right' WHERE name = 'Transfers';
+UPDATE categories SET color = '#D69AA8', icon = 'shield' WHERE name = 'Insurance';
+UPDATE categories SET color = '#C5A878', icon = 'home' WHERE name = 'Home';
+UPDATE categories SET color = '#D8A8CF', icon = 'sparkles' WHERE name = 'Personal Care';
+UPDATE categories SET color = '#B5B3AC', icon = 'circle-dot' WHERE name = 'Other';

@@ -66,12 +66,50 @@ export interface CategoryBreakdown {
   count: number;
 }
 
+export type BudgetStatus =
+  | "plenty-left"
+  | "on-track"
+  | "heads-up"
+  | "over";
+
+export interface CategoryWithData {
+  categoryId: number;
+  categoryName: string;
+  categoryColor: string;
+  categoryIcon: string | null;
+  spent: number;
+  transactionCount: number;
+  topMerchant: string | null;
+  budget: number;
+  isAutoBudget: boolean;
+  vsLastMonth: number | null;
+  remaining: number;
+  perDayRemaining: number | null;
+  percentSpent: number;
+  status: BudgetStatus;
+}
+
 export interface DashboardSummary {
   periodTotal: number;
   transactionCount: number;
   monthlySpend: MonthlySummary[];
   topMerchants: MerchantSummary[];
   categoryBreakdown: CategoryBreakdown[];
+  categoriesWithData: CategoryWithData[];
+  totalBudget: number;
+  overallPercentSpent: number;
+  timeElapsedPercent: number;
+  daysUntilPayday: number;
+  paydayDay: number;
+  todayLabel: string;
+  monthLabel: string;
+  pacePhrase: string;
+}
+
+export interface Budget {
+  categoryId: number;
+  monthlyAmount: number;
+  isAuto: boolean;
 }
 
 export interface SetupStatus {
@@ -86,6 +124,7 @@ export interface AppSettings {
   ollamaUrl: string;
   ollamaModel: string;
   showBrowser: boolean;
+  paydayDay: number;
 }
 
 export type BankProvider = "isracard" | "cal" | "max" | "hapoalim" | "leumi";

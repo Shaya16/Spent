@@ -310,7 +310,7 @@ export function getCategoryBreakdown(
       `SELECT
          COALESCE(t.category_id, 0) as categoryId,
          COALESCE(c.name, 'Uncategorized') as name,
-         COALESCE(c.color, '#94a3b8') as color,
+         COALESCE(c.color, '#B5B3AC') as color,
          SUM(ABS(t.charged_amount)) as amount,
          COUNT(*) as count
        FROM transactions t
@@ -320,6 +320,53 @@ export function getCategoryBreakdown(
        ORDER BY amount DESC`
     )
     .all(from, to) as CategoryBreakdown[];
+}
+
+export interface CategorySpend {
+  categoryId: number;
+  amount: number;
+  count: number;
+}
+
+export function getCategorySpendInRange(
+  from: string,
+  to: string
+): CategorySpend[] {
+  return getDb()
+    .prepare(
+      `SELECT category_id as categoryId,
+              SUM(ABS(charged_amount)) as amount,
+              COUNT(*) as count
+       FROM transactions
+       WHERE date >= ? AND date <= ? AND status = 'completed' AND category_id IS NOT NULL
+       GROUP BY category_id`
+    )
+    .all(from, to) as CategorySpend[];
+}
+
+export interface CategoryTopMerchant {
+  categoryId: number;
+  merchant: string;
+  amount: number;
+}
+
+export function getTopMerchantPerCategory(
+  from: string,
+  to: string
+): CategoryTopMerchant[] {
+  return getDb()
+    .prepare(
+      `SELECT category_id as categoryId, description as merchant, amount
+       FROM (
+         SELECT category_id, description, SUM(ABS(charged_amount)) as amount,
+                ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY SUM(ABS(charged_amount)) DESC) as rn
+         FROM transactions
+         WHERE date >= ? AND date <= ? AND status = 'completed' AND category_id IS NOT NULL
+         GROUP BY category_id, description
+       )
+       WHERE rn = 1`
+    )
+    .all(from, to) as CategoryTopMerchant[];
 }
 
 export function getPeriodTotal(from: string, to: string): number {

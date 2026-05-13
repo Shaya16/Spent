@@ -26,6 +26,7 @@ export function getAppSettings(): AppSettings {
     ollamaUrl: getSetting("ai_ollama_url") ?? "http://localhost:11434",
     ollamaModel: getSetting("ai_ollama_model") ?? "llama3.2:3b",
     showBrowser: getSetting("scraper_show_browser") === "true",
+    paydayDay: Number(getSetting("payday_day") ?? "1"),
   };
 }
 
@@ -46,6 +47,10 @@ export function updateAppSettings(settings: Partial<AppSettings>): AppSettings {
     }
     if (settings.showBrowser !== undefined) {
       setSetting("scraper_show_browser", settings.showBrowser ? "true" : "false");
+    }
+    if (settings.paydayDay !== undefined) {
+      const clamped = Math.max(1, Math.min(28, Math.round(settings.paydayDay)));
+      setSetting("payday_day", String(clamped));
     }
   });
   update();

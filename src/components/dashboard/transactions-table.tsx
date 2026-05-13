@@ -80,10 +80,12 @@ export function TransactionsTable({
   };
 
   return (
-    <Card>
+    <Card className="rounded-2xl border-none bg-card shadow-none">
       <CardHeader>
         <div className="flex items-center justify-between gap-4">
-          <CardTitle className="text-sm font-medium">Transactions</CardTitle>
+          <CardTitle className="font-serif text-2xl font-normal">
+            Transactions
+          </CardTitle>
           <div className="flex items-center gap-2">
             <Input
               placeholder="Search..."

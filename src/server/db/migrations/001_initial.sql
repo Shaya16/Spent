@@ -6,22 +6,22 @@ CREATE TABLE categories (
 );
 
 INSERT INTO categories (name, color, icon) VALUES
-  ('Groceries', '#22c55e', 'shopping-cart'),
-  ('Restaurants', '#f97316', 'utensils'),
-  ('Transport', '#3b82f6', 'car'),
-  ('Shopping', '#a855f7', 'shopping-bag'),
-  ('Entertainment', '#ec4899', 'film'),
-  ('Health', '#14b8a6', 'heart-pulse'),
-  ('Education', '#6366f1', 'graduation-cap'),
-  ('Bills & Utilities', '#78716c', 'receipt'),
-  ('Subscriptions', '#8b5cf6', 'repeat'),
-  ('Travel', '#06b6d4', 'plane'),
-  ('Cash & ATM', '#eab308', 'banknote'),
-  ('Transfers', '#64748b', 'arrow-left-right'),
-  ('Insurance', '#f43f5e', 'shield'),
-  ('Home', '#d97706', 'home'),
-  ('Personal Care', '#e879f9', 'sparkles'),
-  ('Other', '#94a3b8', 'circle-dot');
+  ('Groceries', '#8FAE8B', 'shopping-basket'),
+  ('Restaurants', '#E29C7D', 'utensils-crossed'),
+  ('Transport', '#85A8C4', 'tram-front'),
+  ('Shopping', '#D8B681', 'shopping-bag'),
+  ('Entertainment', '#D49AA0', 'ticket'),
+  ('Health', '#7FB8A8', 'heart-pulse'),
+  ('Education', '#9CA3D6', 'graduation-cap'),
+  ('Bills & Utilities', '#AEA89A', 'receipt'),
+  ('Subscriptions', '#B5A0CF', 'refresh-cw'),
+  ('Travel', '#82B4C7', 'plane'),
+  ('Cash & ATM', '#D8C281', 'banknote'),
+  ('Transfers', '#A8AAB5', 'arrow-left-right'),
+  ('Insurance', '#D69AA8', 'shield'),
+  ('Home', '#C5A878', 'home'),
+  ('Personal Care', '#D8A8CF', 'sparkles'),
+  ('Other', '#B5B3AC', 'circle-dot');
 
 CREATE TABLE bank_credentials (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

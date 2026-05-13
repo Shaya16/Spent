@@ -25,6 +25,13 @@ export function formatMonth(isoDate: string): string {
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function getMonthRange(date: Date = new Date()): {
   from: string;
   to: string;
@@ -32,8 +39,8 @@ export function getMonthRange(date: Date = new Date()): {
   const from = new Date(date.getFullYear(), date.getMonth(), 1);
   const to = new Date(date.getFullYear(), date.getMonth() + 1, 0);
   return {
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
+    from: toLocalDateString(from),
+    to: toLocalDateString(to),
   };
 }
 

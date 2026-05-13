@@ -5,6 +5,7 @@ import type {
   DashboardSummary,
   Category,
   SyncRun,
+  Budget,
 } from "./types";
 
 const BASE = "";
@@ -111,6 +112,18 @@ export function updateTransactionCategory(id: number, categoryId: number) {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ categoryId }),
+  });
+}
+
+export function getBudgets() {
+  return fetchJSON<Budget[]>("/api/budgets");
+}
+
+export function updateBudget(categoryId: number, amount: number | null) {
+  return fetchJSON<{ success: boolean }>("/api/budgets", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ categoryId, amount }),
   });
 }
 

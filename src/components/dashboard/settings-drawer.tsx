@@ -21,9 +21,16 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { getSettings, updateSettings } from "@/lib/api";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  getSettings,
+  updateSettings,
+  getSummary,
+  updateBudget,
+} from "@/lib/api";
+import { getMonthRange } from "@/lib/formatters";
 import { toast } from "sonner";
-import type { AppSettings } from "@/lib/types";
+import type { AppSettings, CategoryWithData } from "@/lib/types";
 
 export function SettingsDrawer() {
   const { data: settings } = useQuery({
@@ -53,15 +60,24 @@ export function SettingsDrawer() {
           />
         </svg>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Settings</SheetTitle>
+          <SheetTitle className="font-serif text-2xl">Settings</SheetTitle>
         </SheetHeader>
-        {settings ? (
-          <SettingsForm key={settings.aiProvider + settings.monthsToSync} initial={settings} />
-        ) : (
-          <div className="p-6 text-sm text-muted-foreground">Loading...</div>
-        )}
+        <ScrollArea className="h-[calc(100vh-80px)] pr-4">
+          {settings ? (
+            <SettingsForm
+              key={
+                settings.aiProvider +
+                settings.monthsToSync +
+                settings.paydayDay
+              }
+              initial={settings}
+            />
+          ) : (
+            <div className="p-6 text-sm text-muted-foreground">Loading...</div>
+          )}
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );
@@ -74,11 +90,13 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
   const [ollamaUrl, setOllamaUrl] = useState(initial.ollamaUrl);
   const [ollamaModel, setOllamaModel] = useState(initial.ollamaModel);
   const [showBrowser, setShowBrowser] = useState(initial.showBrowser);
+  const [paydayDay, setPaydayDay] = useState(String(initial.paydayDay));
 
   const mutation = useMutation({
     mutationFn: updateSettings,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
       toast.success("Settings saved");
     },
   });
@@ -90,11 +108,12 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
       ollamaUrl,
       ollamaModel,
       showBrowser,
+      paydayDay: Number(paydayDay),
     });
   };
 
   return (
-    <div className="mt-6 space-y-6">
+    <div className="mt-6 space-y-6 pb-6">
       <div className="space-y-2">
         <Label>Months to sync</Label>
         <Select value={months} onValueChange={(v) => v && setMonths(v)}>
@@ -111,13 +130,41 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
         </Select>
       </div>
 
+      <div className="space-y-2">
+        <Label>Payday (day of month)</Label>
+        <Select
+          value={paydayDay}
+          onValueChange={(v) => v && setPaydayDay(v)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+              <SelectItem key={d} value={String(d)}>
+                {ordinal(d)} of the month
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Powers the &quot;days until payday&quot; copy on the dashboard.
+        </p>
+      </div>
+
+      <Separator />
+
+      <BudgetEditor />
+
       <Separator />
 
       <div className="space-y-3">
         <Label>AI Provider</Label>
         <Select
           value={aiProvider}
-          onValueChange={(v) => v && setAiProvider(v as AppSettings["aiProvider"])}
+          onValueChange={(v) =>
+            v && setAiProvider(v as AppSettings["aiProvider"])
+          }
         >
           <SelectTrigger>
             <SelectValue />
@@ -180,4 +227,106 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
       </a>
     </div>
   );
+}
+
+function BudgetEditor() {
+  const queryClient = useQueryClient();
+  const { from, to } = getMonthRange();
+  const { data: summary } = useQuery({
+    queryKey: ["summary", from, to],
+    queryFn: () => getSummary({ from, to }),
+  });
+
+  const mutation = useMutation({
+    mutationFn: ({
+      categoryId,
+      amount,
+    }: {
+      categoryId: number;
+      amount: number | null;
+    }) => updateBudget(categoryId, amount),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
+    },
+  });
+
+  if (!summary) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label>Category budgets</Label>
+        <p className="text-xs text-muted-foreground">
+          Auto-set from last month&apos;s actual spending. Tap to override.
+        </p>
+      </div>
+      <div className="space-y-2">
+        {summary.categoriesWithData
+          .filter((c) => c.spent > 0 || !c.isAutoBudget)
+          .sort((a, b) => b.spent - a.spent)
+          .map((cat) => (
+            <BudgetRow
+              key={cat.categoryId}
+              category={cat}
+              onChange={(amount) =>
+                mutation.mutate({ categoryId: cat.categoryId, amount })
+              }
+            />
+          ))}
+      </div>
+    </div>
+  );
+}
+
+function BudgetRow({
+  category,
+  onChange,
+}: {
+  category: CategoryWithData;
+  onChange: (amount: number | null) => void;
+}) {
+  const [value, setValue] = useState(String(Math.round(category.budget)));
+
+  const handleBlur = () => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return;
+    if (Math.round(parsed) === Math.round(category.budget)) return;
+    onChange(parsed);
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 min-w-0">
+        <div
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: category.categoryColor }}
+        />
+        <span className="truncate text-sm">{category.categoryName}</span>
+        {category.isAutoBudget && (
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+            auto
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">₪</span>
+        <Input
+          type="number"
+          className="h-8 w-24 text-right tabular-nums"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={handleBlur}
+          min={0}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
