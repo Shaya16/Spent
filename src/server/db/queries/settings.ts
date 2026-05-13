@@ -24,7 +24,7 @@ export function getAppSettings(): AppSettings {
     monthsToSync: Number(getSetting("months_to_sync") ?? "3"),
     aiProvider: (getSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
     ollamaUrl: getSetting("ai_ollama_url") ?? "http://localhost:11434",
-    ollamaModel: getSetting("ai_ollama_model") ?? "llama3.1",
+    ollamaModel: getSetting("ai_ollama_model") ?? "llama3.2:3b",
     showBrowser: getSetting("scraper_show_browser") === "true",
   };
 }

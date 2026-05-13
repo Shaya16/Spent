@@ -36,6 +36,81 @@ export interface OllamaCheckResult {
   spawned?: boolean;
 }
 
+export interface OllamaPullProgress {
+  status: string;
+  digest?: string;
+  total?: number;
+  completed?: number;
+}
+
+export async function listOllamaModels(url: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${url}/api/tags`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { models?: { name: string }[] };
+    return (data.models ?? []).map((m) => m.name);
+  } catch {
+    return [];
+  }
+}
+
+export async function isModelInstalled(
+  url: string,
+  model: string
+): Promise<boolean> {
+  const installed = await listOllamaModels(url);
+  return installed.includes(model);
+}
+
+export async function* pullOllamaModel(
+  url: string,
+  model: string
+): AsyncGenerator<OllamaPullProgress, void, unknown> {
+  const res = await fetch(`${url}/api/pull`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: model, stream: true }),
+  });
+
+  if (!res.ok || !res.body) {
+    throw new Error(`Ollama pull failed: ${res.status} ${res.statusText}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          yield JSON.parse(trimmed) as OllamaPullProgress;
+        } catch {
+          // skip malformed lines
+        }
+      }
+    }
+    if (buffer.trim()) {
+      try {
+        yield JSON.parse(buffer.trim()) as OllamaPullProgress;
+      } catch {
+        // ignore
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export async function ensureOllamaRunning(
   url: string
 ): Promise<OllamaCheckResult> {

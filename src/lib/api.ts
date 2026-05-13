@@ -179,3 +179,81 @@ export function startSync(
 export function getLastSync() {
   return fetchJSON<SyncRun | null>("/api/sync/last").catch(() => null);
 }
+
+export interface PullProgress {
+  status: string;
+  digest?: string;
+  total?: number;
+  completed?: number;
+  speed?: number;
+  etaSeconds?: number | null;
+}
+
+export interface PullEvent {
+  type: "progress" | "complete" | "error";
+  data: PullProgress & { message?: string };
+}
+
+export function listOllamaModels(url?: string) {
+  const qs = url ? `?url=${encodeURIComponent(url)}` : "";
+  return fetchJSON<{ models: string[]; error?: string }>(
+    `/api/ai/ollama/models${qs}`
+  );
+}
+
+export function pullOllamaModel(
+  model: string,
+  url: string | undefined,
+  onEvent: (event: PullEvent) => void
+): { cancel: () => void } {
+  const controller = new AbortController();
+
+  (async () => {
+    try {
+      const res = await fetch("/api/ai/ollama/pull", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model, url }),
+        signal: controller.signal,
+      });
+
+      const reader = res.body?.getReader();
+      if (!reader) return;
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        let currentEvent = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ") && currentEvent) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              onEvent({ type: currentEvent as PullEvent["type"], data });
+            } catch {
+              // skip
+            }
+            currentEvent = "";
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      onEvent({
+        type: "error",
+        data: { status: "error", message: "Connection to pull endpoint lost" },
+      });
+    }
+  })();
+
+  return { cancel: () => controller.abort() };
+}

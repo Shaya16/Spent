@@ -87,4 +87,4 @@ INSERT INTO settings (key, value) VALUES
   ('months_to_sync', '3'),
   ('ai_provider', 'none'),
   ('ai_ollama_url', 'http://localhost:11434'),
-  ('ai_ollama_model', 'llama3.1');
+  ('ai_ollama_model', 'llama3.2:3b');
