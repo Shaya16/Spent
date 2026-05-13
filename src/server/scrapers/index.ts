@@ -24,6 +24,16 @@ function sanitizeError(error: unknown): string {
   return "An unknown error occurred during scraping";
 }
 
+const FRIENDLY_ERRORS: Record<string, string> = {
+  INVALID_PASSWORD: "The credentials were rejected by the bank. Double-check ID, card last 6 digits, and password.",
+  CHANGE_PASSWORD: "The bank is asking you to change your password. Log in via the bank's website first.",
+  ACCOUNT_BLOCKED: "The account is blocked by the bank. Resolve this on the bank's website.",
+  TIMEOUT: "The scrape timed out. The bank's site may be slow or down. Try again.",
+  TWO_FACTOR_RETRIEVER_MISSING: "This account has 2FA enabled. Disable 2FA on the bank's site (most scrapers don't support it).",
+  GENERIC: "The scraper failed unexpectedly. Run with 'Show browser during sync' enabled to see what's happening.",
+  GENERAL_ERROR: "The scraper failed unexpectedly. Run with 'Show browser during sync' enabled to see what's happening.",
+};
+
 export async function scrapeBank(
   provider: BankProvider,
   credentials: Record<string, string>,
@@ -42,21 +52,38 @@ export async function scrapeBank(
       startDate,
       combineInstallments: false,
       showBrowser,
+      verbose: true,
       timeout: 60000,
     });
+
+    console.log(`[scraper] starting scrape for ${provider} from ${startDate.toISOString()}`);
 
     // credentials shape varies by provider; the library accepts different types per bank
     const result = await scraper.scrape(credentials as Parameters<typeof scraper.scrape>[0]);
 
     if (!result.success) {
+      const errorType = result.errorType ?? "GENERIC";
+      console.error(`[scraper] failed (${errorType}):`, result.errorMessage);
+      const friendly = FRIENDLY_ERRORS[errorType];
+      const detail = result.errorMessage
+        ? sanitizeError(new Error(result.errorMessage))
+        : errorType;
       return {
         success: false,
         accounts: [],
-        errorMessage: result.errorMessage
-          ? sanitizeError(new Error(result.errorMessage))
-          : `Scraping failed: ${result.errorType ?? "unknown error"}`,
+        errorMessage: friendly
+          ? `${friendly} (${detail})`
+          : `Scraping failed: ${detail}`,
       };
     }
+
+    const txnCount = (result.accounts ?? []).reduce(
+      (sum, a) => sum + a.txns.length,
+      0
+    );
+    console.log(
+      `[scraper] success: ${result.accounts?.length ?? 0} account(s), ${txnCount} transaction(s)`
+    );
 
     const accounts = (result.accounts ?? []).map((account) => ({
       accountNumber: account.accountNumber,
@@ -82,6 +109,7 @@ export async function scrapeBank(
 
     return { success: true, accounts };
   } catch (error) {
+    console.error("[scraper] unexpected error:", error);
     return {
       success: false,
       accounts: [],

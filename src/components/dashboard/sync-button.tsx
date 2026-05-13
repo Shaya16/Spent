@@ -22,21 +22,34 @@ export function SyncButton({ onComplete }: SyncButtonProps) {
         const message = event.data.message as string;
         setStage(message);
       } else if (event.type === "complete") {
-        const { added, updated, categorized } = event.data as {
+        const { added, updated, categorized, aiWarning } = event.data as {
           added: number;
           updated: number;
           categorized: number;
+          aiWarning: string | null;
         };
         setSyncing(false);
         setStage("");
         toast.success(
           `Sync complete: ${added} new, ${updated} updated, ${categorized} categorized`
         );
+        if (aiWarning) {
+          toast.warning("AI categorization issue", {
+            description: aiWarning,
+            duration: Infinity,
+            closeButton: true,
+          });
+        }
         onComplete();
       } else if (event.type === "error") {
         setSyncing(false);
         setStage("");
-        toast.error(event.data.message as string);
+        const message = event.data.message as string;
+        toast.error(message, {
+          duration: Infinity,
+          closeButton: true,
+          description: "Check the dev server terminal for full details.",
+        });
       }
     });
 
