@@ -9,6 +9,7 @@ import { HeroCard } from "./hero-card";
 import { CategoryGrid } from "./category-grid";
 import { PeriodSelector } from "./period-selector";
 import { SyncButton } from "./sync-button";
+import { CategorizeButton } from "./categorize-button";
 
 export function Dashboard() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -41,6 +42,7 @@ export function Dashboard() {
               onPrev={() => setSelectedDate((d) => addMonths(d, -1))}
               onNext={() => setSelectedDate((d) => addMonths(d, 1))}
             />
+            <CategorizeButton onApplied={handleSyncComplete} />
             <SyncButton onComplete={handleSyncComplete} />
           </>
         }

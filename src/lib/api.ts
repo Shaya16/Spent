@@ -144,6 +144,53 @@ export function getIntegrationCredentials(provider: string) {
   );
 }
 
+export interface CategorizeAssignment {
+  transactionId: number;
+  description: string;
+  categoryName: string;
+  isNew: boolean;
+}
+
+export interface CategorizeProposal {
+  name: string;
+  transactionIds: number[];
+  samples: string[];
+}
+
+export interface CategorizePreview {
+  uncategorizedCount: number;
+  assignments: CategorizeAssignment[];
+  proposedCategories: CategorizeProposal[];
+  existingCategoryUsage: Record<string, number>;
+  errors?: string[];
+}
+
+export function previewCategorize() {
+  return fetchJSON<CategorizePreview>("/api/categorize/preview", {
+    method: "POST",
+  });
+}
+
+export function applyCategorize(payload: {
+  assignments: Array<{
+    transactionId: number;
+    categoryName: string;
+    isNew: boolean;
+  }>;
+  approvedNewCategoryNames: string[];
+  rejectionFallbacks?: Record<string, string>;
+}) {
+  return fetchJSON<{
+    appliedCount: number;
+    createdCategoriesCount: number;
+    skippedCount: number;
+  }>("/api/categorize/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
 export interface SyncProgressEvent {
   type: "progress" | "complete" | "error";
   data: Record<string, unknown>;

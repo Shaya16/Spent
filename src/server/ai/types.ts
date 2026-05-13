@@ -3,6 +3,8 @@ import "server-only";
 export interface CategoryMapping {
   index: number;
   categoryName: string;
+  /** True when the AI proposed this as a brand-new category (not in the input list). */
+  isNew?: boolean;
 }
 
 export interface TransactionForCategorization {
@@ -15,6 +17,7 @@ export interface TransactionForCategorization {
 export interface AIProvider {
   categorize(
     transactions: TransactionForCategorization[],
-    categoryNames: string[]
+    categoryNames: string[],
+    options?: { allowProposals?: boolean }
   ): Promise<CategoryMapping[]>;
 }
