@@ -58,7 +58,7 @@ export function TransactionsPage() {
         }
       />
 
-      <div className="mx-auto max-w-6xl space-y-6 p-6 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6 lg:p-8">
         <div className="rounded-2xl bg-card p-5">
           <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
             Spend this period

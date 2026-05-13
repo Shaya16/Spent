@@ -50,14 +50,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="px-3 pb-1 pt-3">
         <Link
           href="/"
-          className="flex items-center gap-2.5 px-2 py-2 transition-opacity hover:opacity-80"
+          className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
         >
           <svg
-            width="32"
-            height="32"
+            width="28"
+            height="28"
             viewBox="0 0 34 34"
             className="shrink-0"
           >
@@ -65,11 +65,11 @@ export function AppSidebar() {
             <circle cx="17" cy="11" r="5" fill="var(--status-heads-up)" />
             <circle cx="25" cy="16" r="3.6" fill="var(--status-plenty-left)" />
           </svg>
-          <div className="group-data-[collapsible=icon]:hidden">
-            <div className="text-base font-bold leading-none tracking-tight">
+          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <div className="text-[15px] font-bold leading-tight tracking-tight">
               Spent
             </div>
-            <div className="mt-0.5 text-[9.5px] font-semibold tracking-[0.08em] text-muted-foreground">
+            <div className="mt-px text-[10px] font-semibold leading-tight tracking-[0.08em] text-muted-foreground">
               YOUR MONEY · OPEN SOURCE
             </div>
           </div>

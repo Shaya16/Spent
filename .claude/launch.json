@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "spent-dev",
+      "name": "spent-preview",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-H", "127.0.0.1"],
-      "port": 3000
+      "runtimeArgs": ["run", "dev", "--", "-H", "127.0.0.1", "-p", "3010"],
+      "port": 3010,
+      "autoPort": true
     }
   ]
 }

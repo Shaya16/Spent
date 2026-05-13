@@ -53,12 +53,12 @@ export function SettingsShell() {
   return (
     <>
       <PageHeader title="Settings" />
-      <div className="mx-auto max-w-6xl px-6 pt-6 pb-24 md:px-8">
-        <p className="mb-10 text-sm text-muted-foreground">
+      <div className="mx-auto max-w-6xl p-4 pb-24 md:p-6 lg:p-8">
+        <p className="mb-8 text-sm text-muted-foreground">
           Tune Spent to fit how you like to manage your money.
         </p>
 
-        <div className="grid gap-12 lg:grid-cols-[180px_1fr]">
+        <div className="grid gap-10 lg:grid-cols-[180px_1fr]">
           {/* Section nav */}
           <aside className="hidden lg:block">
             <div className="sticky top-24">

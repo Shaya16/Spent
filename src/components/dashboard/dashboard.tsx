@@ -46,7 +46,7 @@ export function Dashboard() {
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-8 p-6 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6 lg:p-8">
         <HeroCard data={summary} loading={summaryQuery.isLoading} />
         <CategoryGrid
           categories={summary?.categoriesWithData ?? []}
