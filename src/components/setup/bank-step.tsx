@@ -63,9 +63,13 @@ export function BankStep({ onComplete }: BankStepProps) {
     }
   };
 
-  const allFieldsFilled =
-    bankInfo?.credentialFields.every((f) => credentials[f.key]?.trim()) ??
-    false;
+  const allFieldsValid =
+    bankInfo?.credentialFields.every((f) => {
+      const v = credentials[f.key]?.trim() ?? "";
+      if (!v) return false;
+      if (f.exactLength != null && v.length !== f.exactLength) return false;
+      return true;
+    }) ?? false;
 
   return (
     <Card>
@@ -98,23 +102,43 @@ export function BankStep({ onComplete }: BankStepProps) {
           </Select>
         </div>
 
-        {bankInfo?.credentialFields.map((field) => (
-          <div key={field.key} className="space-y-2">
-            <Label htmlFor={field.key}>{field.label}</Label>
-            <Input
-              id={field.key}
-              type={field.type}
-              value={credentials[field.key] ?? ""}
-              onChange={(e) =>
-                setCredentials((prev) => ({
-                  ...prev,
-                  [field.key]: e.target.value,
-                }))
-              }
-              placeholder={field.label}
-            />
-          </div>
-        ))}
+        {bankInfo?.credentialFields.map((field) => {
+          const value = credentials[field.key] ?? "";
+          const tooShort =
+            field.exactLength != null &&
+            value.length > 0 &&
+            value.length !== field.exactLength;
+          return (
+            <div key={field.key} className="space-y-1.5">
+              <Label htmlFor={field.key}>{field.label}</Label>
+              <Input
+                id={field.key}
+                type={field.type}
+                inputMode={field.numeric ? "numeric" : undefined}
+                pattern={field.numeric ? "[0-9]*" : undefined}
+                maxLength={field.maxLength ?? field.exactLength ?? undefined}
+                value={value}
+                onChange={(e) => {
+                  let next = e.target.value;
+                  if (field.numeric) next = next.replace(/\D/g, "");
+                  if (field.exactLength) next = next.slice(0, field.exactLength);
+                  if (field.maxLength) next = next.slice(0, field.maxLength);
+                  setCredentials((prev) => ({ ...prev, [field.key]: next }));
+                }}
+                placeholder={field.placeholder ?? field.label}
+                aria-invalid={tooShort || undefined}
+              />
+              {field.hint && (
+                <p className="text-xs text-muted-foreground">{field.hint}</p>
+              )}
+              {tooShort && (
+                <p className="text-xs text-destructive">
+                  Must be exactly {field.exactLength} digits.
+                </p>
+              )}
+            </div>
+          );
+        })}
 
         {testResult && (
           <div
@@ -133,14 +157,14 @@ export function BankStep({ onComplete }: BankStepProps) {
           <Button
             variant="outline"
             onClick={handleTest}
-            disabled={!allFieldsFilled || testing}
+            disabled={!allFieldsValid || testing}
             className="flex-1"
           >
             {testing ? "Testing..." : "Test Connection"}
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!allFieldsFilled || saving}
+            disabled={!allFieldsValid || saving}
             className="flex-1"
           >
             {saving ? "Saving..." : "Save & Continue"}

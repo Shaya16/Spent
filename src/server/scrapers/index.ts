@@ -45,6 +45,17 @@ function classifyError(error: unknown): {
   }
   const msg = error.message;
 
+  // Isracard ValidateIdData returns an empty body when the ID/card-suffix
+  // combination doesn't match a real card. This is almost always a credential
+  // typo (most commonly entering the full ID into the "Last 6 Digits" field).
+  if (/reqName=ValidateIdData/.test(msg)) {
+    return {
+      retryable: false,
+      friendly:
+        "Isracard rejected your ID and card combination. Double-check the 'Last 6 Digits of Your Card' field - it should be the last 6 digits of your credit card number, NOT your Israeli ID. Re-run setup from the settings drawer to fix it.",
+    };
+  }
+
   // Empty JSON response from bank - usually transient (rate limit, bot block, flaky endpoint).
   if (
     /Unexpected end of JSON input/.test(msg) ||
@@ -121,7 +132,9 @@ async function runScrape(
     startDate,
     combineInstallments: false,
     showBrowser,
-    verbose: true,
+    // Verbose logs include URLs and posted payloads (incl. credentials).
+    // Only enable when the user is also showing the browser (= they're debugging).
+    verbose: showBrowser,
     timeout: 60000,
   });
 

@@ -129,10 +129,21 @@ export interface AppSettings {
 
 export type BankProvider = "isracard" | "cal" | "max" | "hapoalim" | "leumi";
 
+export interface CredentialField {
+  key: string;
+  label: string;
+  type: string;
+  placeholder?: string;
+  hint?: string;
+  maxLength?: number;
+  exactLength?: number;
+  numeric?: boolean;
+}
+
 export interface BankProviderInfo {
   id: BankProvider;
   name: string;
-  credentialFields: { key: string; label: string; type: string }[];
+  credentialFields: CredentialField[];
   enabled: boolean;
 }
 
@@ -172,9 +183,31 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
     id: "isracard",
     name: "Isracard",
     credentialFields: [
-      { key: "id", label: "ID Number", type: "text" },
-      { key: "card6Digits", label: "Last 6 Digits", type: "text" },
-      { key: "password", label: "Password", type: "password" },
+      {
+        key: "id",
+        label: "ID Number",
+        type: "text",
+        placeholder: "9-digit Israeli ID",
+        hint: "Your 9-digit Israeli national ID (Teudat Zehut). Not your card number.",
+        maxLength: 9,
+        numeric: true,
+      },
+      {
+        key: "card6Digits",
+        label: "Last 6 Digits of Your Card",
+        type: "text",
+        placeholder: "e.g. 123456",
+        hint: "The last 6 digits of your Isracard credit card number. This is NOT your ID.",
+        exactLength: 6,
+        numeric: true,
+      },
+      {
+        key: "password",
+        label: "Isracard Password",
+        type: "password",
+        placeholder: "Password you use on digital.isracard.co.il",
+        hint: "The same password you use to log in on the Isracard website.",
+      },
     ],
     enabled: true,
   },
