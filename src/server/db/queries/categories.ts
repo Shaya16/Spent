@@ -17,17 +17,22 @@ export function getCategoryByName(name: string): Category | null {
   );
 }
 
+// Palette for AI-proposed new categories. Distinct hues, none colliding
+// with the 16 seeded category colors. Picked deterministically via a hash
+// of the category name so the same proposal always gets the same color.
 const NEW_CATEGORY_PALETTE = [
-  "#A5C9A1",
-  "#E8B58A",
-  "#9CB8D0",
-  "#C0A8D1",
-  "#D5A88E",
-  "#A0C0B0",
-  "#BFB58A",
-  "#D0A5A8",
-  "#B8B0C9",
-  "#C9B89B",
+  "#A8C58E", // light olive
+  "#E8BB85", // sandy orange
+  "#7FBFD3", // light cyan-blue
+  "#D78AC4", // bright pink
+  "#A47CC9", // medium violet
+  "#74C2AC", // jade
+  "#8990C9", // dusty indigo
+  "#A9B0BC", // medium slate
+  "#C2A1D9", // mauve
+  "#82CFBE", // mint
+  "#E5C781", // sand gold
+  "#C2BB9F", // sage tan
 ] as const;
 
 function pickColor(seed: string): string {
