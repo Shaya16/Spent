@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Spent
 
-## Getting Started
+> **Warning:** This is a personal, local-only tool. Scraping financial institutions may violate their Terms of Service. Use only for your own accounts on your own machine. **Do not deploy this as a hosted service for other users.**
 
-First, run the development server:
+A local-first personal finance tracker for Israeli financial institutions. Pulls your transactions from your bank or credit card, stores them in a local SQLite database, and auto-categorizes them using AI (Claude API or Ollama). Everything runs on your machine.
+
+## Features
+
+- **Bank integration** for Isracard (more coming: Cal, Max, Hapoalim, Leumi)
+- **AI auto-categorization** with two options:
+  - **Claude API** (Anthropic) for fast, accurate categorization
+  - **Ollama** for fully local, private AI processing
+  - Or skip AI entirely and categorize manually
+- **Encrypted credential storage** (AES-256-GCM, key stored locally outside the database)
+- **Beautiful dashboard** with monthly trends, category breakdowns, top merchants, and a sortable transactions table
+- **System theme** that follows your OS dark/light preference
+- **Idempotent sync** - re-running sync never creates duplicates
+
+## Quick Start
+
+### Requirements
+
+- Node.js 22 or higher
+- macOS, Linux, or Windows (WSL recommended on Windows)
+- For Claude AI: an Anthropic API key
+- For Ollama AI: [Ollama](https://ollama.com) installed and running locally
+
+### Install and run
 
 ```bash
+git clone <this-repo> spent
+cd spent
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://127.0.0.1:3000 - the setup wizard will walk you through:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Connect your bank** - select your provider and enter credentials. Credentials are encrypted and never leave your machine.
+2. **Choose AI provider** - Claude API key, Ollama local URL, or skip.
+3. **Done** - click "Sync Now" on the dashboard to pull your transactions.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Security
 
-## Learn More
+- Bank credentials and the Claude API key are encrypted at rest using AES-256-GCM. The encryption key is generated on first run and stored in `data/.encryption-key` (gitignored).
+- The dev server binds to `127.0.0.1` only - never `0.0.0.0`. Your data is never exposed over the network.
+- All scraper code is server-side only (`src/server/`). Browser bundles never see your credentials.
+- Errors are sanitized before being shown - credentials are never logged or leaked through error stacks.
+- `data/` (containing your SQLite database and encryption key) is gitignored.
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  app/                  -- Next.js App Router (pages and API routes)
+  server/               -- Server-only code (database, scrapers, AI providers)
+    db/                 -- SQLite via better-sqlite3, with numbered migrations
+    scrapers/           -- Wraps israeli-bank-scrapers with error sanitization
+    ai/                 -- Pluggable AI provider interface (Claude, Ollama)
+    lib/                -- Encryption, dedup hashing
+  components/           -- React components (UI primitives, charts, dashboard)
+  lib/                  -- Client-safe utilities (formatters, types, API helpers)
+data/                   -- SQLite database and encryption key (gitignored)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Deduplication strategy
 
-## Deploy on Vercel
+Not every Israeli bank provides a unique identifier for each transaction. Spent uses a count-based deduplication approach:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Each transaction gets a SHA-256 hash computed from stable fields (account, date, amount, currency, description, identifier, installment info).
+- Multiple transactions with the same hash get sequential `dedup_sequence` values (0, 1, 2...). The unique constraint is `(dedup_hash, dedup_sequence)`.
+- On re-sync, transactions with identical hashes are matched in batch order. New duplicates get new sequence numbers; existing ones are skipped.
+- Pending transactions are upgraded to completed via `INSERT ... ON CONFLICT DO UPDATE`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This means two genuinely identical transactions (e.g., two coffees at the same place on the same day with no identifier) are preserved as separate rows, while re-syncs remain idempotent.
+
+### Adding more bank providers
+
+Provider definitions live in `src/lib/types.ts` under `BANK_PROVIDERS`. To enable a new bank:
+
+1. Add it to the `BANK_PROVIDERS` array with the correct credential field schema.
+2. Map it to the right `CompanyTypes` enum value in `src/server/scrapers/index.ts`.
+3. Set `enabled: true` on the provider entry.
+
+The setup wizard, sync flow, and dashboard all handle additional providers automatically.
+
+## Tech Stack
+
+- **Next.js 16** with App Router and Turbopack
+- **TypeScript** (strict mode)
+- **SQLite** via better-sqlite3 (WAL mode)
+- **Tailwind CSS v4** + **shadcn/ui** for UI primitives
+- **TanStack Query** for client data fetching
+- **Recharts** for charts
+- **israeli-bank-scrapers** for Puppeteer-based bank scraping
+- **@anthropic-ai/sdk** for Claude AI categorization
+- **Ollama REST API** for local AI categorization
+
+## License
+
+MIT
