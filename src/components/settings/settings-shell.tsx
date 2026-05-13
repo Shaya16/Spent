@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { motion } from "framer-motion";
+import { PageHeader } from "@/components/layout/app-shell";
 import { GeneralSection } from "./general-section";
 import { AppearanceSection } from "./appearance-section";
 import { IntegrationsSection } from "./integrations-section";
@@ -11,103 +12,63 @@ import { PrivacySection } from "./privacy-section";
 
 type Section =
   | "general"
-  | "appearance"
   | "integrations"
   | "ai"
   | "budgets"
+  | "appearance"
   | "privacy";
 
-interface SectionMeta {
-  id: Section;
-  label: string;
-  description: string;
-}
-
-const SECTIONS: SectionMeta[] = [
-  {
-    id: "general",
-    label: "General",
-    description: "Sync period and payday",
-  },
-  {
-    id: "integrations",
-    label: "Integrations",
-    description: "Banks and credit cards",
-  },
-  {
-    id: "ai",
-    label: "AI",
-    description: "Categorization provider",
-  },
-  {
-    id: "budgets",
-    label: "Budgets",
-    description: "Per-category monthly limits",
-  },
-  {
-    id: "appearance",
-    label: "Appearance",
-    description: "Light, dark, or system",
-  },
-  {
-    id: "privacy",
-    label: "Privacy & Debug",
-    description: "Show browser, reset data",
-  },
+const TABS: { id: Section; label: string }[] = [
+  { id: "general", label: "General" },
+  { id: "integrations", label: "Integrations" },
+  { id: "ai", label: "AI" },
+  { id: "budgets", label: "Budgets" },
+  { id: "appearance", label: "Appearance" },
+  { id: "privacy", label: "Privacy & Debug" },
 ];
 
 export function SettingsShell() {
   const [section, setSection] = useState<Section>("general");
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border/40">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              ← Dashboard
-            </Link>
-            <span className="text-sm text-muted-foreground">/</span>
-            <h1 className="font-serif text-xl">Settings</h1>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 md:grid-cols-[220px_1fr] md:px-6 md:py-12">
-        <aside className="space-y-1">
-          {SECTIONS.map((s) => {
-            const active = s.id === section;
+    <>
+      <PageHeader title="Settings" />
+      <div className="mx-auto max-w-5xl px-6 pt-6 md:px-8">
+        <div className="flex flex-wrap gap-1 border-b border-border/40">
+          {TABS.map((t) => {
+            const active = section === t.id;
             return (
               <button
-                key={s.id}
-                onClick={() => setSection(s.id)}
-                className={`w-full rounded-xl px-4 py-3 text-left transition-colors ${
+                key={t.id}
+                onClick={() => setSection(t.id)}
+                className={`relative px-3 py-2.5 text-sm font-medium transition-colors ${
                   active
-                    ? "bg-card"
-                    : "hover:bg-card/50"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <div className="font-medium">{s.label}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
-                  {s.description}
-                </div>
+                {t.label}
+                {active && (
+                  <motion.div
+                    layoutId="settings-tab"
+                    className="absolute inset-x-0 -bottom-px h-0.5 bg-primary"
+                    transition={{ type: "spring", damping: 24, stiffness: 220 }}
+                  />
+                )}
               </button>
             );
           })}
-        </aside>
-
-        <main className="space-y-6">
-          {section === "general" && <GeneralSection />}
-          {section === "appearance" && <AppearanceSection />}
-          {section === "integrations" && <IntegrationsSection />}
-          {section === "ai" && <AISection />}
-          {section === "budgets" && <BudgetsSection />}
-          {section === "privacy" && <PrivacySection />}
-        </main>
+        </div>
       </div>
-    </div>
+
+      <div className="mx-auto max-w-5xl px-6 py-8 md:px-8">
+        {section === "general" && <GeneralSection />}
+        {section === "integrations" && <IntegrationsSection />}
+        {section === "ai" && <AISection />}
+        {section === "budgets" && <BudgetsSection />}
+        {section === "appearance" && <AppearanceSection />}
+        {section === "privacy" && <PrivacySection />}
+      </div>
+    </>
   );
 }
