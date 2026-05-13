@@ -112,6 +112,14 @@ export interface Budget {
   isAuto: boolean;
 }
 
+export interface Integration {
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+  lastSyncAt: string | null;
+  transactionCount: number;
+}
+
 export interface SetupStatus {
   isConfigured: boolean;
   hasBankCredentials: boolean;

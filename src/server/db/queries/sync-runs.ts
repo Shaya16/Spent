@@ -41,6 +41,37 @@ export function failSyncRun(id: number, errorMessage: string): void {
     .run(errorMessage, id);
 }
 
+interface ProviderStats {
+  provider: string;
+  lastSyncAt: string | null;
+  lastSyncStatus: string | null;
+  transactionCount: number;
+}
+
+export function getProviderStats(provider: string): ProviderStats {
+  const db = getDb();
+  const lastRun = db
+    .prepare(
+      `SELECT completed_at, status FROM sync_runs
+       WHERE provider = ? AND status = 'completed'
+       ORDER BY started_at DESC LIMIT 1`
+    )
+    .get(provider) as
+    | { completed_at: string; status: string }
+    | undefined;
+  const txnCount = db
+    .prepare(
+      `SELECT COUNT(*) as count FROM transactions WHERE provider = ?`
+    )
+    .get(provider) as { count: number };
+  return {
+    provider,
+    lastSyncAt: lastRun?.completed_at ?? null,
+    lastSyncStatus: lastRun?.status ?? null,
+    transactionCount: txnCount.count,
+  };
+}
+
 export function getLastSyncRun(provider?: string): SyncRun | null {
   const sql = provider
     ? `SELECT * FROM sync_runs WHERE provider = ? ORDER BY started_at DESC LIMIT 1`

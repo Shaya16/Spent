@@ -6,6 +6,7 @@ import type {
   Category,
   SyncRun,
   Budget,
+  Integration,
 } from "./types";
 
 const BASE = "";
@@ -124,6 +125,16 @@ export function updateBudget(categoryId: number, amount: number | null) {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ categoryId, amount }),
+  });
+}
+
+export function listIntegrations() {
+  return fetchJSON<Integration[]>("/api/integrations");
+}
+
+export function deleteIntegration(provider: string) {
+  return fetchJSON<{ success: boolean }>(`/api/integrations/${provider}`, {
+    method: "DELETE",
   });
 }
 

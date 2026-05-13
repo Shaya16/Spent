@@ -56,3 +56,18 @@ export function deleteBankCredentials(provider: string): void {
     .prepare("DELETE FROM bank_credentials WHERE provider = ?")
     .run(provider);
 }
+
+export interface BankCredentialMeta {
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function listBankCredentials(): BankCredentialMeta[] {
+  return getDb()
+    .prepare(
+      `SELECT provider, created_at as createdAt, updated_at as updatedAt
+       FROM bank_credentials ORDER BY provider`
+    )
+    .all() as BankCredentialMeta[];
+}
