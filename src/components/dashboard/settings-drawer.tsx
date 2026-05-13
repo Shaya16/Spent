@@ -173,7 +173,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
       </Button>
 
       <a
-        href="/setup"
+        href="/setup?force=1"
         className="block text-center text-sm text-muted-foreground hover:text-foreground"
       >
         Re-run setup wizard
