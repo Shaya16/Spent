@@ -269,14 +269,10 @@ function CredentialsForm({
     };
   }, [isEdit, info.id]);
 
-  const isPasswordField = (key: string) =>
-    info.credentialFields.find((f) => f.key === key)?.type === "password";
-
-  // For password fields on edit, blank means "keep existing".
-  // For non-password fields, treat blank as invalid (must have a value).
+  // All fields required. Password is pre-filled on edit so the user only
+  // types what they want to change.
   const allValid = info.credentialFields.every((f) => {
     const v = credentials[f.key]?.trim() ?? "";
-    if (isEdit && isPasswordField(f.key)) return true;
     if (!v) return false;
     if (f.exactLength != null && v.length !== f.exactLength) return false;
     return true;
@@ -323,19 +319,12 @@ function CredentialsForm({
     <div className="space-y-4">
       {info.credentialFields.map((field) => {
         const value = credentials[field.key] ?? "";
-        const isPassword = field.type === "password";
         const tooShort =
           field.exactLength != null &&
           value.length > 0 &&
           value.length !== field.exactLength;
-        const placeholder =
-          isEdit && isPassword
-            ? "Leave blank to keep current password"
-            : (field.placeholder ?? field.label);
-        const hint =
-          isEdit && isPassword
-            ? "Only enter a value here if you want to change the password."
-            : field.hint;
+        const placeholder = field.placeholder ?? field.label;
+        const hint = field.hint;
         return (
           <div key={field.key} className="space-y-1.5">
             <Label htmlFor={`${info.id}-${field.key}`}>{field.label}</Label>

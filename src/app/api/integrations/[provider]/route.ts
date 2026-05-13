@@ -3,11 +3,11 @@ import {
   deleteBankCredentials,
   getBankCredentials,
 } from "@/server/db/queries/bank-credentials";
-import { BANK_PROVIDERS } from "@/lib/types";
 
-// Returns decrypted credentials for one provider, with password-type fields
-// stripped so they never round-trip through the network. Used to pre-fill
-// the Edit form on the settings page.
+// Returns the full decrypted credential set for one provider, including
+// password fields. Spent is a local-only app - this stays on 127.0.0.1
+// and lets the Edit form pre-fill every field so users only retype what
+// they actually want to change.
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ provider: string }> }
@@ -17,19 +17,7 @@ export async function GET(
   if (!credentials) {
     return NextResponse.json({ credentials: null });
   }
-
-  const info = BANK_PROVIDERS.find((b) => b.id === provider);
-  const passwordKeys = new Set(
-    info?.credentialFields.filter((f) => f.type === "password").map((f) => f.key) ?? []
-  );
-
-  const safe: Record<string, string> = {};
-  for (const [k, v] of Object.entries(credentials)) {
-    if (passwordKeys.has(k)) continue;
-    safe[k] = v;
-  }
-
-  return NextResponse.json({ credentials: safe });
+  return NextResponse.json({ credentials });
 }
 
 export async function DELETE(
