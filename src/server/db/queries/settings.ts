@@ -25,6 +25,7 @@ export function getAppSettings(): AppSettings {
     aiProvider: (getSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
     ollamaUrl: getSetting("ai_ollama_url") ?? "http://localhost:11434",
     ollamaModel: getSetting("ai_ollama_model") ?? "llama3.1",
+    showBrowser: getSetting("scraper_show_browser") === "true",
   };
 }
 
@@ -42,6 +43,9 @@ export function updateAppSettings(settings: Partial<AppSettings>): AppSettings {
     }
     if (settings.ollamaModel !== undefined) {
       setSetting("ai_ollama_model", settings.ollamaModel);
+    }
+    if (settings.showBrowser !== undefined) {
+      setSetting("scraper_show_browser", settings.showBrowser ? "true" : "false");
     }
   });
   update();

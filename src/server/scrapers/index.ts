@@ -3,6 +3,7 @@ import "server-only";
 import { CompanyTypes, createScraper } from "israeli-bank-scrapers";
 import type { ScrapeResult, ScrapedTransaction } from "./types";
 import type { BankProvider } from "@/lib/types";
+import { getAppSettings } from "../db/queries/settings";
 
 const PROVIDER_MAP: Record<string, CompanyTypes> = {
   isracard: CompanyTypes.isracard,
@@ -34,11 +35,13 @@ export async function scrapeBank(
   }
 
   try {
+    const { showBrowser } = getAppSettings();
+
     const scraper = createScraper({
       companyId,
       startDate,
       combineInstallments: false,
-      showBrowser: false,
+      showBrowser,
       timeout: 60000,
     });
 

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { getSettings, updateSettings } from "@/lib/api";
 import { toast } from "sonner";
 import type { AppSettings } from "@/lib/types";
@@ -72,6 +73,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
   const [aiProvider, setAiProvider] = useState(initial.aiProvider);
   const [ollamaUrl, setOllamaUrl] = useState(initial.ollamaUrl);
   const [ollamaModel, setOllamaModel] = useState(initial.ollamaModel);
+  const [showBrowser, setShowBrowser] = useState(initial.showBrowser);
 
   const mutation = useMutation({
     mutationFn: updateSettings,
@@ -87,6 +89,7 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
       aiProvider: aiProvider as "claude" | "ollama" | "none",
       ollamaUrl,
       ollamaModel,
+      showBrowser,
     });
   };
 
@@ -144,6 +147,23 @@ function SettingsForm({ initial }: { initial: AppSettings }) {
             </div>
           </>
         )}
+      </div>
+
+      <Separator />
+
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <Label htmlFor="show-browser">Show browser during sync</Label>
+          <p className="text-xs text-muted-foreground">
+            Opens a visible Chromium window so you can watch the scrape happen.
+            Useful for debugging.
+          </p>
+        </div>
+        <Switch
+          id="show-browser"
+          checked={showBrowser}
+          onCheckedChange={setShowBrowser}
+        />
       </div>
 
       <Separator />

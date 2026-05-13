@@ -85,6 +85,7 @@ export interface AppSettings {
   aiProvider: "claude" | "ollama" | "none";
   ollamaUrl: string;
   ollamaModel: string;
+  showBrowser: boolean;
 }
 
 export type BankProvider = "isracard" | "cal" | "max" | "hapoalim" | "leumi";
