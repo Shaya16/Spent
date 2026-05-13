@@ -23,13 +23,14 @@ ${categoriesList}
 Transactions:
 ${transactionLines}
 
-Return ONLY a valid JSON array where each element has "index" (number) and "categoryName" (string from the list above).
-Example: [{"index": 0, "categoryName": "Groceries"}, {"index": 1, "categoryName": "Transport"}]
+Return ONLY a valid JSON array where each element has "index" (number), "categoryName" (string from the list above), and "confidence" (one of "high", "medium", "low").
+Example: [{"index": 0, "categoryName": "Groceries", "confidence": "high"}, {"index": 1, "categoryName": "Transport", "confidence": "medium"}]
 
 Rules:
 - Use ONLY category names from the provided list.
 - Every transaction must be categorized; pick the closest matching category.
-- Israeli merchant names are common; categorize based on the business type.`;
+- Israeli merchant names are common; categorize based on the business type.
+- "confidence": "high" when the merchant is unambiguous and you're sure. "medium" when reasonable but the description is generic. "low" when the description is ambiguous, you're guessing, or the merchant name is unclear. Be honest — when in doubt say "low".`;
   }
 
   // Proposal mode: the AI is encouraged to suggest new categories whenever
@@ -42,10 +43,15 @@ ${categoriesList}
 Transactions:
 ${transactionLines}
 
-Return ONLY a valid JSON array. Each element MUST have "index" (number) and "categoryName" (string). If you propose a new category, add "isNew": true.
+Return ONLY a valid JSON array. Each element MUST have "index" (number), "categoryName" (string), and "confidence" (one of "high", "medium", "low"). If you propose a new category, add "isNew": true.
 
-Existing category example: {"index": 0, "categoryName": "Groceries"}
-New category example:      {"index": 3, "categoryName": "Pet supplies", "isNew": true}
+Existing category example: {"index": 0, "categoryName": "Groceries", "confidence": "high"}
+New category example:      {"index": 3, "categoryName": "Pet supplies", "isNew": true, "confidence": "medium"}
+
+Confidence rules:
+- "high" when the merchant is unambiguous and you're sure.
+- "medium" when reasonable but the description is generic.
+- "low" when the description is ambiguous or you're guessing. Be honest.
 
 Rules for new categories:
 - General English names that describe a TYPE of spending, not a specific merchant. Good: "Pet supplies", "Childcare", "Tools & Hardware", "Books & Media". Bad: "Petco", "My favorite cafe".

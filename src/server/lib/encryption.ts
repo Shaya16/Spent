@@ -8,6 +8,20 @@ const KEY_PATH = path.join(process.cwd(), "data", ".encryption-key");
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
 
+function assertKeyFileMode(stat: fs.Stats): void {
+  // POSIX-only. Windows NTFS ACLs don't map to mode bits meaningfully,
+  // so skip there and rely on the default user profile permissions.
+  if (process.platform === "win32") return;
+
+  const mode = stat.mode & 0o777;
+  if (mode !== 0o600) {
+    throw new Error(
+      `Refusing to read encryption key: ${KEY_PATH} has mode ${mode.toString(8).padStart(3, "0")}, expected 600. ` +
+        `Fix with: chmod 600 ${KEY_PATH}`,
+    );
+  }
+}
+
 function getOrCreateKey(): Buffer {
   const dir = path.dirname(KEY_PATH);
   if (!fs.existsSync(dir)) {
@@ -15,6 +29,7 @@ function getOrCreateKey(): Buffer {
   }
 
   if (fs.existsSync(KEY_PATH)) {
+    assertKeyFileMode(fs.statSync(KEY_PATH));
     return Buffer.from(fs.readFileSync(KEY_PATH, "utf-8").trim(), "hex");
   }
 

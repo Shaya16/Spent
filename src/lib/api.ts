@@ -72,6 +72,31 @@ export function updateSettings(settings: Partial<AppSettings>) {
   });
 }
 
+export type TransactionKindFilter = "expense" | "income" | "all";
+export type TransactionKind = "expense" | "income" | "transfer";
+export type CategoryKindFilter = "expense" | "income";
+
+export interface TransactionsSummary {
+  income: {
+    total: number;
+    count: number;
+    largest: TransactionWithCategory | null;
+  };
+  expense: {
+    total: number;
+    count: number;
+    largest: TransactionWithCategory | null;
+  };
+  net: number;
+  topMerchants: { description: string; total: number; count: number }[];
+  pendingReviewCount: number;
+}
+
+export function getTransactionsSummary(params: { from: string; to: string }) {
+  const sp = new URLSearchParams({ from: params.from, to: params.to });
+  return fetchJSON<TransactionsSummary>(`/api/transactions/summary?${sp}`);
+}
+
 export function getTransactions(params: {
   from?: string;
   to?: string;
@@ -81,6 +106,8 @@ export function getTransactions(params: {
   order?: "asc" | "desc";
   limit?: number;
   offset?: number;
+  kind?: TransactionKindFilter;
+  provider?: string;
 }) {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -89,6 +116,22 @@ export function getTransactions(params: {
   return fetchJSON<{ transactions: TransactionWithCategory[]; total: number }>(
     `/api/transactions?${searchParams}`
   );
+}
+
+export function setTransactionKind(id: number, kind: TransactionKind) {
+  return fetchJSON<{ success: boolean }>(`/api/transactions/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind }),
+  });
+}
+
+export function approveTransactionCategory(id: number) {
+  return fetchJSON<{ success: boolean }>(`/api/transactions/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ approve: true }),
+  });
 }
 
 export function getSummary(params: {
@@ -104,8 +147,9 @@ export function getSummary(params: {
   return fetchJSON<DashboardSummary>(`/api/summary?${searchParams}`);
 }
 
-export function getCategories() {
-  return fetchJSON<Category[]>("/api/categories");
+export function getCategories(kind?: CategoryKindFilter) {
+  const qs = kind ? `?kind=${kind}` : "";
+  return fetchJSON<Category[]>(`/api/categories${qs}`);
 }
 
 export function updateTransactionCategory(id: number, categoryId: number) {
@@ -114,6 +158,40 @@ export function updateTransactionCategory(id: number, categoryId: number) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ categoryId }),
   });
+}
+
+export interface CategoryDetail {
+  category: {
+    id: number;
+    name: string;
+    color: string;
+    icon: string | null;
+    kind: "expense" | "income";
+  };
+  spent: number;
+  budget: number;
+  isAutoBudget: boolean;
+  remaining: number;
+  percentSpent: number;
+  transactionCount: number;
+  avgPerTransaction: number;
+  vsLastMonth: number | null;
+  prevSpent: number;
+  prevPeriodLabel: string;
+  dailySpend: Array<{ date: string; amount: number }>;
+  topMerchants: Array<{ merchant: string; amount: number; count: number }>;
+  transactions: TransactionWithCategory[];
+  needsReviewTransactions: TransactionWithCategory[];
+  needsReviewCount: number;
+  period: { from: string; to: string };
+}
+
+export function getCategoryDetail(
+  id: number,
+  params: { from: string; to: string }
+) {
+  const sp = new URLSearchParams({ from: params.from, to: params.to });
+  return fetchJSON<CategoryDetail>(`/api/categories/${id}/detail?${sp}`);
 }
 
 export function getBudgets() {
@@ -130,6 +208,17 @@ export function updateBudget(categoryId: number, amount: number | null) {
 
 export function listIntegrations() {
   return fetchJSON<Integration[]>("/api/integrations");
+}
+
+export interface DeleteTransactionsResult {
+  success: boolean;
+  deleted: { txCount: number; syncCount: number; memoryCount: number };
+}
+
+export function deleteAllTransactions() {
+  return fetchJSON<DeleteTransactionsResult>("/api/data/transactions", {
+    method: "DELETE",
+  });
 }
 
 export function deleteIntegration(provider: string) {
@@ -149,10 +238,12 @@ export interface CategorizeAssignment {
   description: string;
   categoryName: string;
   isNew: boolean;
+  kind: CategoryKindFilter;
 }
 
 export interface CategorizeProposal {
   name: string;
+  kind: CategoryKindFilter;
   transactionIds: number[];
   samples: string[];
 }
@@ -176,6 +267,7 @@ export function applyCategorize(payload: {
     transactionId: number;
     categoryName: string;
     isNew: boolean;
+    kind?: CategoryKindFilter;
   }>;
   approvedNewCategoryNames: string[];
   rejectionFallbacks?: Record<string, string>;
@@ -191,13 +283,21 @@ export function applyCategorize(payload: {
   });
 }
 
+export type SyncEventType =
+  | "plan"
+  | "provider-start"
+  | "provider-done"
+  | "stage"
+  | "complete"
+  | "error";
+
 export interface SyncProgressEvent {
-  type: "progress" | "complete" | "error";
+  type: SyncEventType;
   data: Record<string, unknown>;
 }
 
 export function startSync(
-  provider: string,
+  provider: string | undefined,
   onEvent: (event: SyncProgressEvent) => void
 ): { cancel: () => void } {
   const controller = new AbortController();
@@ -207,7 +307,7 @@ export function startSync(
       const res = await fetch("/api/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider }),
+        body: JSON.stringify(provider ? { provider } : {}),
         signal: controller.signal,
       });
 

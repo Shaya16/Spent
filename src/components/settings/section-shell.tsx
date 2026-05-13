@@ -36,7 +36,7 @@ export function SettingCard({
   children,
 }: SettingCardProps) {
   return (
-    <div className="rounded-2xl bg-card p-6">
+    <div className="rounded-2xl border border-border bg-card p-6">
       {(title || description) && (
         <div className="mb-4">
           {title && <h3 className="font-medium">{title}</h3>}

@@ -18,6 +18,8 @@ export interface Transaction {
   categorySource: "ai" | "user" | null;
   provider: string;
   syncRunId: number;
+  kind: "expense" | "income" | "transfer";
+  needsReview: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,11 +29,14 @@ export interface TransactionWithCategory extends Transaction {
   categoryColor: string | null;
 }
 
+export type CategoryKind = "expense" | "income";
+
 export interface Category {
   id: number;
   name: string;
   color: string;
   icon: string | null;
+  kind: CategoryKind;
 }
 
 export interface SyncRun {
@@ -87,6 +92,7 @@ export interface CategoryWithData {
   perDayRemaining: number | null;
   percentSpent: number;
   status: BudgetStatus;
+  needsReviewCount: number;
 }
 
 export interface DashboardSummary {
@@ -254,7 +260,7 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
       { key: "username", label: "Username", type: "text" },
       { key: "password", label: "Password", type: "password" },
     ],
-    enabled: false,
+    enabled: true,
   },
   {
     id: "hapoalim",
@@ -267,7 +273,7 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
       { key: "userCode", label: "User Code", type: "text" },
       { key: "password", label: "Password", type: "password" },
     ],
-    enabled: false,
+    enabled: true,
   },
   {
     id: "leumi",

@@ -1,0 +1,26 @@
+[Unit]
+Description=Spent — local personal finance tracker
+Documentation=https://github.com/spent/spent
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={{repoRoot}}
+ExecStart={{nodePath}} {{repoRoot}}/node_modules/next/dist/bin/next start -H 127.0.0.1 -p {{port}}
+Environment=NODE_ENV=production
+Environment=PATH={{pathEnv}}
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:{{logDir}}/out.log
+StandardError=append:{{logDir}}/err.log
+
+# Hardening: the app only needs its own dir and loopback.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths={{repoRoot}}/data {{logDir}}
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=default.target

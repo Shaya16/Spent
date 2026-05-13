@@ -53,20 +53,20 @@ export function AppSidebar() {
       <SidebarHeader className="px-3 pb-1 pt-3">
         <Link
           href="/"
-          className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
+          className="-mx-1 flex items-center gap-2.5 rounded-lg px-1 py-1 transition-colors duration-200 hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
         >
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 34 34"
-            className="shrink-0"
-          >
-            <circle cx="17" cy="22" r="10.5" fill="var(--primary)" />
-            <circle cx="17" cy="11" r="5" fill="var(--status-heads-up)" />
-            <circle cx="25" cy="16" r="3.6" fill="var(--status-plenty-left)" />
-          </svg>
+          <img
+            src="/logo_lightmode.svg"
+            alt="Spent"
+            className="h-7 w-auto shrink-0 dark:hidden"
+          />
+          <img
+            src="/logo_darkmode.svg"
+            alt="Spent"
+            className="hidden h-7 w-auto shrink-0 dark:block"
+          />
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="text-[15px] font-bold leading-tight tracking-tight">
+            <div className="font-serif text-[17px] font-semibold leading-tight tracking-tight">
               Spent
             </div>
             <div className="mt-px text-[10px] font-semibold leading-tight tracking-[0.08em] text-muted-foreground">

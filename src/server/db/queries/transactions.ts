@@ -2,12 +2,14 @@ import "server-only";
 
 import { getDb } from "../index";
 import { computeDedupHash } from "../../lib/dedup";
+import { detectKind } from "../../lib/transfers";
 import type {
   TransactionWithCategory,
   MonthlySummary,
   MerchantSummary,
   CategoryBreakdown,
 } from "@/lib/types";
+export type TransactionKindFilter = "expense" | "income" | "all";
 
 interface RawTransaction {
   accountNumber: string;
@@ -51,17 +53,18 @@ export function insertTransactions(
       account_number, date, processed_date, original_amount, original_currency,
       charged_amount, charged_currency, description, memo, type, status,
       identifier, installment_number, installment_total, provider,
-      sync_run_id, dedup_hash, dedup_sequence
+      sync_run_id, dedup_hash, dedup_sequence, kind
     ) VALUES (
       @accountNumber, @date, @processedDate, @originalAmount, @originalCurrency,
       @chargedAmount, @chargedCurrency, @description, @memo, @type, @status,
       @identifier, @installmentNumber, @installmentTotal, @provider,
-      @syncRunId, @dedupHash, @dedupSequence
+      @syncRunId, @dedupHash, @dedupSequence, @kind
     )
     ON CONFLICT(dedup_hash, dedup_sequence) DO UPDATE SET
       status = CASE WHEN transactions.status = 'pending' THEN excluded.status ELSE transactions.status END,
       charged_amount = CASE WHEN transactions.status = 'pending' THEN excluded.charged_amount ELSE transactions.charged_amount END,
       processed_date = CASE WHEN transactions.status = 'pending' THEN excluded.processed_date ELSE transactions.processed_date END,
+      kind = transactions.kind,
       updated_at = CASE WHEN transactions.status = 'pending' THEN datetime('now') ELSE transactions.updated_at END
   `);
 
@@ -86,50 +89,35 @@ export function insertTransactions(
       };
 
       const sequence = batchCount - 1;
+      const kind = detectKind(txn.description, provider, txn.chargedAmount);
+
+      const params = {
+        accountNumber: txn.accountNumber,
+        date: txn.date,
+        processedDate: txn.processedDate,
+        originalAmount: txn.originalAmount,
+        originalCurrency: txn.originalCurrency,
+        chargedAmount: txn.chargedAmount,
+        chargedCurrency: txn.chargedCurrency ?? null,
+        description: txn.description,
+        memo: txn.memo ?? null,
+        type: txn.type,
+        status: txn.status,
+        identifier: txn.identifier != null ? String(txn.identifier) : null,
+        installmentNumber: txn.installmentNumber ?? null,
+        installmentTotal: txn.installmentTotal ?? null,
+        provider,
+        syncRunId: syncRunId,
+        dedupHash: hash,
+        dedupSequence: sequence,
+        kind,
+      };
 
       if (batchCount > existingCount) {
-        insertStmt.run({
-          accountNumber: txn.accountNumber,
-          date: txn.date,
-          processedDate: txn.processedDate,
-          originalAmount: txn.originalAmount,
-          originalCurrency: txn.originalCurrency,
-          chargedAmount: txn.chargedAmount,
-          chargedCurrency: txn.chargedCurrency ?? null,
-          description: txn.description,
-          memo: txn.memo ?? null,
-          type: txn.type,
-          status: txn.status,
-          identifier: txn.identifier != null ? String(txn.identifier) : null,
-          installmentNumber: txn.installmentNumber ?? null,
-          installmentTotal: txn.installmentTotal ?? null,
-          provider,
-          syncRunId: syncRunId,
-          dedupHash: hash,
-          dedupSequence: sequence,
-        });
+        insertStmt.run(params);
         added++;
       } else {
-        const result = insertStmt.run({
-          accountNumber: txn.accountNumber,
-          date: txn.date,
-          processedDate: txn.processedDate,
-          originalAmount: txn.originalAmount,
-          originalCurrency: txn.originalCurrency,
-          chargedAmount: txn.chargedAmount,
-          chargedCurrency: txn.chargedCurrency ?? null,
-          description: txn.description,
-          memo: txn.memo ?? null,
-          type: txn.type,
-          status: txn.status,
-          identifier: txn.identifier != null ? String(txn.identifier) : null,
-          installmentNumber: txn.installmentNumber ?? null,
-          installmentTotal: txn.installmentTotal ?? null,
-          provider,
-          syncRunId: syncRunId,
-          dedupHash: hash,
-          dedupSequence: sequence,
-        });
+        const result = insertStmt.run(params);
         if (result.changes > 0) {
           updated++;
         }
@@ -150,6 +138,8 @@ interface QueryParams {
   order?: "asc" | "desc";
   limit?: number;
   offset?: number;
+  kind?: TransactionKindFilter;
+  provider?: string;
 }
 
 const ALLOWED_SORT_COLUMNS = new Set([
@@ -182,6 +172,16 @@ export function queryTransactions(
   if (params.category !== undefined) {
     conditions.push("t.category_id = ?");
     values.push(params.category);
+  }
+  const kind: TransactionKindFilter = params.kind ?? "all";
+  if (kind === "income") {
+    conditions.push("t.charged_amount > 0");
+  } else if (kind === "expense") {
+    conditions.push("t.charged_amount < 0");
+  }
+  if (params.provider) {
+    conditions.push("t.provider = ?");
+    values.push(params.provider);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -217,9 +217,20 @@ export function queryTransactions(
 export function getUncategorizedTransactionIds(): number[] {
   const rows = getDb()
     .prepare(
-      "SELECT id FROM transactions WHERE category_id IS NULL ORDER BY date DESC"
+      "SELECT id FROM transactions WHERE category_id IS NULL AND kind != 'transfer' ORDER BY date DESC"
     )
     .all() as { id: number }[];
+  return rows.map((r) => r.id);
+}
+
+export function getUncategorizedIdsByKind(
+  kind: "expense" | "income"
+): number[] {
+  const rows = getDb()
+    .prepare(
+      "SELECT id FROM transactions WHERE category_id IS NULL AND kind = ? ORDER BY date DESC"
+    )
+    .all(kind) as { id: number }[];
   return rows.map((r) => r.id);
 }
 
@@ -268,6 +279,7 @@ export function batchUpdateCategories(
   })();
 }
 
+
 export function getMonthlySummary(months: number): MonthlySummary[] {
   return getDb()
     .prepare(
@@ -276,6 +288,7 @@ export function getMonthlySummary(months: number): MonthlySummary[] {
        FROM transactions
        WHERE date >= date('now', '-' || ? || ' months')
          AND status = 'completed'
+         AND kind = 'expense'
        GROUP BY month
        ORDER BY month ASC`
     )
@@ -293,7 +306,7 @@ export function getTopMerchants(
               SUM(ABS(charged_amount)) as amount,
               COUNT(*) as count
        FROM transactions
-       WHERE date >= ? AND date <= ? AND status = 'completed'
+       WHERE date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'
        GROUP BY description
        ORDER BY amount DESC
        LIMIT ?`
@@ -315,7 +328,7 @@ export function getCategoryBreakdown(
          COUNT(*) as count
        FROM transactions t
        LEFT JOIN categories c ON t.category_id = c.id
-       WHERE t.date >= ? AND t.date <= ? AND t.status = 'completed'
+       WHERE t.date >= ? AND t.date <= ? AND t.status = 'completed' AND t.kind = 'expense'
        GROUP BY t.category_id
        ORDER BY amount DESC`
     )
@@ -338,7 +351,7 @@ export function getCategorySpendInRange(
               SUM(ABS(charged_amount)) as amount,
               COUNT(*) as count
        FROM transactions
-       WHERE date >= ? AND date <= ? AND status = 'completed' AND category_id IS NOT NULL
+       WHERE date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense' AND category_id IS NOT NULL
        GROUP BY category_id`
     )
     .all(from, to) as CategorySpend[];
@@ -361,7 +374,7 @@ export function getTopMerchantPerCategory(
          SELECT category_id, description, SUM(ABS(charged_amount)) as amount,
                 ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY SUM(ABS(charged_amount)) DESC) as rn
          FROM transactions
-         WHERE date >= ? AND date <= ? AND status = 'completed' AND category_id IS NOT NULL
+         WHERE date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense' AND category_id IS NOT NULL
          GROUP BY category_id, description
        )
        WHERE rn = 1`
@@ -369,12 +382,72 @@ export function getTopMerchantPerCategory(
     .all(from, to) as CategoryTopMerchant[];
 }
 
+export interface DailySpendPoint {
+  date: string;
+  amount: number;
+}
+
+export function getCategorySpendByDay(
+  categoryId: number,
+  from: string,
+  to: string
+): DailySpendPoint[] {
+  return getDb()
+    .prepare(
+      `WITH RECURSIVE days(d) AS (
+         SELECT date(?)
+         UNION ALL
+         SELECT date(d, '+1 day') FROM days WHERE d < date(?)
+       )
+       SELECT days.d as date,
+              COALESCE(SUM(ABS(t.charged_amount)), 0) as amount
+       FROM days
+       LEFT JOIN transactions t
+         ON substr(t.date, 1, 10) = days.d
+         AND t.category_id = ?
+         AND t.kind = 'expense'
+         AND t.status = 'completed'
+       GROUP BY days.d
+       ORDER BY days.d ASC`
+    )
+    .all(from, to, categoryId) as DailySpendPoint[];
+}
+
+export interface TopMerchantForCategory {
+  merchant: string;
+  amount: number;
+  count: number;
+}
+
+export function getTopMerchantsForCategory(
+  categoryId: number,
+  from: string,
+  to: string,
+  limit = 8
+): TopMerchantForCategory[] {
+  return getDb()
+    .prepare(
+      `SELECT description as merchant,
+              SUM(ABS(charged_amount)) as amount,
+              COUNT(*) as count
+       FROM transactions
+       WHERE category_id = ?
+         AND date >= ? AND date <= ?
+         AND status = 'completed'
+         AND kind = 'expense'
+       GROUP BY description
+       ORDER BY amount DESC
+       LIMIT ?`
+    )
+    .all(categoryId, from, to, limit) as TopMerchantForCategory[];
+}
+
 export function getPeriodTotal(from: string, to: string): number {
   const row = getDb()
     .prepare(
       `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total
        FROM transactions
-       WHERE date >= ? AND date <= ? AND status = 'completed'`
+       WHERE date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'`
     )
     .get(from, to) as { total: number };
   return row.total;
@@ -385,7 +458,7 @@ export function getPeriodCount(from: string, to: string): number {
     .prepare(
       `SELECT COUNT(*) as count
        FROM transactions
-       WHERE date >= ? AND date <= ? AND status = 'completed'`
+       WHERE date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'`
     )
     .get(from, to) as { count: number };
   return row.count;
@@ -411,6 +484,8 @@ interface TransactionRow {
   category_source: string | null;
   provider: string;
   sync_run_id: number;
+  kind: string;
+  needs_review: number;
   created_at: string;
   updated_at: string;
   category_name?: string | null;
@@ -439,9 +514,182 @@ function mapTransactionRow(row: unknown): TransactionWithCategory {
     categorySource: r.category_source as "ai" | "user" | null,
     provider: r.provider,
     syncRunId: r.sync_run_id,
+    kind: r.kind as "expense" | "income" | "transfer",
+    needsReview: r.needs_review === 1,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     categoryName: r.category_name ?? null,
     categoryColor: r.category_color ?? null,
   };
+}
+
+export function setTransactionKind(
+  id: number,
+  kind: "expense" | "income" | "transfer"
+): void {
+  getDb()
+    .prepare(
+      `UPDATE transactions
+       SET kind = ?, updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(kind, id);
+}
+
+export function setTransactionNeedsReview(id: number, value: boolean): void {
+  getDb()
+    .prepare(
+      `UPDATE transactions
+       SET needs_review = ?, updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(value ? 1 : 0, id);
+}
+
+interface TransactionContext {
+  id: number;
+  description: string;
+  categoryId: number | null;
+  kind: "expense" | "income" | "transfer";
+}
+
+export function getTransactionContext(id: number): TransactionContext | null {
+  const row = getDb()
+    .prepare(
+      `SELECT id, description, category_id as categoryId, kind
+       FROM transactions WHERE id = ?`
+    )
+    .get(id) as TransactionContext | undefined;
+  return row ?? null;
+}
+
+export function batchSetNeedsReview(
+  updates: { id: number; needsReview: boolean }[]
+): void {
+  if (updates.length === 0) return;
+  const db = getDb();
+  const stmt = db.prepare(
+    `UPDATE transactions
+     SET needs_review = ?, updated_at = datetime('now')
+     WHERE id = ?`
+  );
+  db.transaction(() => {
+    for (const { id, needsReview } of updates) {
+      stmt.run(needsReview ? 1 : 0, id);
+    }
+  })();
+}
+
+export interface NeedsReviewCount {
+  categoryId: number;
+  count: number;
+}
+
+export interface TransactionsSummary {
+  income: {
+    total: number;
+    count: number;
+    largest: TransactionWithCategory | null;
+  };
+  expense: {
+    total: number;
+    count: number;
+    largest: TransactionWithCategory | null;
+  };
+  net: number;
+  topMerchants: { description: string; total: number; count: number }[];
+  pendingReviewCount: number;
+}
+
+export function getTransactionsSummary(
+  from: string,
+  to: string
+): TransactionsSummary {
+  const db = getDb();
+
+  const incomeAgg = db
+    .prepare(
+      `SELECT COALESCE(SUM(charged_amount), 0) as total, COUNT(*) as count
+       FROM transactions
+       WHERE date >= ? AND date <= ? AND status = 'completed' AND charged_amount > 0`
+    )
+    .get(from, to) as { total: number; count: number };
+
+  const expenseAgg = db
+    .prepare(
+      `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total, COUNT(*) as count
+       FROM transactions
+       WHERE date >= ? AND date <= ? AND status = 'completed' AND charged_amount < 0`
+    )
+    .get(from, to) as { total: number; count: number };
+
+  const pickLargest = (sign: "income" | "expense"): TransactionWithCategory | null => {
+    const cmp = sign === "income" ? "> 0" : "< 0";
+    const row = db
+      .prepare(
+        `SELECT t.*, c.name as category_name, c.color as category_color
+         FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         WHERE t.date >= ? AND t.date <= ? AND t.status = 'completed' AND t.charged_amount ${cmp}
+         ORDER BY ABS(t.charged_amount) DESC, t.id DESC
+         LIMIT 1`
+      )
+      .get(from, to);
+    return row ? mapTransactionRow(row) : null;
+  };
+
+  const topMerchantsRows = db
+    .prepare(
+      `SELECT description,
+              SUM(ABS(charged_amount)) as total,
+              COUNT(*) as count
+       FROM transactions
+       WHERE date >= ? AND date <= ? AND status = 'completed' AND charged_amount < 0
+       GROUP BY description
+       ORDER BY total DESC
+       LIMIT 5`
+    )
+    .all(from, to) as { description: string; total: number; count: number }[];
+
+  const pendingReview = db
+    .prepare(
+      `SELECT COUNT(*) as count
+       FROM transactions
+       WHERE date >= ? AND date <= ? AND status = 'completed' AND needs_review = 1`
+    )
+    .get(from, to) as { count: number };
+
+  return {
+    income: {
+      total: incomeAgg.total,
+      count: incomeAgg.count,
+      largest: pickLargest("income"),
+    },
+    expense: {
+      total: expenseAgg.total,
+      count: expenseAgg.count,
+      largest: pickLargest("expense"),
+    },
+    net: incomeAgg.total - expenseAgg.total,
+    topMerchants: topMerchantsRows,
+    pendingReviewCount: pendingReview.count,
+  };
+}
+
+export function getNeedsReviewCountByCategory(
+  from: string,
+  to: string
+): NeedsReviewCount[] {
+  return getDb()
+    .prepare(
+      `SELECT category_id as categoryId, COUNT(*) as count
+       FROM transactions
+       WHERE date >= ? AND date <= ?
+         AND status = 'completed'
+         AND kind = 'expense'
+         AND needs_review = 1
+         AND category_id IS NOT NULL
+       GROUP BY category_id`
+    )
+    .all(from, to) as NeedsReviewCount[];
 }

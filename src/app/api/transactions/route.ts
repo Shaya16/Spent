@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
-import { queryTransactions } from "@/server/db/queries/transactions";
+import {
+  queryTransactions,
+  type TransactionKindFilter,
+} from "@/server/db/queries/transactions";
+
+function parseKind(raw: string | null): TransactionKindFilter | undefined {
+  if (raw === "expense" || raw === "income" || raw === "all") {
+    return raw;
+  }
+  return undefined;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -19,6 +29,8 @@ export async function GET(request: Request) {
     offset: searchParams.has("offset")
       ? Number(searchParams.get("offset"))
       : undefined,
+    kind: parseKind(searchParams.get("kind")),
+    provider: searchParams.get("provider") ?? undefined,
   });
 
   return NextResponse.json(result);

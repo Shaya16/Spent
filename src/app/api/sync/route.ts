@@ -1,4 +1,7 @@
-import { getBankCredentials } from "@/server/db/queries/bank-credentials";
+import {
+  getBankCredentials,
+  listBankCredentials,
+} from "@/server/db/queries/bank-credentials";
 import { getAppSettings } from "@/server/db/queries/settings";
 import {
   createSyncRun,
@@ -7,10 +10,16 @@ import {
 } from "@/server/db/queries/sync-runs";
 import {
   insertTransactions,
-  getUncategorizedTransactionIds,
+  getUncategorizedIdsByKind,
   getTransactionsForCategorization,
   batchUpdateCategories,
+  batchSetNeedsReview,
 } from "@/server/db/queries/transactions";
+import {
+  lookupMerchantCategoriesBulk,
+  normalizeMerchant,
+  incrementMerchantHits,
+} from "@/server/lib/merchant-memory";
 import { getAllCategories } from "@/server/db/queries/categories";
 import { scrapeBank } from "@/server/scrapers";
 import { createAIProvider } from "@/server/ai/factory";
@@ -39,11 +48,63 @@ function friendlyAIError(err: unknown, modelName: string): string {
   return `AI categorization failed: ${msg}`;
 }
 
+interface ProviderResult {
+  provider: BankProvider;
+  ok: boolean;
+  added: number;
+  updated: number;
+  errorMessage?: string;
+}
+
+async function syncOneProvider(
+  provider: BankProvider,
+  credentials: Record<string, string>,
+  startDate: Date
+): Promise<ProviderResult> {
+  const syncRunId = createSyncRun(provider, toLocalISODate(startDate));
+
+  const result = await scrapeBank(provider, credentials, startDate);
+
+  if (!result.success) {
+    failSyncRun(syncRunId, result.errorMessage ?? "Scraping failed");
+    return {
+      provider,
+      ok: false,
+      added: 0,
+      updated: 0,
+      errorMessage: result.errorMessage ?? "Scraping failed",
+    };
+  }
+
+  const allTransactions = result.accounts.flatMap((account) =>
+    account.transactions.map((txn) => ({
+      accountNumber: account.accountNumber,
+      ...txn,
+      installmentNumber: txn.installments?.number,
+      installmentTotal: txn.installments?.total,
+    }))
+  );
+
+  const { added, updated } = insertTransactions(
+    allTransactions,
+    provider,
+    syncRunId
+  );
+  completeSyncRun(syncRunId, added, updated);
+
+  return { provider, ok: true, added, updated };
+}
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     provider?: string;
   };
-  const provider = (body.provider ?? "isracard") as BankProvider;
+
+  const requestedProvider = body.provider;
+  const providersToSync: BankProvider[] =
+    requestedProvider && requestedProvider !== "all"
+      ? [requestedProvider as BankProvider]
+      : listBankCredentials().map((c) => c.provider as BankProvider);
 
   const encoder = new TextEncoder();
 
@@ -54,9 +115,10 @@ export async function POST(request: Request) {
       };
 
       try {
-        const credentials = getBankCredentials(provider);
-        if (!credentials) {
-          send("error", { message: "No credentials configured. Run setup first." });
+        if (providersToSync.length === 0) {
+          send("error", {
+            message: "No bank accounts connected. Run setup first.",
+          });
           controller.close();
           return;
         }
@@ -65,63 +127,87 @@ export async function POST(request: Request) {
         const startDate = new Date();
         startDate.setMonth(startDate.getMonth() - settings.monthsToSync);
 
-        send("progress", {
-          stage: "connecting",
-          message: `Connecting to ${provider}...`,
+        send("plan", {
+          providers: providersToSync,
+          total: providersToSync.length,
         });
 
-        const syncRunId = createSyncRun(
-          provider,
-          toLocalISODate(startDate)
-        );
+        const results: ProviderResult[] = [];
 
-        send("progress", {
-          stage: "scraping",
-          message: "Scraping transactions...",
-        });
+        for (let i = 0; i < providersToSync.length; i++) {
+          const provider = providersToSync[i];
 
-        const result = await scrapeBank(provider, credentials, startDate);
+          send("provider-start", {
+            provider,
+            index: i,
+            total: providersToSync.length,
+          });
 
-        if (!result.success) {
-          failSyncRun(syncRunId, result.errorMessage ?? "Scraping failed");
-          send("error", { message: result.errorMessage ?? "Scraping failed" });
-          controller.close();
-          return;
+          const credentials = getBankCredentials(provider);
+          if (!credentials) {
+            send("provider-done", {
+              provider,
+              ok: false,
+              added: 0,
+              updated: 0,
+              errorMessage: `No credentials configured for ${provider}`,
+            });
+            results.push({
+              provider,
+              ok: false,
+              added: 0,
+              updated: 0,
+              errorMessage: "No credentials",
+            });
+            continue;
+          }
+
+          try {
+            const result = await syncOneProvider(
+              provider,
+              credentials,
+              startDate
+            );
+            results.push(result);
+            send("provider-done", {
+              provider,
+              ok: result.ok,
+              added: result.added,
+              updated: result.updated,
+              errorMessage: result.errorMessage,
+            });
+          } catch (err) {
+            const message =
+              err instanceof Error
+                ? err.message.replace(/\b\d{5,}\b/g, "[REDACTED]")
+                : "Unknown scrape error";
+            results.push({
+              provider,
+              ok: false,
+              added: 0,
+              updated: 0,
+              errorMessage: message,
+            });
+            send("provider-done", {
+              provider,
+              ok: false,
+              added: 0,
+              updated: 0,
+              errorMessage: message,
+            });
+          }
         }
 
-        const allTransactions = result.accounts.flatMap((account) =>
-          account.transactions.map((txn) => ({
-            accountNumber: account.accountNumber,
-            ...txn,
-            installmentNumber: txn.installments?.number,
-            installmentTotal: txn.installments?.total,
-          }))
-        );
-
-        send("progress", {
-          stage: "processing",
-          message: `Processing ${allTransactions.length} transactions...`,
-        });
-
-        const { added, updated } = insertTransactions(
-          allTransactions,
-          provider,
-          syncRunId
-        );
+        const totalAdded = results.reduce((s, r) => s + r.added, 0);
+        const totalUpdated = results.reduce((s, r) => s + r.updated, 0);
 
         let categorized = 0;
         let aiWarning: string | null = null;
 
         const aiProvider = createAIProvider();
         if (aiProvider) {
-          const aiSettings = settings.aiProvider;
-
-          if (aiSettings === "ollama") {
-            send("progress", {
-              stage: "categorizing",
-              message: "Starting Ollama...",
-            });
-
+          if (settings.aiProvider === "ollama") {
+            send("stage", { stage: "ollama-start" });
             const ollamaResult = await ensureOllamaRunning(settings.ollamaUrl);
             if (!ollamaResult.ok) {
               aiWarning = ollamaResult.error ?? "Ollama is not reachable";
@@ -130,24 +216,55 @@ export async function POST(request: Request) {
           }
 
           if (!aiWarning) {
-            send("progress", {
-              stage: "categorizing",
-              message: "Categorizing new transactions with AI...",
-            });
+            send("stage", { stage: "categorizing" });
 
-            const uncategorizedIds = getUncategorizedTransactionIds();
-            if (uncategorizedIds.length > 0) {
-              const categories = getAllCategories();
+            const KINDS: Array<"expense" | "income"> = ["expense", "income"];
+            const BATCH_SIZE = 50;
+
+            for (const kind of KINDS) {
+              const uncategorizedIds = getUncategorizedIdsByKind(kind);
+              if (uncategorizedIds.length === 0) continue;
+
+              const categories = getAllCategories(kind);
+              if (categories.length === 0) continue;
               const categoryNames = categories.map((c) => c.name);
-              const BATCH_SIZE = 50;
 
-              for (let i = 0; i < uncategorizedIds.length; i += BATCH_SIZE) {
-                const batchIds = uncategorizedIds.slice(i, i + BATCH_SIZE);
-                const txns = getTransactionsForCategorization(batchIds);
+              const allTxns =
+                getTransactionsForCategorization(uncategorizedIds);
+
+              const memoryMap = lookupMerchantCategoriesBulk(
+                allTxns.map((t) => t.description)
+              );
+
+              const memoryUpdates: { id: number; categoryId: number }[] = [];
+              const memoryKeysHit: string[] = [];
+              const remainingTxns: typeof allTxns = [];
+              for (const t of allTxns) {
+                const m = memoryMap.get(t.description);
+                if (m && m.kind === kind) {
+                  memoryUpdates.push({ id: t.id, categoryId: m.categoryId });
+                  memoryKeysHit.push(normalizeMerchant(t.description));
+                } else {
+                  remainingTxns.push(t);
+                }
+              }
+              if (memoryUpdates.length > 0) {
+                batchUpdateCategories(memoryUpdates);
+                incrementMerchantHits(memoryKeysHit);
+                categorized += memoryUpdates.length;
+                send("stage", {
+                  stage: "memory-hit",
+                  count: memoryUpdates.length,
+                  kind,
+                });
+              }
+
+              for (let i = 0; i < remainingTxns.length; i += BATCH_SIZE) {
+                const batch = remainingTxns.slice(i, i + BATCH_SIZE);
 
                 try {
                   const mappings = await aiProvider.categorize(
-                    txns.map((t) => ({
+                    batch.map((t) => ({
                       description: t.description,
                       amount: t.chargedAmount,
                       currency: t.originalCurrency,
@@ -156,24 +273,31 @@ export async function POST(request: Request) {
                     categoryNames
                   );
 
-                  const updates = mappings
-                    .map((m) => {
-                      const category = categories.find(
-                        (c) => c.name === m.categoryName
-                      );
-                      const txn = txns[m.index];
-                      if (!category || !txn) return null;
-                      return { id: txn.id, categoryId: category.id };
-                    })
-                    .filter(
-                      (u): u is { id: number; categoryId: number } =>
-                        u !== null
+                  const updates: { id: number; categoryId: number }[] = [];
+                  const reviewFlags: { id: number; needsReview: boolean }[] =
+                    [];
+
+                  for (const m of mappings) {
+                    const category = categories.find(
+                      (c) => c.name === m.categoryName
                     );
+                    const txn = batch[m.index];
+                    if (!category || !txn) continue;
+                    updates.push({ id: txn.id, categoryId: category.id });
+                    reviewFlags.push({
+                      id: txn.id,
+                      needsReview: m.confidence === "low",
+                    });
+                  }
 
                   batchUpdateCategories(updates);
+                  batchSetNeedsReview(reviewFlags);
                   categorized += updates.length;
                 } catch (err) {
-                  console.error("[sync] AI categorization batch failed:", err);
+                  console.error(
+                    `[sync] AI categorization batch failed (${kind}):`,
+                    err
+                  );
                   if (!aiWarning) {
                     aiWarning = friendlyAIError(err, settings.ollamaModel);
                   }
@@ -183,13 +307,10 @@ export async function POST(request: Request) {
           }
         }
 
-        completeSyncRun(syncRunId, added, updated);
-
-        send("progress", { stage: "done", message: "Sync complete" });
         send("complete", {
-          syncRunId,
-          added,
-          updated,
+          providers: results,
+          added: totalAdded,
+          updated: totalUpdated,
           categorized,
           aiWarning,
         });

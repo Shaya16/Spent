@@ -1,6 +1,16 @@
 import "server-only";
 
-import type { AIProvider, CategoryMapping, TransactionForCategorization } from "../types";
+import type {
+  AIConfidence,
+  AIProvider,
+  CategoryMapping,
+  TransactionForCategorization,
+} from "../types";
+
+function parseConfidence(raw: unknown): AIConfidence | undefined {
+  if (raw === "high" || raw === "medium" || raw === "low") return raw;
+  return undefined;
+}
 import { buildCategorizationPrompt, SYSTEM_PROMPT } from "../prompts";
 
 export class OllamaProvider implements AIProvider {
@@ -69,7 +79,11 @@ function parseResponse(
       ) {
         continue;
       }
-      const typed = item as { index: number; categoryName: string };
+      const typed = item as {
+        index: number;
+        categoryName: string;
+        confidence?: unknown;
+      };
       const name = typed.categoryName.trim();
       const isExisting = validSet.has(name.toLowerCase());
       if (!isExisting && !allowProposals) continue;
@@ -77,6 +91,7 @@ function parseResponse(
         index: typed.index,
         categoryName: name,
         isNew: !isExisting,
+        confidence: parseConfidence(typed.confidence),
       });
     }
     return results;

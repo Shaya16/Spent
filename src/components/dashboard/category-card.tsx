@@ -17,6 +17,14 @@ import {
   Home,
   Sparkles,
   CircleDot,
+  HelpCircle,
+  Coffee,
+  PawPrint,
+  Gift,
+  Baby,
+  Briefcase,
+  TrendingUp,
+  RotateCcw,
   type LucideIcon,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
@@ -39,18 +47,29 @@ const ICON_MAP: Record<string, LucideIcon> = {
   home: Home,
   sparkles: Sparkles,
   "circle-dot": CircleDot,
+  coffee: Coffee,
+  "paw-print": PawPrint,
+  gift: Gift,
+  baby: Baby,
+  briefcase: Briefcase,
+  "trending-up": TrendingUp,
+  "rotate-ccw": RotateCcw,
 };
 
 interface CategoryCardProps {
   data: CategoryWithData;
+  onClick?: () => void;
 }
 
-export function CategoryCard({ data }: CategoryCardProps) {
+export function CategoryCard({ data, onClick }: CategoryCardProps) {
   const Icon = ICON_MAP[data.categoryIcon ?? "circle-dot"] ?? CircleDot;
   const percent = Math.min(999, Math.round(data.percentSpent));
   const vsLast = data.vsLastMonth;
   return (
-    <div className="rounded-2xl bg-card p-5">
+    <button
+      type="button"
+      onClick={onClick}
+      className="group w-full cursor-pointer rounded-2xl border border-border bg-card p-5 text-left transition-colors duration-200 ease-out hover:border-[#D6C9AC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <div
@@ -60,7 +79,25 @@ export function CategoryCard({ data }: CategoryCardProps) {
             <Icon className="h-5 w-5" style={{ color: shade(data.categoryColor) }} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-medium leading-tight">{data.categoryName}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium leading-tight">
+                {data.categoryName}
+              </span>
+              {data.needsReviewCount > 0 && (
+                <span
+                  className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums"
+                  style={{
+                    backgroundColor:
+                      "color-mix(in oklch, var(--status-heads-up) 18%, transparent)",
+                    color: "var(--status-heads-up)",
+                  }}
+                  title={`${data.needsReviewCount} need review`}
+                >
+                  <HelpCircle className="h-3 w-3" />
+                  {data.needsReviewCount}
+                </span>
+              )}
+            </div>
             <div className="mt-0.5 truncate text-xs text-muted-foreground">
               {data.transactionCount}{" "}
               {data.transactionCount === 1 ? "transaction" : "transactions"}
@@ -115,7 +152,7 @@ export function CategoryCard({ data }: CategoryCardProps) {
         </div>
         <StatusPill status={data.status} />
       </div>
-    </div>
+    </button>
   );
 }
 

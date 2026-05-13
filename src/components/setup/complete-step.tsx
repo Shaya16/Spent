@@ -50,11 +50,16 @@ export function CompleteStep({ onFinish }: CompleteStepProps) {
         }}
         className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/15"
       >
-        <svg width="44" height="44" viewBox="0 0 36 36">
-          <circle cx="18" cy="22" r="12" fill="var(--primary)" />
-          <circle cx="18" cy="11" r="5.5" fill="var(--status-heads-up)" />
-          <circle cx="26" cy="16" r="4" fill="var(--status-plenty-left)" />
-        </svg>
+        <img
+          src="/logo_lightmode.svg"
+          alt="Spent"
+          className="h-12 w-auto dark:hidden"
+        />
+        <img
+          src="/logo_darkmode.svg"
+          alt="Spent"
+          className="hidden h-12 w-auto dark:block"
+        />
       </motion.div>
 
       <div>

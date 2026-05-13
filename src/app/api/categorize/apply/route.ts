@@ -6,6 +6,7 @@ import {
   ensureCategory,
   getCategoryByName,
 } from "@/server/db/queries/categories";
+import type { CategoryKind } from "@/lib/types";
 
 interface ApplyBody {
   /**
@@ -16,6 +17,7 @@ interface ApplyBody {
     transactionId: number;
     categoryName: string;
     isNew: boolean;
+    kind?: CategoryKind;
   }>;
   /**
    * The set of new-category names the user approved during review. Anything in
@@ -57,7 +59,11 @@ export async function POST(request: Request) {
         } else {
           // Check if it already exists before creating
           const wasExisting = getCategoryByName(a.categoryName);
-          const cat = ensureCategory(a.categoryName);
+          const cat = ensureCategory(
+            a.categoryName,
+            undefined,
+            a.kind ?? "expense"
+          );
           if (!wasExisting) createdCount++;
           newCategoryCache.set(a.categoryName.toLowerCase(), cat.id);
           updates.push({ id: a.transactionId, categoryId: cat.id });

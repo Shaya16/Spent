@@ -37,6 +37,15 @@ yarn-error.log*
 # local data (sqlite db, encryption key)
 /data/
 
+# claude code session artifacts (brainstorm files, etc.)
+/.superpowers/
+
+# menu bar app build outputs
+/menubar/.build/
+/menubar/build/
+/menubar/.swiftpm/
+/menubar/Package.resolved
+
 # vercel
 .vercel
 

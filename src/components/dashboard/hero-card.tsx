@@ -12,7 +12,7 @@ interface HeroCardProps {
 export function HeroCard({ data, loading }: HeroCardProps) {
   if (loading || !data) {
     return (
-      <div className="rounded-3xl bg-card p-8">
+      <div className="rounded-3xl border border-border bg-card p-8">
         <Skeleton className="h-40 w-full" />
       </div>
     );
@@ -48,7 +48,7 @@ export function HeroCard({ data, loading }: HeroCardProps) {
       ? [
           {
             name: `+${rest.length} more`,
-            color: "#B5B3AC",
+            color: "#B1AA9C",
             amount: restTotal,
             pct: grandTotal > 0 ? (restTotal / grandTotal) * 100 : 0,
           },
@@ -59,7 +59,7 @@ export function HeroCard({ data, loading }: HeroCardProps) {
   const heroPhrase = renderPhrase(pacePhrase, periodTotal);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-card p-6 md:p-8 lg:p-10">
+    <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8 lg:p-10">
       <div className="grid gap-6 md:grid-cols-[200px_1fr] md:gap-10 lg:grid-cols-[240px_1fr]">
         <div className="flex items-center justify-center">
           <SpentDonut percent={percent} />
@@ -71,7 +71,7 @@ export function HeroCard({ data, loading }: HeroCardProps) {
             You have <span className="font-medium text-foreground">{daysUntilPayday} {daysUntilPayday === 1 ? "day" : "days"}</span>{" "}
             until payday
           </p>
-          <h2 className="font-serif text-3xl leading-tight md:text-4xl lg:text-5xl">
+          <h2 className="font-serif text-3xl leading-[1.05] tracking-tighter md:text-4xl lg:text-5xl">
             {heroPhrase}
           </h2>
           {legend.length > 0 && (

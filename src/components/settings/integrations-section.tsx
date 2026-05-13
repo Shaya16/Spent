@@ -116,7 +116,7 @@ function IntegrationCard({
   onSaved,
 }: IntegrationCardProps) {
   return (
-    <div className="rounded-2xl bg-card p-6">
+    <div className="rounded-2xl border border-border bg-card p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
           <ProviderBadge
@@ -177,8 +177,11 @@ function SyncIntegrationButton({ provider }: { provider: string }) {
     setSyncing(true);
     setStage("Connecting...");
     startSync(provider, (event: SyncProgressEvent) => {
-      if (event.type === "progress") {
-        setStage((event.data.message as string) ?? "");
+      if (event.type === "provider-start") {
+        setStage("Pulling transactions...");
+      } else if (event.type === "stage") {
+        const s = event.data.stage as string;
+        setStage(s === "categorizing" ? "Categorizing..." : "Working...");
       } else if (event.type === "complete") {
         setSyncing(false);
         setStage("");

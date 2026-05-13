@@ -54,6 +54,8 @@ export function Dashboard() {
           categories={summary?.categoriesWithData ?? []}
           loading={summaryQuery.isLoading}
           periodTotal={summary?.periodTotal ?? 0}
+          from={from}
+          to={to}
         />
       </div>
     </>

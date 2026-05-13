@@ -7,6 +7,7 @@ import {
   getPeriodCount,
   getCategorySpendInRange,
   getTopMerchantPerCategory,
+  getNeedsReviewCountByCategory,
 } from "@/server/db/queries/transactions";
 import { getAllCategories } from "@/server/db/queries/categories";
 import {
@@ -60,12 +61,16 @@ export async function GET(request: Request) {
   const prevFrom = toLocalISODate(prevMonthStart);
   const prevTo = toLocalISODate(prevMonthEnd);
 
-  const categories = getAllCategories();
+  const categories = getAllCategories("expense");
   const currentSpend = getCategorySpendInRange(from, to);
   const prevSpend = getCategorySpendInRange(prevFrom, prevTo);
   const topMerchants = getTopMerchantPerCategory(from, to);
   const explicitBudgets = getAllBudgets();
   const autoSource = getAutoBudgetSource(-1);
+  const needsReviewCounts = getNeedsReviewCountByCategory(from, to);
+  const needsReviewMap = new Map(
+    needsReviewCounts.map((r) => [r.categoryId, r.count])
+  );
 
   const currentMap = new Map(currentSpend.map((s) => [s.categoryId, s]));
   const prevMap = new Map(prevSpend.map((s) => [s.categoryId, s.amount]));
@@ -111,6 +116,7 @@ export async function GET(request: Request) {
       perDayRemaining,
       percentSpent,
       status,
+      needsReviewCount: needsReviewMap.get(cat.id) ?? 0,
     };
   });
 

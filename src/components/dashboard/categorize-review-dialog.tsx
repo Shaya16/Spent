@@ -30,7 +30,7 @@ export function CategorizeReviewDialog({
 }: CategorizeReviewDialogProps) {
   const { data: existingCategories = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: getCategories,
+    queryFn: () => getCategories(),
   });
 
   // Track per-proposal state: approved (default true), or a fallback name.
@@ -45,6 +45,7 @@ export function CategorizeReviewDialog({
           transactionId: a.transactionId,
           categoryName: a.categoryName,
           isNew: a.isNew,
+          kind: a.kind,
         })),
         approvedNewCategoryNames: Object.entries(approvedMap)
           .filter(([, ok]) => ok)
@@ -91,7 +92,7 @@ export function CategorizeReviewDialog({
           name,
           count,
           color:
-            existingCategories.find((c) => c.name === name)?.color ?? "#B5B3AC",
+            existingCategories.find((c) => c.name === name)?.color ?? "#B1AA9C",
         }))
         .sort((a, b) => b.count - a.count),
     [preview.existingCategoryUsage, existingCategories]

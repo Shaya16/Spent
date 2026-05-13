@@ -127,6 +127,17 @@ async function runScrape(
     };
   }
 
+  const chromiumArgs = [
+    "--disable-blink-features=AutomationControlled",
+    "--disable-features=IsolateOrigins,site-per-process",
+  ];
+  // Chromium's renderer sandbox is on by default on macOS, Windows, and
+  // most Linux installs. Self-hosters running as root or in unprivileged
+  // Docker need to opt out (the sandbox fails to start there).
+  if (process.env.SPENT_DISABLE_CHROMIUM_SANDBOX === "1") {
+    chromiumArgs.push("--no-sandbox");
+  }
+
   const scraper = createScraper({
     companyId,
     startDate,
@@ -136,14 +147,7 @@ async function runScrape(
     // Only enable when the user is also showing the browser (= they're debugging).
     verbose: showBrowser,
     timeout: 60000,
-    // Force a fresh Chromium profile each run so cookies / cached login state
-    // never persist between scrapes (defense in depth - the lib already
-    // launches a temp profile, but we pin it explicitly).
-    args: [
-      "--no-sandbox",
-      "--disable-blink-features=AutomationControlled",
-      "--disable-features=IsolateOrigins,site-per-process",
-    ],
+    args: chromiumArgs,
   });
 
   // credentials shape varies by provider; the library accepts different types per bank
@@ -219,7 +223,7 @@ export async function scrapeBank(
       lastError = error;
       console.error(
         `[scraper] unexpected error on attempt ${attempt}:`,
-        error
+        sanitizeError(error)
       );
       const { retryable } = classifyError(error);
       if (!retryable || attempt === MAX_ATTEMPTS) break;

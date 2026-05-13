@@ -54,45 +54,45 @@
 }
 
 :root {
-  /* Warm cream/sand light theme - matches the reference #e8e2d2 base */
-  --background: oklch(0.905 0.022 85);
-  --foreground: oklch(0.18 0.012 60);
-  --card: oklch(0.985 0.012 85);
-  --card-foreground: oklch(0.18 0.012 60);
-  --popover: oklch(0.985 0.012 85);
-  --popover-foreground: oklch(0.18 0.012 60);
-  --primary: oklch(0.55 0.07 145);
+  /* Buttercream light theme - brighter warm cream that lifts white cards */
+  --background: #FCF7ED;
+  --foreground: #2C2A27;
+  --card: oklch(1 0 0);
+  --card-foreground: #2C2A27;
+  --popover: oklch(1 0 0);
+  --popover-foreground: #2C2A27;
+  --primary: oklch(0.55 0.10 145);
   --primary-foreground: oklch(0.98 0.012 90);
-  --secondary: oklch(0.92 0.025 80);
-  --secondary-foreground: oklch(0.24 0.012 60);
-  --muted: oklch(0.93 0.02 82);
+  --secondary: oklch(0.94 0.03 85);
+  --secondary-foreground: #2C2A27;
+  --muted: oklch(0.95 0.022 85);
   --muted-foreground: oklch(0.50 0.02 75);
-  --accent: oklch(0.92 0.025 80);
-  --accent-foreground: oklch(0.24 0.012 60);
+  --accent: oklch(0.94 0.03 85);
+  --accent-foreground: #2C2A27;
   --destructive: oklch(0.58 0.18 30);
-  --border: oklch(0.88 0.022 80);
-  --input: oklch(0.88 0.022 80);
-  --ring: oklch(0.55 0.07 145);
-  /* Pastel chart palette matching the design */
-  --chart-1: oklch(0.72 0.08 145); /* sage green - groceries */
-  --chart-2: oklch(0.72 0.13 35);  /* coral - dining */
-  --chart-3: oklch(0.78 0.09 85);  /* sand/amber - shopping */
-  --chart-4: oklch(0.76 0.08 5);   /* rose - fun */
-  --chart-5: oklch(0.74 0.08 240); /* sky - transport */
+  --border: #ECE3D2;
+  --input: #ECE3D2;
+  --ring: oklch(0.55 0.10 145);
+  /* Pastel chart palette - bumped chroma to match the L2 category lift */
+  --chart-1: oklch(0.72 0.10 145); /* sage green - groceries */
+  --chart-2: oklch(0.76 0.11 40);  /* coral - dining */
+  --chart-3: oklch(0.80 0.10 80);  /* sand/amber - shopping */
+  --chart-4: oklch(0.76 0.10 10);  /* rose - fun */
+  --chart-5: oklch(0.74 0.10 230); /* sky - transport */
   /* Status colors */
   --status-on-track: oklch(0.68 0.10 145);
   --status-heads-up: oklch(0.72 0.13 85);
   --status-over: oklch(0.62 0.16 30);
   --status-plenty-left: oklch(0.72 0.08 220);
   --radius: 0.875rem;
-  --sidebar: oklch(0.95 0.022 82);
-  --sidebar-foreground: oklch(0.18 0.012 60);
-  --sidebar-primary: oklch(0.55 0.07 145);
+  --sidebar: oklch(0.95 0.025 85);
+  --sidebar-foreground: #2C2A27;
+  --sidebar-primary: oklch(0.55 0.10 145);
   --sidebar-primary-foreground: oklch(0.98 0.012 90);
-  --sidebar-accent: oklch(0.92 0.025 80);
-  --sidebar-accent-foreground: oklch(0.24 0.012 60);
-  --sidebar-border: oklch(0.88 0.022 80);
-  --sidebar-ring: oklch(0.55 0.07 145);
+  --sidebar-accent: oklch(0.94 0.03 85);
+  --sidebar-accent-foreground: #2C2A27;
+  --sidebar-border: #ECE3D2;
+  --sidebar-ring: oklch(0.55 0.10 145);
 }
 
 .dark {
@@ -150,4 +150,31 @@
     font-family: var(--font-serif), Georgia, serif;
     font-feature-settings: "ss01", "ss03";
   }
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.55; }
+}
+
+@keyframes checkPop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pop {
+  0% { transform: scale(0.95); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes countIn {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
 }

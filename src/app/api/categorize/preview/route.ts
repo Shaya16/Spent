@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  getUncategorizedTransactionIds,
+  getUncategorizedIdsByKind,
   getTransactionsForCategorization,
 } from "@/server/db/queries/transactions";
 import { getAllCategories } from "@/server/db/queries/categories";
@@ -8,11 +8,11 @@ import { createAIProvider } from "@/server/ai/factory";
 import { ensureOllamaRunning } from "@/server/ai/ollama-manager";
 import { getAppSettings } from "@/server/db/queries/settings";
 import type { CategoryMapping } from "@/server/ai/types";
+import type { CategoryKind } from "@/lib/types";
 
 /**
- * Preview mode: run AI categorization with proposal-enabled prompt.
- * Returns category mappings + suggested new categories with sample transactions.
- * Does NOT write to the DB.
+ * Preview mode: run AI categorization with proposal-enabled prompt, split by
+ * expense vs income so each transaction is offered categories of its own kind.
  */
 export async function POST() {
   const settings = getAppSettings();
@@ -38,18 +38,7 @@ export async function POST() {
     }
   }
 
-  const uncategorizedIds = getUncategorizedTransactionIds();
-  if (uncategorizedIds.length === 0) {
-    return NextResponse.json({
-      uncategorizedCount: 0,
-      assignments: [],
-      proposedCategories: [],
-      existingCategoryUsage: {},
-    });
-  }
-
-  const categories = getAllCategories();
-  const categoryNames = categories.map((c) => c.name);
+  const KINDS: CategoryKind[] = ["expense", "income"];
   const BATCH_SIZE = 50;
 
   const allMappings: Array<{
@@ -57,58 +46,70 @@ export async function POST() {
     description: string;
     categoryName: string;
     isNew: boolean;
+    kind: CategoryKind;
   }> = [];
   const errors: string[] = [];
+  let totalUncategorized = 0;
 
-  for (let i = 0; i < uncategorizedIds.length; i += BATCH_SIZE) {
-    const batchIds = uncategorizedIds.slice(i, i + BATCH_SIZE);
-    const txns = getTransactionsForCategorization(batchIds);
+  for (const kind of KINDS) {
+    const ids = getUncategorizedIdsByKind(kind);
+    totalUncategorized += ids.length;
+    if (ids.length === 0) continue;
 
-    try {
-      const mappings: CategoryMapping[] = await aiProvider.categorize(
-        txns.map((t) => ({
-          description: t.description,
-          amount: t.chargedAmount,
-          currency: t.originalCurrency,
-          memo: t.memo,
-        })),
-        categoryNames,
-        { allowProposals: true }
-      );
+    const categories = getAllCategories(kind);
+    if (categories.length === 0) continue;
+    const categoryNames = categories.map((c) => c.name);
 
-      for (const m of mappings) {
-        const txn = txns[m.index];
-        if (!txn) continue;
-        allMappings.push({
-          transactionId: txn.id,
-          description: txn.description,
-          categoryName: m.categoryName,
-          isNew: !!m.isNew,
-        });
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const batchIds = ids.slice(i, i + BATCH_SIZE);
+      const txns = getTransactionsForCategorization(batchIds);
+
+      try {
+        const mappings: CategoryMapping[] = await aiProvider.categorize(
+          txns.map((t) => ({
+            description: t.description,
+            amount: t.chargedAmount,
+            currency: t.originalCurrency,
+            memo: t.memo,
+          })),
+          categoryNames,
+          { allowProposals: true }
+        );
+
+        for (const m of mappings) {
+          const txn = txns[m.index];
+          if (!txn) continue;
+          allMappings.push({
+            transactionId: txn.id,
+            description: txn.description,
+            categoryName: m.categoryName,
+            isNew: !!m.isNew,
+            kind,
+          });
+        }
+      } catch (err) {
+        errors.push(err instanceof Error ? err.message : "Unknown AI error");
       }
-    } catch (err) {
-      errors.push(err instanceof Error ? err.message : "Unknown AI error");
     }
   }
 
-  // Group proposed new categories with sample transactions.
   const proposalMap = new Map<
     string,
     {
       name: string;
+      kind: CategoryKind;
       transactionIds: number[];
       samples: string[];
     }
   >();
-
-  // Track existing category usage too, for the review UI.
   const existingUsage = new Map<string, number>();
 
   for (const m of allMappings) {
     if (m.isNew) {
-      const key = m.categoryName;
+      const key = `${m.kind}::${m.categoryName}`;
       const entry = proposalMap.get(key) ?? {
         name: m.categoryName,
+        kind: m.kind,
         transactionIds: [],
         samples: [],
       };
@@ -126,7 +127,7 @@ export async function POST() {
   }
 
   return NextResponse.json({
-    uncategorizedCount: uncategorizedIds.length,
+    uncategorizedCount: totalUncategorized,
     assignments: allMappings,
     proposedCategories: Array.from(proposalMap.values()).sort(
       (a, b) => b.transactionIds.length - a.transactionIds.length

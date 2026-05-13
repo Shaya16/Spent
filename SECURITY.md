@@ -44,6 +44,24 @@ local network or the internet. The library only contacts:
 
 Run with `mitmproxy` or Charles to verify this yourself.
 
+## Chromium sandbox
+
+The scraper launches Chromium via Puppeteer. By default we leave Chromium's
+renderer sandbox **on** — if a compromised bank page or a chained Chromium
+CVE ever triggers RCE in the renderer, the sandbox contains it instead of
+giving an attacker the same OS-user privileges as the Spent process.
+
+The sandbox works out of the box on macOS, Windows, and most Linux installs.
+It fails to start in two scenarios:
+
+- Running as root on Linux
+- Running inside a Docker container without the kernel capabilities the
+  Chromium sandbox needs (most off-the-shelf images)
+
+In those cases set `SPENT_DISABLE_CHROMIUM_SANDBOX=1` in your environment.
+Prefer running as a non-root user instead when you can — that keeps the
+sandbox on.
+
 ## CSRF defense
 
 Next.js middleware (`src/middleware.ts`) rejects any mutating API
@@ -121,6 +139,63 @@ defense.
 - **Per-credential key wrapping** (KEK/DEK pattern) so a compromised
   key only exposes one credential at a time.
 - **Audit log** of every API mutation with timestamps.
+
+## Always-on service
+
+If you install Spent as a background service (`npm run service:install`),
+the server runs from login to logout (or from boot to shutdown). This
+changes how some surfaces look. The guarantees:
+
+**The server still binds only to `127.0.0.1`.** The `npm run start`
+script hardcodes `-H 127.0.0.1 -p 41234`, and every per-OS template
+(LaunchAgent plist, systemd unit, Task Scheduler XML) invokes it with
+those flags. The installer runs a post-install check and refuses to
+finish if it detects the server listening on a non-loopback address.
+
+**No new daemon runs as root or SYSTEM.** The installer refuses to run
+as root. The LaunchAgent and systemd user unit run under your user.
+The Windows scheduled task uses `LeastPrivilege` and runs as the
+installing user, not as `SYSTEM`.
+
+**The hostname is loopback-only.** `npm run service:install` appends
+`127.0.0.1 spent.local` to your OS hosts file (the only step that
+requires elevation, and it prompts interactively). The block is
+bracketed with markers and removed cleanly by `npm run service:uninstall`.
+No mDNS / Bonjour service is ever registered, so `spent.local` does
+not resolve from any other device on your network.
+
+**The health endpoint discloses minimum information.** `GET /api/health`
+returns `{ok, version, hasDb}` and nothing else. No transaction counts,
+no provider names, no setup status. Add to it only if you have thought
+carefully about what a local cross-app attacker could learn.
+
+**The macOS menu bar app has no network entitlements beyond loopback.**
+`Spent.app` ships with an `NSAppTransportSecurity > NSExceptionDomains`
+entry whitelisting `127.0.0.1` and nothing else. It cannot reach the
+internet even if its code were modified to try, without re-signing the
+bundle with a different Info.plist.
+
+**Logs do not leak credentials.** macOS LaunchAgent stdout/stderr go to
+`~/Library/Logs/Spent/{out,err}.log` (directory mode `0700`). Linux
+systemd writes to `~/.local/state/spent/log/`. The app itself already
+avoids logging credentials (see "What's protected at rest" above);
+the always-on service does not change that.
+
+**The encryption key file's permissions are now asserted at startup.**
+`src/server/lib/encryption.ts` reads `data/.encryption-key` and refuses
+to start if the file mode is not `0600` (POSIX only; Windows relies on
+the user profile ACL). If you ever `chmod 644` the key file by accident,
+the server will fail loudly with the fix command.
+
+**What the always-on service does not protect against:**
+
+- A local attacker who can already run code as your user. They can read
+  the DB and key file with or without the service running.
+- A malicious browser tab on your machine doing a CSRF against
+  `127.0.0.1:41234`. The same-origin middleware in
+  `src/middleware.ts` already blocks this on every mutating request,
+  and that protection works the same whether the server runs on demand
+  or always-on.
 
 ## Reporting a security issue
 

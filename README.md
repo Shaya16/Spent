@@ -1,100 +1,80 @@
 # Spent
 
-> **Warning:** This is a personal, local-only tool. Scraping financial institutions may violate their Terms of Service. Use only for your own accounts on your own machine. **Do not deploy this as a hosted service for other users.**
+> **Warning:** Personal, local-only tool. Scraping financial institutions may violate their Terms of Service. Use only for your own accounts on your own machine. **Do not deploy as a hosted service.**
 
-A local-first personal finance tracker for Israeli financial institutions. Pulls your transactions from your bank or credit card, stores them in a local SQLite database, and auto-categorizes them using AI (Claude API or Ollama). Everything runs on your machine.
+A local personal finance tracker for Israeli banks. Pulls your transactions, encrypts your credentials, and auto-categorizes with Claude or Ollama. **Binds to `127.0.0.1` only — not reachable from your LAN or the internet.**
 
-## Features
+## Requirements
 
-- **Bank integration** for Isracard (more coming: Cal, Max, Hapoalim, Leumi)
-- **AI auto-categorization** with two options:
-  - **Claude API** (Anthropic) for fast, accurate categorization
-  - **Ollama** for fully local, private AI processing
-  - Or skip AI entirely and categorize manually
-- **Encrypted credential storage** (AES-256-GCM, key stored locally outside the database)
-- **Beautiful dashboard** with monthly trends, category breakdowns, top merchants, and a sortable transactions table
-- **System theme** that follows your OS dark/light preference
-- **Idempotent sync** - re-running sync never creates duplicates
+- Node.js 22+
+- macOS 13+, Ubuntu 22+ (with systemd), or Windows 11
+- Bank account with 2FA disabled (most Israeli banks require this for automation)
 
-## Quick Start
-
-### Requirements
-
-- Node.js 22 or higher
-- macOS, Linux, or Windows (WSL recommended on Windows)
-- For Claude AI: an Anthropic API key
-- For Ollama AI: [Ollama](https://ollama.com) installed and running locally
-
-### Install and run
+## Install
 
 ```bash
 git clone <this-repo> spent
 cd spent
 npm install
-npm run dev
+npm run build
+npm run service:install
 ```
 
-Open http://127.0.0.1:3000 - the setup wizard will walk you through:
+`service:install` registers an auto-start unit (LaunchAgent / systemd / Task Scheduler) and adds `127.0.0.1 spent.local` to your hosts file. The hosts edit is the only step that asks for `sudo` / Administrator.
 
-1. **Connect your bank** - select your provider and enter credentials. Credentials are encrypted and never leave your machine.
-2. **Choose AI provider** - Claude API key, Ollama local URL, or skip.
-3. **Done** - click "Sync Now" on the dashboard to pull your transactions.
+Open **`http://spent.local:41234`** and bookmark it.
 
-## Security
-
-- Bank credentials and the Claude API key are encrypted at rest using AES-256-GCM. The encryption key is generated on first run and stored in `data/.encryption-key` (gitignored).
-- The dev server binds to `127.0.0.1` only - never `0.0.0.0`. Your data is never exposed over the network.
-- All scraper code is server-side only (`src/server/`). Browser bundles never see your credentials.
-- Errors are sanitized before being shown - credentials are never logged or leaked through error stacks.
-- `data/` (containing your SQLite database and encryption key) is gitignored.
-
-## Architecture
-
-```
-src/
-  app/                  -- Next.js App Router (pages and API routes)
-  server/               -- Server-only code (database, scrapers, AI providers)
-    db/                 -- SQLite via better-sqlite3, with numbered migrations
-    scrapers/           -- Wraps israeli-bank-scrapers with error sanitization
-    ai/                 -- Pluggable AI provider interface (Claude, Ollama)
-    lib/                -- Encryption, dedup hashing
-  components/           -- React components (UI primitives, charts, dashboard)
-  lib/                  -- Client-safe utilities (formatters, types, API helpers)
-data/                   -- SQLite database and encryption key (gitignored)
+**macOS bonus** — install the menu bar app:
+```bash
+npm run menubar:install
+open ~/Applications/Spent.app   # right-click → Open first time for Gatekeeper
 ```
 
-### Deduplication strategy
+## First-time setup
 
-Not every Israeli bank provides a unique identifier for each transaction. Spent uses a count-based deduplication approach:
+In the browser:
 
-- Each transaction gets a SHA-256 hash computed from stable fields (account, date, amount, currency, description, identifier, installment info).
-- Multiple transactions with the same hash get sequential `dedup_sequence` values (0, 1, 2...). The unique constraint is `(dedup_hash, dedup_sequence)`.
-- On re-sync, transactions with identical hashes are matched in batch order. New duplicates get new sequence numbers; existing ones are skipped.
-- Pending transactions are upgraded to completed via `INSERT ... ON CONFLICT DO UPDATE`.
+1. Connect your bank (credentials are AES-256-GCM encrypted before they touch disk)
+2. Choose AI provider: Claude, Ollama, or none
+3. Click "Sync Now"
 
-This means two genuinely identical transactions (e.g., two coffees at the same place on the same day with no identifier) are preserved as separate rows, while re-syncs remain idempotent.
+## How you'll use it
 
-### Adding more bank providers
+| What you want | Run |
+|---|---|
+| Just use the app (no coding) | Open `http://spent.local:41234` |
+| Code and see changes instantly | `npm run dev` → `http://127.0.0.1:3000` |
+| Update the always-on app after editing | `npm run service:reload` |
 
-Provider definitions live in `src/lib/types.ts` under `BANK_PROVIDERS`. To enable a new bank:
+Rare cases:
+- Changed Swift menu bar app → `npm run menubar:install` and relaunch `Spent.app`
+- Changed install scripts or hostname → `npm run service:uninstall && npm run service:install`
 
-1. Add it to the `BANK_PROVIDERS` array with the correct credential field schema.
-2. Map it to the right `CompanyTypes` enum value in `src/server/scrapers/index.ts`.
-3. Set `enabled: true` on the provider entry.
+## Service commands
 
-The setup wizard, sync flow, and dashboard all handle additional providers automatically.
+| Command | What it does |
+|---|---|
+| `service:status` | Running? Bound to loopback? |
+| `service:start` / `service:stop` | Start/stop now |
+| `service:reload` | Rebuild + restart |
+| `service:logs` | Tail server logs |
+| `service:open` | Open the app in your browser |
+| `service:uninstall` | Remove auto-start + hosts entry. `data/` is untouched. |
 
-## Tech Stack
+## Where your data lives
 
-- **Next.js 16** with App Router and Turbopack
-- **TypeScript** (strict mode)
-- **SQLite** via better-sqlite3 (WAL mode)
-- **Tailwind CSS v4** + **shadcn/ui** for UI primitives
-- **TanStack Query** for client data fetching
-- **Recharts** for charts
-- **israeli-bank-scrapers** for Puppeteer-based bank scraping
-- **@anthropic-ai/sdk** for Claude AI categorization
-- **Ollama REST API** for local AI categorization
+- `data/spent.db` — transactions, categories, settings
+- `data/.encryption-key` — AES key (mode `0600`; server refuses to start otherwise)
+- `~/Library/Logs/Spent/` (macOS) / `~/.local/state/spent/log/` (Linux) — service logs
+
+**Turn on full-disk encryption** (FileVault / BitLocker / LUKS). Full threat model in [SECURITY.md](SECURITY.md).
+
+## Troubleshooting
+
+- **Port 41234 in use** → `lsof -nP -iTCP:41234 -sTCP:LISTEN` (Unix) or `netstat -ano | findstr :41234` (Windows). Kill the offender, re-run install.
+- **Gatekeeper blocks `Spent.app`** → right-click → Open → Open. One-time.
+- **Linux: "systemd user instance not available"** → `loginctl enable-linger $USER`.
+- **Windows: hosts edit fails** → re-run install from an elevated PowerShell.
 
 ## License
 

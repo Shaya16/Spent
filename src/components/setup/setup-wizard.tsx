@@ -35,13 +35,18 @@ export function SetupWizard() {
 
       <header className="relative z-10 mx-auto flex max-w-5xl items-center justify-between px-6 py-6 md:px-8">
         <div className="flex items-center gap-2.5">
-          <svg width="34" height="34" viewBox="0 0 34 34">
-            <circle cx="17" cy="22" r="10.5" fill="var(--primary)" />
-            <circle cx="17" cy="11" r="5" fill="var(--status-heads-up)" />
-            <circle cx="25" cy="16" r="3.6" fill="var(--status-plenty-left)" />
-          </svg>
+          <img
+            src="/logo_lightmode.svg"
+            alt="Spent"
+            className="h-9 w-auto dark:hidden"
+          />
+          <img
+            src="/logo_darkmode.svg"
+            alt="Spent"
+            className="hidden h-9 w-auto dark:block"
+          />
           <div>
-            <div className="text-lg font-bold leading-none tracking-tight">
+            <div className="font-serif text-xl font-semibold leading-none tracking-tight">
               Spent
             </div>
             <div className="mt-0.5 text-[9.5px] font-semibold tracking-[0.08em] text-muted-foreground">
