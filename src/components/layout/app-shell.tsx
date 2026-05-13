@@ -1,12 +1,19 @@
+"use client";
+
 import type { ReactNode } from "react";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-background">
+    <SidebarProvider>
       <AppSidebar />
-      <main className="min-w-0 flex-1">{children}</main>
-    </div>
+      <SidebarInset>{children}</SidebarInset>
+    </SidebarProvider>
   );
 }
 
@@ -21,8 +28,9 @@ export function PageHeader({
 }) {
   return (
     <header className="sticky top-0 z-10 border-b border-border/40 bg-background/80 backdrop-blur">
-      <div className="flex h-16 items-center justify-between gap-4 px-6 md:px-8">
-        <div className="flex items-baseline gap-3">
+      <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-6">
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="md:hidden" />
           <h1 className="font-serif text-2xl tracking-tight">{title}</h1>
           {meta && (
             <>
