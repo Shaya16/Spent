@@ -99,6 +99,7 @@ export function BankStep({ onComplete }: BankStepProps) {
                         <ProviderBadge
                           color={info.color}
                           name={info.name}
+                          domain={info.domain}
                           size={36}
                           radius={10}
                         />
@@ -169,6 +170,7 @@ export function BankStep({ onComplete }: BankStepProps) {
                     <ProviderBadge
                       color={p.color}
                       name={p.name}
+                      domain={p.domain}
                       size={34}
                       radius={10}
                     />
@@ -383,6 +385,7 @@ function CredentialPanel({
         <ProviderBadge
           color={info.color}
           name={info.name}
+          domain={info.domain}
           size={48}
           radius={14}
         />

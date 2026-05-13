@@ -15,6 +15,7 @@ import { BANK_PROVIDERS, type BankProviderInfo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ProviderBadge } from "@/components/setup/provider-badge";
 import { SectionShell, SettingCard } from "./section-shell";
 import { toast } from "sonner";
 
@@ -117,21 +118,30 @@ function IntegrationCard({
   return (
     <div className="rounded-2xl bg-card p-6">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="font-medium">{info.name}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {connected
-              ? `Connected · Updated ${formatRelative(connected.updatedAt)}`
-              : "Not connected"}
-          </p>
-          {connected && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {connected.transactionCount} transactions
-              {connected.lastSyncAt
-                ? ` · Last sync ${formatRelative(connected.lastSyncAt)}`
-                : " · Never synced"}
+        <div className="flex items-start gap-3">
+          <ProviderBadge
+            color={info.color}
+            name={info.name}
+            domain={info.domain}
+            size={44}
+            radius={12}
+          />
+          <div>
+            <h3 className="font-medium">{info.name}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {connected
+                ? `Connected · Updated ${formatRelative(connected.updatedAt)}`
+                : "Not connected"}
             </p>
-          )}
+            {connected && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {connected.transactionCount} transactions
+                {connected.lastSyncAt
+                  ? ` · Last sync ${formatRelative(connected.lastSyncAt)}`
+                  : " · Never synced"}
+              </p>
+            )}
+          </div>
         </div>
         {!editing && connected && (
           <div className="flex flex-wrap items-center gap-2">

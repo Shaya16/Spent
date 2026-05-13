@@ -156,6 +156,8 @@ export interface BankProviderInfo {
   kind: BankKind;
   color: string;
   blurb: string;
+  /** Domain used to fetch the favicon logo via Google's S2 API. */
+  domain: string;
   credentialFields: CredentialField[];
   enabled: boolean;
 }
@@ -198,6 +200,7 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
     kind: "card",
     color: "#E50019",
     blurb: "Israeli Mastercard / Visa",
+    domain: "isracard.co.il",
     credentialFields: [
       {
         key: "id",
@@ -233,6 +236,7 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
     kind: "card",
     color: "#1B4E97",
     blurb: "Cal-branded cards",
+    domain: "cal-online.co.il",
     credentialFields: [
       { key: "username", label: "Username", type: "text" },
       { key: "password", label: "Password", type: "password" },
@@ -245,6 +249,7 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
     kind: "card",
     color: "#FF6B00",
     blurb: "Formerly Leumi Card",
+    domain: "max.co.il",
     credentialFields: [
       { key: "username", label: "Username", type: "text" },
       { key: "password", label: "Password", type: "password" },
@@ -257,6 +262,7 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
     kind: "bank",
     color: "#E2231A",
     blurb: "Includes Poalim wallets",
+    domain: "bankhapoalim.co.il",
     credentialFields: [
       { key: "userCode", label: "User Code", type: "text" },
       { key: "password", label: "Password", type: "password" },
@@ -269,6 +275,7 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
     kind: "bank",
     color: "#1976A4",
     blurb: "Personal & business accounts",
+    domain: "leumi.co.il",
     credentialFields: [
       { key: "username", label: "Username", type: "text" },
       { key: "password", label: "Password", type: "password" },

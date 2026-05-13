@@ -106,6 +106,7 @@ export function CompleteStep({ onFinish }: CompleteStepProps) {
                   <ProviderBadge
                     color={info.color}
                     name={info.name}
+                    domain={info.domain}
                     size={20}
                     radius={6}
                   />
