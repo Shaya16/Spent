@@ -96,7 +96,7 @@ export function TransactionsPage() {
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6 lg:p-8">
+      <div className="space-y-6 p-4 md:p-6 lg:p-8">
         <KpiCards summary={summaryQuery.data} loading={summaryQuery.isLoading} />
 
         <WidgetsRow

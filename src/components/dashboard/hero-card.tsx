@@ -28,8 +28,9 @@ export function HeroCard({ data, loading }: HeroCardProps) {
     daysUntilPayday,
     todayLabel,
     categoriesWithData,
+    typicalMonthly,
   } = data;
-  const trackingSpent = Math.max(0, periodTotal - budgetedSpent);
+  const hasBudget = totalBudget > 0;
 
   // Top 4 categories for the stacked bar + legend, then "+X more".
   // Use the rollup view (parents + orphan leaves) so children don't
@@ -70,67 +71,79 @@ export function HeroCard({ data, loading }: HeroCardProps) {
       : []),
   ];
 
-  const heroPhrase = renderPhrase(pacePhrase, periodTotal);
+  const heroPhrase = renderPhrase(
+    pacePhrase,
+    hasBudget ? budgetedSpent : periodTotal
+  );
+
+  const ctaLabel = typicalMonthly
+    ? `Set a monthly target (₪${typicalMonthly.toLocaleString("en-IL")} typical) →`
+    : `Set a monthly target to see how you're pacing →`;
+
+  const body = (
+    <div className="space-y-5">
+      <p className="text-sm text-muted-foreground">
+        {todayLabel}
+        {" · "}
+        You have <span className="font-medium text-foreground">{daysUntilPayday} {daysUntilPayday === 1 ? "day" : "days"}</span>{" "}
+        until payday
+      </p>
+      <h2 className="font-serif text-3xl leading-[1.05] tracking-tighter md:text-4xl lg:text-5xl">
+        {heroPhrase}
+      </h2>
+      {legend.length > 0 && (
+        <div className="space-y-3 pt-2">
+          <StackedBar legend={legend} />
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {legend.map((seg) => (
+              <div
+                key={seg.name}
+                className="flex items-center gap-2"
+              >
+                <div
+                  className="h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: seg.color }}
+                />
+                <span className="font-medium">{seg.name}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {formatCurrency(seg.amount)} {"·"}{" "}
+                  {Math.round(seg.pct)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {!hasBudget && (
+        <div className="pt-1">
+          <Link
+            href="/settings/general#section-monthly-target"
+            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            {ctaLabel}
+          </Link>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8 lg:p-10">
-      <div className="grid gap-6 md:grid-cols-[200px_1fr] md:gap-10 lg:grid-cols-[240px_1fr]">
-        <div className="flex flex-col items-center justify-center gap-2">
-          <PaceGauge
-            periodTotal={periodTotal}
-            budgetedSpent={budgetedSpent}
-            totalBudget={totalBudget}
-            timeElapsedPercent={timeElapsedPercent}
-          />
-          {trackingSpent > 0 && totalBudget > 0 && (
-            <div className="text-xs text-muted-foreground tabular-nums">
-              + ₪{Math.round(trackingSpent).toLocaleString("en-IL")} in tracked
-            </div>
-          )}
-          {totalBudget === 0 && (
-            <Link
-              href="/settings#section-budgets"
-              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              Set up budgets →
-            </Link>
-          )}
+      {hasBudget ? (
+        <div className="grid gap-6 md:grid-cols-[200px_1fr] md:gap-10 lg:grid-cols-[240px_1fr]">
+          <div className="flex flex-col items-center justify-center gap-2">
+            <PaceGauge
+              periodTotal={periodTotal}
+              budgetedSpent={budgetedSpent}
+              totalBudget={totalBudget}
+              timeElapsedPercent={timeElapsedPercent}
+            />
+          </div>
+          {body}
         </div>
-        <div className="space-y-5">
-          <p className="text-sm text-muted-foreground">
-            {todayLabel}
-            {" · "}
-            You have <span className="font-medium text-foreground">{daysUntilPayday} {daysUntilPayday === 1 ? "day" : "days"}</span>{" "}
-            until payday
-          </p>
-          <h2 className="font-serif text-3xl leading-[1.05] tracking-tighter md:text-4xl lg:text-5xl">
-            {heroPhrase}
-          </h2>
-          {legend.length > 0 && (
-            <div className="space-y-3 pt-2">
-              <StackedBar legend={legend} />
-              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-                {legend.map((seg) => (
-                  <div
-                    key={seg.name}
-                    className="flex items-center gap-2"
-                  >
-                    <div
-                      className="h-2.5 w-2.5 rounded-sm"
-                      style={{ backgroundColor: seg.color }}
-                    />
-                    <span className="font-medium">{seg.name}</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {formatCurrency(seg.amount)} {"·"}{" "}
-                      {Math.round(seg.pct)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      ) : (
+        body
+      )}
     </div>
   );
 }
@@ -147,11 +160,11 @@ function renderPhrase(phrase: string, total: number) {
 
   // Find the keyword that indicates pace tone
   const tones: [string, string][] = [
-    ["over your monthly target", "text-[var(--status-over)]"],
-    ["over pace", "text-[var(--status-over)]"],
-    ["comfortably under", "text-[var(--status-on-track)]"],
-    ["within pace", "text-[var(--status-on-track)]"],
-    ["on track", "text-[var(--status-on-track)]"],
+    ["over budget", "text-[var(--status-over)]"],
+    ["over schedule", "text-[var(--status-over)]"],
+    ["well under schedule", "text-[var(--status-on-track)]"],
+    ["ahead of schedule", "text-[var(--status-on-track)]"],
+    ["on schedule", "text-[var(--status-on-track)]"],
   ];
   let toneRender = <span>{after}</span>;
   for (const [keyword, cls] of tones) {
@@ -205,11 +218,13 @@ function PaceGauge({
   // delta is in percentage points: pctSpent - timeElapsedPercent.
   const pctSpent = hasBudget ? (budgetedSpent / totalBudget) * 100 : 0;
   const delta = pctSpent - timeElapsedPercent;
-  const target = totalBudget * (timeElapsedPercent / 100);
-  const gap = budgetedSpent - target;
-  const absGap = Math.round(Math.abs(gap));
+  const scheduleTarget = totalBudget * (timeElapsedPercent / 100);
+  const scheduleGap = budgetedSpent - scheduleTarget;
+  const absScheduleGap = Math.round(Math.abs(scheduleGap));
+  const overBudgetBy = Math.round(Math.max(0, budgetedSpent - totalBudget));
 
-  const isOver = pctSpent > 100 || delta >= 25;
+  const isOverBudget = pctSpent > 100;
+  const isOver = isOverBudget || delta >= 25;
   const isAhead = delta <= -10;
   const ringColor = isOver ? "var(--status-over)" : "var(--status-on-track)";
   const verdictClass = isOver
@@ -219,12 +234,14 @@ function PaceGauge({
   let verdict: string;
   if (!hasBudget) {
     verdict = "spent this month";
-  } else if (isOver) {
-    verdict = `₪${absGap.toLocaleString("en-IL")} over pace`;
+  } else if (isOverBudget) {
+    verdict = `₪${overBudgetBy.toLocaleString("en-IL")} over budget`;
+  } else if (delta >= 25) {
+    verdict = `₪${absScheduleGap.toLocaleString("en-IL")} over schedule`;
   } else if (isAhead) {
-    verdict = `₪${absGap.toLocaleString("en-IL")} ahead of pace`;
+    verdict = `₪${absScheduleGap.toLocaleString("en-IL")} ahead of schedule`;
   } else {
-    verdict = "On pace";
+    verdict = "On schedule";
   }
 
   // Notch position at the expected-by-today point on the ring.
@@ -279,10 +296,15 @@ function PaceGauge({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
         <div className="font-serif text-3xl tabular-nums">
-          ₪{Math.round(periodTotal).toLocaleString("en-IL")}
+          ₪{Math.round(hasBudget ? budgetedSpent : periodTotal).toLocaleString("en-IL")}
         </div>
+        {hasBudget && (
+          <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+            of ₪{Math.round(totalBudget).toLocaleString("en-IL")}
+          </div>
+        )}
         <div
-          className={`text-xs ${hasBudget ? verdictClass : "text-muted-foreground"}`}
+          className={`mt-1 text-xs ${hasBudget ? verdictClass : "text-muted-foreground"}`}
         >
           {verdict}
         </div>

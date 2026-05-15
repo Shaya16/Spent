@@ -275,6 +275,7 @@ export const SEEDED_CATEGORY_PARENTS: Record<string, string> = {
   "Cash & ATM": "Money Movement",
   Transfers: "Money Movement",
   "Gifts & Donations": "Money Movement",
+  "Fees & Taxes": "Money Movement",
 };
 
 // Palette for AI-proposed new categories. Distinct hues, none colliding

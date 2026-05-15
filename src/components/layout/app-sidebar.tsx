@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  LayoutDashboard,
   Wallet,
   ArrowLeftRight,
   Settings as SettingsIcon,
@@ -25,9 +26,15 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 const NAV = [
   {
     href: "/",
-    label: "Budgets",
-    Icon: Wallet,
+    label: "Home",
+    Icon: LayoutDashboard,
     match: (p: string) => p === "/",
+  },
+  {
+    href: "/budget",
+    label: "Budget",
+    Icon: Wallet,
+    match: (p: string) => p.startsWith("/budget"),
   },
   {
     href: "/transactions",

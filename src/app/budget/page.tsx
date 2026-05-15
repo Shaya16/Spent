@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { HomePage } from "@/components/home/home-page";
+import { Dashboard } from "@/components/dashboard/dashboard";
 import { getDb } from "@/server/db/index";
 
 export const dynamic = "force-dynamic";
@@ -12,14 +12,14 @@ function anyWorkspaceHasBank(): boolean {
   return row.count > 0;
 }
 
-export default function Home() {
+export default function BudgetPage() {
   if (!anyWorkspaceHasBank()) {
     redirect("/setup");
   }
 
   return (
     <AppShell>
-      <HomePage />
+      <Dashboard />
     </AppShell>
   );
 }

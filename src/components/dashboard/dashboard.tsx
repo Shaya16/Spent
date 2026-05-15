@@ -77,7 +77,7 @@ export function Dashboard() {
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6 lg:p-8">
+      <div className="space-y-6 p-4 md:p-6 lg:p-8">
         <HeroCard data={summary} loading={summaryQuery.isLoading} />
 
         <div className="flex items-center justify-end">

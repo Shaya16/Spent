@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 interface WorkspaceNameStepProps {
   onComplete: (name: string) => void;
   submitting?: boolean;
 }
+
+const SUGGESTIONS = ["Personal", "Business", "Joint", "Side hustle"];
 
 export function WorkspaceNameStep({
   onComplete,
@@ -25,56 +24,86 @@ export function WorkspaceNameStep({
   }
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
-          New workspace
-        </div>
-        <h1 className="font-serif text-4xl leading-tight">
-          Name your workspace
-        </h1>
-        <p className="max-w-xl text-sm text-muted-foreground">
-          Workspaces keep separate data sets isolated — different banks,
-          different categories, different budgets. Common splits are Personal /
-          Business / Partner.
-        </p>
-      </header>
+    <div className="mx-auto flex max-w-[520px] flex-col items-center gap-4 pt-8 text-center">
+      <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+        Step One · Workspace
+      </div>
+      <h1 className="max-w-[440px] font-serif text-4xl leading-[1.08] tracking-tight">
+        What should we call this corner of your finances?
+      </h1>
+      <p className="max-w-[380px] text-sm leading-relaxed text-muted-foreground">
+        A workspace keeps one slice of your life isolated — its own banks,
+        categories, budgets. Most people start with{" "}
+        <span className="text-foreground underline decoration-primary underline-offset-2">
+          Personal
+        </span>
+        .
+      </p>
 
       <form
         onSubmit={handleSubmit}
-        className="max-w-md space-y-5 rounded-2xl border border-border/60 bg-card/60 p-6 shadow-sm"
+        className="mt-2 flex w-full max-w-[380px] flex-col items-center gap-3"
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
-            <FolderKanban className="size-5" />
+        <div className="relative w-full rounded-2xl border border-border bg-card p-5 text-left shadow-sm">
+          <div className="absolute right-5 top-5 text-[9px] font-semibold text-muted-foreground">
+            {name.length}/60
           </div>
-          <div className="text-sm font-medium">Workspace details</div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="workspace-name">Workspace name</Label>
-          <Input
+          <label
+            htmlFor="workspace-name"
+            className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground"
+          >
+            Workspace name
+          </label>
+          <input
             id="workspace-name"
+            type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Business, Side hustle, Family"
             maxLength={60}
             autoFocus
             disabled={submitting}
+            placeholder="Personal"
+            className="mt-2 w-full border-0 bg-transparent p-0 font-serif text-2xl leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/40"
           />
-          <p className="text-xs text-muted-foreground">
-            You can rename this later from settings.
-          </p>
         </div>
+
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setName(s)}
+              disabled={submitting}
+              className="rounded-full border border-border/60 bg-muted/40 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          You can rename it later from Settings.
+        </p>
 
         <Button
           type="submit"
-          className="w-full"
           disabled={!name.trim() || submitting}
+          className="rounded-full px-6 py-3 text-sm font-semibold"
         >
-          {submitting ? "Creating…" : "Create workspace and continue"}
+          {submitting ? "Creating…" : "Create & continue →"}
         </Button>
       </form>
+
+      <div className="mt-6 flex w-full max-w-[380px] items-center justify-between text-[10px] text-muted-foreground/80">
+        <span>Encrypted locally</span>
+        <span>
+          Press{" "}
+          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[9px] font-semibold">
+            ↵
+          </kbd>{" "}
+          to continue
+        </span>
+      </div>
     </div>
   );
 }

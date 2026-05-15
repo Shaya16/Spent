@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { BankStep } from "@/components/setup/bank-step";
 import { AIStep } from "@/components/setup/ai-step";
+import { MonthlyTargetStep } from "@/components/setup/monthly-target-step";
 import { BudgetsStep } from "@/components/setup/budgets-step";
 import { CompleteStep } from "@/components/setup/complete-step";
 import { WorkspaceNameStep } from "@/components/setup/workspace-name-step";
@@ -15,12 +16,12 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export type SetupMode = "first-run" | "new-workspace";
 
-type FirstRunStep = 1 | 2 | 3 | 4;
-type NewWorkspaceStep = 0 | 1 | 2 | 3 | 4;
+type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
 
 const FIRST_RUN_STEPS = [
   { n: 1 as const, label: "Connect" },
   { n: 2 as const, label: "AI" },
+  { n: 5 as const, label: "Target" },
   { n: 3 as const, label: "Budgets" },
   { n: 4 as const, label: "Done" },
 ];
@@ -28,7 +29,7 @@ const FIRST_RUN_STEPS = [
 const NEW_WORKSPACE_STEPS = [
   { n: 0 as const, label: "Name" },
   { n: 1 as const, label: "Connect" },
-  { n: 2 as const, label: "AI" },
+  { n: 5 as const, label: "Target" },
   { n: 3 as const, label: "Budgets" },
   { n: 4 as const, label: "Done" },
 ];
@@ -36,12 +37,13 @@ const NEW_WORKSPACE_STEPS = [
 export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<NewWorkspaceStep>(
+  const [step, setStep] = useState<WizardStep>(
     mode === "new-workspace" ? 0 : 1
   );
   const [creating, setCreating] = useState(false);
 
-  const steps = mode === "new-workspace" ? NEW_WORKSPACE_STEPS : FIRST_RUN_STEPS;
+  const steps =
+    mode === "new-workspace" ? NEW_WORKSPACE_STEPS : FIRST_RUN_STEPS;
 
   async function handleNameSubmit(name: string) {
     setCreating(true);
@@ -65,62 +67,27 @@ export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
-      {/* Soft pastel blobs */}
-      <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div
-          className="absolute -left-40 -top-32 h-[600px] w-[600px] rounded-full opacity-50 blur-3xl"
-          style={{ background: "var(--primary)" }}
-        />
-        <div
-          className="absolute -right-40 -bottom-32 h-[520px] w-[520px] rounded-full opacity-40 blur-3xl"
-          style={{ background: "var(--status-heads-up)" }}
-        />
-      </div>
-
-      <header className="relative z-10 mx-auto flex max-w-5xl items-center justify-between px-6 py-6 md:px-8">
-        <div className="flex items-center gap-2.5">
-          <img
-            src="/logo_lightmode.svg"
-            alt="Spent"
-            className="h-9 w-auto dark:hidden"
-          />
-          <img
-            src="/logo_darkmode.svg"
-            alt="Spent"
-            className="hidden h-9 w-auto dark:block"
-          />
-          <div>
-            <div className="font-serif text-xl font-semibold leading-none tracking-tight">
-              Spent
-            </div>
-            <div className="mt-0.5 text-[9.5px] font-semibold tracking-[0.08em] text-muted-foreground">
-              YOUR MONEY · OPEN SOURCE
-            </div>
-          </div>
-        </div>
-
-        <Stepper step={step} steps={steps} />
-
-        <div className="hidden text-xs text-muted-foreground md:block">
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground"
-          >
-            Docs
-          </a>
-        </div>
+    <div className="relative min-h-screen bg-background">
+      <header className="relative z-10 mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-6 md:px-8">
+        <BrandMark />
+        <DotStepper step={step} steps={steps} />
+        <a
+          href="https://github.com"
+          target="_blank"
+          rel="noreferrer"
+          className="hidden text-xs text-muted-foreground hover:text-foreground md:inline"
+        >
+          Docs ↗
+        </a>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-5xl px-6 pb-16 md:px-8">
+      <main className="relative z-10 mx-auto px-6 pb-16 md:px-8">
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -30 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.28, ease: [0.2, 0.7, 0.3, 1] }}
           >
             {step === 0 && (
@@ -129,17 +96,31 @@ export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
                 submitting={creating}
               />
             )}
-            {step === 1 && <BankStep onComplete={() => setStep(2)} />}
+            {step === 1 && (
+              <BankStep
+                onComplete={() =>
+                  setStep(mode === "new-workspace" ? 5 : 2)
+                }
+              />
+            )}
             {step === 2 && (
               <AIStep
-                onComplete={() => setStep(3)}
+                onComplete={() => setStep(5)}
                 onBack={() => setStep(1)}
+              />
+            )}
+            {step === 5 && (
+              <MonthlyTargetStep
+                onComplete={() => setStep(3)}
+                onBack={() =>
+                  setStep(mode === "new-workspace" ? 1 : 2)
+                }
               />
             )}
             {step === 3 && (
               <BudgetsStep
                 onComplete={() => setStep(4)}
-                onBack={() => setStep(2)}
+                onBack={() => setStep(5)}
               />
             )}
             {step === 4 && <CompleteStep onFinish={handleFinish} />}
@@ -150,36 +131,62 @@ export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
   );
 }
 
+function BrandMark() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <img
+        src="/logo_lightmode.svg"
+        alt="Spent"
+        className="h-8 w-auto dark:hidden"
+      />
+      <img
+        src="/logo_darkmode.svg"
+        alt="Spent"
+        className="hidden h-8 w-auto dark:block"
+      />
+      <div>
+        <div className="font-serif text-lg font-semibold leading-none tracking-tight">
+          Spent
+        </div>
+        <div className="mt-1 text-[8px] font-bold tracking-[0.18em] text-muted-foreground">
+          YOUR MONEY · OPEN SOURCE
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface StepDef {
-  n: 0 | 1 | 2 | 3 | 4;
+  n: WizardStep;
   label: string;
 }
 
-function Stepper({
+function DotStepper({
   step,
   steps,
 }: {
-  step: NewWorkspaceStep;
+  step: WizardStep;
   steps: ReadonlyArray<StepDef>;
 }) {
+  const currentIdx = steps.findIndex((s) => s.n === step);
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       {steps.map((s, i) => {
         const state =
-          step > s.n ? "done" : step === s.n ? "active" : "todo";
+          i < currentIdx ? "done" : i === currentIdx ? "active" : "todo";
         return (
-          <div key={s.n} className="flex items-center gap-3">
-            <StepBadge n={s.n} label={s.label} state={state} />
+          <div key={s.n} className="flex items-center gap-2">
+            <DotLabel label={s.label} state={state} />
             {i < steps.length - 1 && (
               <motion.div
                 animate={{
                   background:
-                    step > s.n
+                    i < currentIdx
                       ? "var(--primary)"
                       : "var(--border)",
                 }}
                 transition={{ duration: 0.35 }}
-                className="h-[2px] w-10 rounded-full"
+                className="h-px w-3.5 rounded-full"
               />
             )}
           </div>
@@ -189,67 +196,39 @@ function Stepper({
   );
 }
 
-function StepBadge({
-  n,
+function DotLabel({
   label,
   state,
 }: {
-  n: number;
   label: string;
   state: "todo" | "active" | "done";
 }) {
-  const bg =
-    state === "active"
-      ? "var(--primary)"
-      : state === "done"
-        ? "color-mix(in oklch, var(--primary) 18%, transparent)"
-        : "var(--muted)";
-  const fg =
-    state === "active"
-      ? "var(--primary-foreground)"
-      : state === "done"
-        ? "var(--primary)"
-        : "var(--muted-foreground)";
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-1.5">
       <motion.div
-        animate={{ background: bg, color: fg }}
+        animate={{
+          background:
+            state === "active"
+              ? "var(--foreground)"
+              : state === "done"
+                ? "var(--primary)"
+                : "var(--border)",
+          scale: state === "active" ? 1.4 : 1,
+        }}
         transition={{ duration: 0.25 }}
-        className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
-      >
-        <AnimatePresence mode="wait">
-          {state === "done" ? (
-            <motion.span
-              key="check"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-            >
-              ✓
-            </motion.span>
-          ) : (
-            <motion.span
-              key="num"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-            >
-              {n === 0 ? "·" : n}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </motion.div>
-      <div
-        className={`text-sm tracking-tight transition-colors ${
-          state === "todo"
-            ? "text-muted-foreground"
-            : state === "active"
-              ? "font-bold text-foreground"
-              : "font-semibold text-foreground"
+        className="h-1.5 w-1.5 rounded-full"
+      />
+      <span
+        className={`text-[9px] font-bold uppercase tracking-[0.14em] transition-colors ${
+          state === "active"
+            ? "text-foreground"
+            : state === "done"
+              ? "text-primary"
+              : "text-muted-foreground/60"
         }`}
       >
         {label}
-      </div>
+      </span>
     </div>
   );
 }

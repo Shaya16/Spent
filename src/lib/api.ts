@@ -9,6 +9,7 @@ import type {
   BudgetMode,
   Integration,
   Workspace,
+  HomePayload,
 } from "./types";
 import { getActiveWorkspaceIdSync } from "./workspace-store";
 
@@ -189,6 +190,10 @@ export function getSummary(params: {
   });
   if (params.months) searchParams.set("months", String(params.months));
   return fetchJSON<DashboardSummary>(`/api/summary?${searchParams}`);
+}
+
+export function getHome() {
+  return fetchJSON<HomePayload>(`/api/home`);
 }
 
 export function getCategories(kind?: CategoryKindFilter) {

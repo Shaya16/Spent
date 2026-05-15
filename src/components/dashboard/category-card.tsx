@@ -118,11 +118,6 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
                   {data.needsReviewCount}
                 </span>
               )}
-              {isTracking && (
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  tracking
-                </span>
-              )}
               {data.isParent && data.budgetSource === "own" && !isTracking && (
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   own budget
@@ -151,19 +146,22 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
       </div>
 
       <div className="mt-4">
-        <div className="font-serif text-3xl tabular-nums">
-          {formatCurrency(data.spent)}
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-serif text-3xl tabular-nums">
+            {formatCurrency(data.spent)}
+          </span>
+          {!isTracking && data.budget > 0 && (
+            <span className="font-serif text-base tabular-nums text-muted-foreground">
+              / {formatCurrency(data.budget)}
+            </span>
+          )}
         </div>
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           {isTracking ? (
             <VsTypical vsTypical={data.vsTypical} color={data.categoryColor} />
           ) : (
             <>
-              {data.budget > 0 ? (
-                <span className="tabular-nums">of {formatCurrency(data.budget)}</span>
-              ) : (
-                <span>no budget set</span>
-              )}
+              {data.budget === 0 && <span>no budget set</span>}
               {vsLast != null && <VsLastMonth pct={vsLast} />}
             </>
           )}
@@ -208,7 +206,7 @@ function VsTypical({
   color: string;
 }) {
   if (!vsTypical || vsTypical.typical <= 0) {
-    return <span>no history yet</span>;
+    return null;
   }
   const rounded = Math.round(vsTypical.percentDiff);
   const arrow = Math.abs(rounded) < 5 ? "≈" : rounded > 0 ? "↑" : "↓";

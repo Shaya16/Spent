@@ -69,7 +69,6 @@ export async function GET(request: Request) {
   const prevSpend = getCategorySpendInRange(workspaceId, prevFrom, prevTo);
   const topMerchants = getTopMerchantPerCategory(workspaceId, from, to);
   const explicitBudgets = getAllBudgets(workspaceId);
-  const autoSource = getAutoBudgetAverage(workspaceId, 3);
   const needsReviewCounts = getNeedsReviewCountByCategory(workspaceId, from, to);
   const needsReviewMap = new Map(
     needsReviewCounts.map((r) => [r.categoryId, r.count])
@@ -83,7 +82,6 @@ export async function GET(request: Request) {
   const budgetMap = new Map(
     explicitBudgets.map((b) => [b.categoryId, b])
   );
-  const autoMap = new Map(autoSource.map((s) => [s.categoryId, s.amount]));
 
   // Identify parents (any category that is referenced as parent_id by at
   // least one other category). Parents get synthetic rollup rows.
@@ -110,17 +108,9 @@ export async function GET(request: Request) {
     const vsLastMonth =
       prev != null && prev > 0 ? ((spent - prev) / prev) * 100 : null;
     const topMerchant = topMerchantMap.get(cat.id)?.merchant ?? null;
-    const autoAmount = autoMap.get(cat.id) ?? 0;
     const needsReviewCount = needsReviewMap.get(cat.id) ?? 0;
 
     if (cat.budgetMode === "tracking") {
-      const vsTypical =
-        autoAmount > 0
-          ? {
-              typical: autoAmount,
-              percentDiff: ((spent - autoAmount) / autoAmount) * 100,
-            }
-          : null;
       return {
         categoryId: cat.id,
         parentId: cat.parentId,
@@ -144,13 +134,12 @@ export async function GET(request: Request) {
         percentSpent: 0,
         status: "on-track",
         needsReviewCount,
-        vsTypical,
+        vsTypical: null,
       };
     }
 
     const explicit = budgetMap.get(cat.id);
-    const budget = explicit?.monthlyAmount ?? autoAmount;
-    const isAuto = !explicit;
+    const budget = explicit?.monthlyAmount ?? 0;
     const remaining = Math.max(0, budget - spent);
     const perDayRemaining =
       daysUntilPayday > 0 && remaining > 0
@@ -174,7 +163,7 @@ export async function GET(request: Request) {
       transactionCount: count,
       topMerchant,
       budget,
-      isAutoBudget: isAuto,
+      isAutoBudget: false,
       vsLastMonth,
       remaining,
       perDayRemaining,
@@ -235,18 +224,15 @@ export async function GET(request: Request) {
     const usesOwn =
       parent.budgetMode === "budgeted" && ownExplicit !== undefined;
     let budget = 0;
-    let isAutoBudget = false;
     let budgetSource: BudgetSource = "rollup";
     if (usesOwn && ownExplicit) {
       budget = ownExplicit.monthlyAmount;
-      isAutoBudget = false;
       budgetSource = "own";
     } else {
       budget = kidRows.reduce(
         (s, r) => (r.budgetMode === "budgeted" ? s + r.budget : s),
         0
       );
-      isAutoBudget = kidRows.every((r) => r.isAutoBudget);
       budgetSource = "rollup";
     }
 
@@ -255,23 +241,6 @@ export async function GET(request: Request) {
       daysUntilPayday > 0 && remaining > 0 ? remaining / daysUntilPayday : null;
     const percentSpent = budget > 0 ? (spent / budget) * 100 : 0;
     const status = computeStatus(spent, budget, timeElapsedPercent);
-
-    // vsTypical: only meaningful when the parent doesn't have its own
-    // budget. Sum the children's auto-budget typicals as a parent-level
-    // typical, if any are present.
-    let vsTypical: { typical: number; percentDiff: number } | null = null;
-    if (!usesOwn) {
-      const typical = kids.reduce(
-        (s, k) => s + (autoMap.get(k.id) ?? 0),
-        0
-      );
-      if (typical > 0) {
-        vsTypical = {
-          typical,
-          percentDiff: ((spent - typical) / typical) * 100,
-        };
-      }
-    }
 
     parentRows.push({
       categoryId: parent.id,
@@ -288,14 +257,14 @@ export async function GET(request: Request) {
       transactionCount,
       topMerchant,
       budget,
-      isAutoBudget,
+      isAutoBudget: false,
       vsLastMonth,
       remaining,
       perDayRemaining,
       percentSpent,
       status,
       needsReviewCount,
-      vsTypical,
+      vsTypical: null,
     });
   }
 
@@ -304,31 +273,26 @@ export async function GET(request: Request) {
   const periodTotal = getPeriodTotal(workspaceId, from, to);
   const transactionCount = getPeriodCount(workspaceId, from, to);
 
-  // Total budget: parents with budgetSource === "own" contribute their own
-  // amount and we skip their children. Other rows (rollup parents and
-  // standalone leaves) contribute via their leaf budgets. We compute over
-  // the leaves to avoid double-counting.
-  const ownBudgetParentIds = new Set(
-    parentRows
-      .filter((r) => r.budgetSource === "own")
-      .map((r) => r.categoryId)
-  );
-  let totalBudget = 0;
-  let budgetedSpent = 0;
-  for (const r of leafRows) {
-    const parentOverrides =
-      r.parentId != null && ownBudgetParentIds.has(r.parentId);
-    if (!parentOverrides) {
-      totalBudget += r.budget;
-      if (r.budgetMode === "budgeted") budgetedSpent += r.spent;
-    }
-  }
-  for (const r of parentRows) {
-    if (r.budgetSource === "own") {
-      totalBudget += r.budget;
-      if (r.budgetMode === "budgeted") budgetedSpent += r.spent;
-    }
-  }
+  // Hero total comes from the workspace-level monthly target. ALL spend
+  // counts against it — tracking-mode is a per-category organizational tag
+  // only and does not exclude spend from the hero verdict. Per-category
+  // budgets continue to drive their own category cards independently.
+  const monthlyTargetRaw = getWorkspaceSetting(workspaceId, "monthly_target");
+  const monthlyTargetParsed = monthlyTargetRaw != null ? Number(monthlyTargetRaw) : NaN;
+  const monthlyTarget =
+    Number.isFinite(monthlyTargetParsed) && monthlyTargetParsed > 0
+      ? monthlyTargetParsed
+      : 0;
+  const totalBudget = monthlyTarget;
+  const budgetedSpent = periodTotal;
+
+  // Typical monthly spend for the facts-mode CTA: sum of 3-month
+  // per-category rolling average, rounded to the nearest 100. Null when
+  // there's no completed history yet.
+  const autoSource = getAutoBudgetAverage(workspaceId, 3);
+  const typicalSum = autoSource.reduce((s, r) => s + (r.amount ?? 0), 0);
+  const typicalMonthly =
+    typicalSum > 0 ? Math.round(typicalSum / 100) * 100 : null;
 
   const overallPercentSpent =
     totalBudget > 0 ? (periodTotal / totalBudget) * 100 : 0;
@@ -364,5 +328,6 @@ export async function GET(request: Request) {
     todayLabel,
     monthLabel,
     pacePhrase: phrase,
+    typicalMonthly,
   });
 }

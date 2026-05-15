@@ -136,12 +136,103 @@ export interface DashboardSummary {
   todayLabel: string;
   monthLabel: string;
   pacePhrase: string;
+  typicalMonthly: number | null;
 }
 
 export interface Budget {
   categoryId: number;
   monthlyAmount: number;
   isAuto: boolean;
+}
+
+export type HomeSection =
+  | "thisMonth"
+  | "cashFlow"
+  | "categorySnapshot"
+  | "historicalTrend"
+  | "recentTransactions"
+  | "topMerchants"
+  | "needsAttention"
+  | "bankHealth";
+
+export interface HomeThisMonth {
+  spent: number;
+  budget: number;
+  deltaVsLastMonth: number | null;
+  pacePhrase: string;
+  daysUntilPayday: number;
+  timeElapsedPercent: number;
+  monthLabel: string;
+}
+
+export interface HomeCashFlow {
+  income: number;
+  expenses: number;
+  net: number;
+}
+
+export interface HomeCategorySnapshotItem {
+  categoryId: number;
+  name: string;
+  color: string;
+  spent: number;
+  budget: number;
+  percentSpent: number;
+}
+
+export interface HomeHistoricalTrendPoint {
+  month: string;
+  label: string;
+  total: number;
+  isCurrent: boolean;
+}
+
+export interface HomeRecentTransaction {
+  id: number;
+  date: string;
+  description: string;
+  chargedAmount: number;
+  chargedCurrency: string | null;
+  kind: "expense" | "income" | "transfer";
+  categoryName: string | null;
+  categoryColor: string | null;
+}
+
+export interface HomeTopMerchant {
+  name: string;
+  total: number;
+  count: number;
+}
+
+export interface HomeNeedsAttention {
+  uncategorized: number;
+  lowConfidence: number;
+  flagged: number;
+}
+
+export interface HomeBankHealthItem {
+  provider: string;
+  providerName: string;
+  lastSyncAt: string | null;
+  status: "ok" | "stale" | "error" | "never";
+  errorMessage: string | null;
+}
+
+export interface HomeSectionError {
+  section: HomeSection;
+  message: string;
+}
+
+export interface HomePayload {
+  thisMonth: HomeThisMonth | null;
+  cashFlow: HomeCashFlow | null;
+  categorySnapshot: HomeCategorySnapshotItem[] | null;
+  historicalTrend: HomeHistoricalTrendPoint[] | null;
+  recentTransactions: HomeRecentTransaction[] | null;
+  topMerchants: HomeTopMerchant[] | null;
+  needsAttention: HomeNeedsAttention | null;
+  bankHealth: HomeBankHealthItem[] | null;
+  errors: HomeSectionError[];
 }
 
 export interface Integration {
@@ -165,6 +256,7 @@ export interface AppSettings {
   ollamaModel: string;
   showBrowser: boolean;
   paydayDay: number;
+  monthlyTarget: number | null;
 }
 
 export type BankProvider = "isracard" | "cal" | "max" | "hapoalim" | "leumi";

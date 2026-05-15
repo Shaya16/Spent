@@ -17,8 +17,13 @@ import type {
   CategoryWithData,
 } from "@/lib/types";
 
-type Filter = "all" | BudgetStatus;
-type Sort = "most-spent" | "least-spent" | "alphabetical" | "over-pace";
+type Filter = "all" | "needs-action" | BudgetStatus;
+type Sort =
+  | "budgeted-first"
+  | "most-spent"
+  | "least-spent"
+  | "alphabetical"
+  | "over-pace";
 
 interface CategoryGridProps {
   categories: CategoryWithData[];
@@ -31,6 +36,7 @@ interface CategoryGridProps {
 
 const FILTER_LABELS: { id: Filter; label: string }[] = [
   { id: "all", label: "All" },
+  { id: "needs-action", label: "Needs action" },
   { id: "on-track", label: "On track" },
   { id: "heads-up", label: "Heads up" },
   { id: "over", label: "Over" },
@@ -40,6 +46,14 @@ const FILTER_LABELS: { id: Filter; label: string }[] = [
 function applySort(list: CategoryWithData[], sort: Sort): CategoryWithData[] {
   const copy = [...list];
   switch (sort) {
+    case "budgeted-first":
+      copy.sort((a, b) => {
+        const aBudgeted = a.budgetMode === "budgeted" ? 1 : 0;
+        const bBudgeted = b.budgetMode === "budgeted" ? 1 : 0;
+        if (aBudgeted !== bBudgeted) return bBudgeted - aBudgeted;
+        return b.spent - a.spent;
+      });
+      break;
     case "most-spent":
       copy.sort((a, b) => b.spent - a.spent);
       break;
@@ -97,20 +111,28 @@ export function CategoryGrid({
   const counts = useMemo(() => {
     const c: Record<Filter, number> = {
       all: visible.length,
+      "needs-action": 0,
       "on-track": 0,
       "heads-up": 0,
       over: 0,
       "plenty-left": 0,
     };
-    for (const cat of visible) c[cat.status]++;
+    for (const cat of visible) {
+      c[cat.status]++;
+      if (cat.needsReviewCount > 0) c["needs-action"]++;
+    }
     return c;
   }, [visible]);
 
   const filtered = useMemo(() => {
-    const list =
-      filter === "all"
-        ? visible
-        : visible.filter((c) => c.status === filter);
+    let list: CategoryWithData[];
+    if (filter === "all") {
+      list = visible;
+    } else if (filter === "needs-action") {
+      list = visible.filter((c) => c.needsReviewCount > 0);
+    } else {
+      list = visible.filter((c) => c.status === filter);
+    }
     return applySort(list, sort);
   }, [visible, filter, sort]);
 
@@ -128,7 +150,7 @@ export function CategoryGrid({
     const hasUncategorized = periodTotal > 0;
     return (
       <div className="space-y-5">
-        <h2 className="font-serif text-2xl">Manual categories</h2>
+        <h2 className="font-serif text-2xl">Budgets</h2>
         <div className="rounded-3xl border border-border bg-card p-10 md:p-14">
           <div className="mx-auto max-w-md text-center">
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -177,7 +199,7 @@ export function CategoryGrid({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="font-serif text-2xl">Manual categories</h2>
+          <h2 className="font-serif text-2xl">Budgets</h2>
           <div className="flex flex-wrap gap-1.5">
             {FILTER_LABELS.map((f) => {
               const active = filter === f.id;
@@ -210,6 +232,7 @@ export function CategoryGrid({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="budgeted-first">Budgeted first</SelectItem>
               <SelectItem value="most-spent">Most spent</SelectItem>
               <SelectItem value="least-spent">Least spent</SelectItem>
               <SelectItem value="over-pace">Over pace</SelectItem>

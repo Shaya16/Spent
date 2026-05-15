@@ -88,24 +88,25 @@ export function pacePhrase(
   monthLabel: string
 ): string {
   if (totalBudget <= 0) {
-    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — set budgets to see how you're pacing.`;
+    return `You've spent ${formatILS(displaySpent)} this ${monthLabel}.`;
   }
   const pctSpent = (budgetedSpent / totalBudget) * 100;
   const delta = pctSpent - timeElapsedPercent;
+  const lead = `You've spent ${formatILS(budgetedSpent)} of your ${formatILS(totalBudget)} ${monthLabel} target`;
 
   if (pctSpent > 100) {
-    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — over your monthly target, time to slow down.`;
+    return `${lead} — over budget, time to slow down.`;
   }
   if (delta >= 25) {
-    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — a touch over pace, but easy to recover.`;
+    return `${lead} — a touch over schedule, but easy to recover.`;
   }
   if (delta <= -25) {
-    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — comfortably under pace.`;
+    return `${lead} — well under schedule.`;
   }
   if (delta <= -10) {
-    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — well within pace for the month.`;
+    return `${lead} — ahead of schedule.`;
   }
-  return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — on track for your monthly target.`;
+  return `${lead} — on schedule.`;
 }
 
 function formatILS(amount: number): string {

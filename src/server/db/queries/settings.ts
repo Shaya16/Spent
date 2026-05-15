@@ -62,6 +62,8 @@ export const getSetting = getGlobalSetting;
 export const setSetting = setGlobalSetting;
 
 export function getAppSettings(workspaceId: number): AppSettings {
+  const targetRaw = getWorkspaceSetting(workspaceId, "monthly_target");
+  const target = targetRaw != null ? Number(targetRaw) : NaN;
   return {
     monthsToSync: Number(getWorkspaceSetting(workspaceId, "months_to_sync") ?? "3"),
     aiProvider: (getGlobalSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
@@ -69,6 +71,7 @@ export function getAppSettings(workspaceId: number): AppSettings {
     ollamaModel: getGlobalSetting("ai_ollama_model") ?? "llama3.2:3b",
     showBrowser: getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true",
     paydayDay: Number(getWorkspaceSetting(workspaceId, "payday_day") ?? "1"),
+    monthlyTarget: Number.isFinite(target) && target > 0 ? target : null,
   };
 }
 
@@ -100,6 +103,18 @@ export function updateAppSettings(
     if (settings.paydayDay !== undefined) {
       const clamped = Math.max(1, Math.min(28, Math.round(settings.paydayDay)));
       setWorkspaceSetting(workspaceId, "payday_day", String(clamped));
+    }
+    if (settings.monthlyTarget !== undefined) {
+      const t = settings.monthlyTarget;
+      if (t == null || !Number.isFinite(t) || t <= 0) {
+        getDb()
+          .prepare(
+            "DELETE FROM workspace_settings WHERE workspace_id = ? AND key = ?"
+          )
+          .run(workspaceId, "monthly_target");
+      } else {
+        setWorkspaceSetting(workspaceId, "monthly_target", String(Math.round(t)));
+      }
     }
   });
   update();

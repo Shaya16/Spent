@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Input, InputGroup } from "@/components/ui/input";
 import {
   Select,
@@ -211,45 +210,33 @@ function BudgetSection({
         </div>
 
         {isBudgeted ? (
-          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div className="space-y-1.5">
-              <Label htmlFor={`budget-${category.id}`}>Monthly budget</Label>
-              <InputGroup prefix="₪">
-                <Input
-                  id={`budget-${category.id}`}
-                  type="number"
-                  className="text-right tabular-nums"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  onBlur={handleBlur}
-                  min={0}
-                />
-              </InputGroup>
-              {data ? (
-                <p className="text-[11px] text-muted-foreground">
-                  Spent ₪{Math.round(data.spent).toLocaleString("en-IL")} this
-                  month
-                  {data.vsTypical && data.vsTypical.typical > 0 ? (
-                    <>
-                      {" "}
-                      · typical ≈ ₪
-                      {Math.round(data.vsTypical.typical).toLocaleString(
-                        "en-IL"
-                      )}
-                    </>
-                  ) : null}
-                </p>
-              ) : null}
-            </div>
-            {data && !data.isAutoBudget ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-muted-foreground"
-                onClick={() => budgetMutation.mutate(null)}
-              >
-                Reset to auto
-              </Button>
+          <div className="mt-4 space-y-1.5">
+            <Label htmlFor={`budget-${category.id}`}>Monthly budget</Label>
+            <InputGroup prefix="₪">
+              <Input
+                id={`budget-${category.id}`}
+                type="number"
+                className="text-right tabular-nums"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                onBlur={handleBlur}
+                min={0}
+              />
+            </InputGroup>
+            {data ? (
+              <p className="text-[11px] text-muted-foreground">
+                Spent ₪{Math.round(data.spent).toLocaleString("en-IL")} this
+                month
+                {data.vsTypical && data.vsTypical.typical > 0 ? (
+                  <>
+                    {" "}
+                    · typical ≈ ₪
+                    {Math.round(data.vsTypical.typical).toLocaleString(
+                      "en-IL"
+                    )}
+                  </>
+                ) : null}
+              </p>
             ) : null}
           </div>
         ) : null}

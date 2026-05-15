@@ -345,7 +345,7 @@ async function syncWorkspace(
               });
               reviewFlags.push({
                 id: txn.id,
-                needsReview: confidence == null || confidence <= 3,
+                needsReview: confidence == null || confidence <= 4,
               });
             }
 

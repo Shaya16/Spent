@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bar,
@@ -30,6 +30,7 @@ import {
   HelpCircle,
   Check,
   ChevronDown,
+  Pencil,
   type LucideIcon,
   CircleDot,
 } from "lucide-react";
@@ -55,6 +56,7 @@ import {
   approveTransactionCategory,
   getCategories,
   getCategoryDetail,
+  updateBudget,
   updateCategoryBudgetMode,
   updateTransactionCategory,
   type CategoryDetail,
@@ -168,6 +170,11 @@ function DetailContent({ data }: { data: CategoryDetail }) {
     invalidate();
   };
 
+  const handleSaveBudget = async (amount: number | null) => {
+    await updateBudget(data.category.id, amount);
+    invalidate();
+  };
+
   const Icon = ICON_MAP[data.category.icon ?? "circle-dot"] ?? CircleDot;
   const iconColor = shade(data.category.color);
   const pct = Math.min(100, Math.round(data.percentSpent));
@@ -238,12 +245,10 @@ function DetailContent({ data }: { data: CategoryDetail }) {
           <>
             <div className="mt-2 grid grid-cols-3 gap-3">
               <Stat label="Spent" value={formatCurrency(data.spent)} />
-              <Stat
-                label="Budget"
-                value={
-                  data.budget > 0 ? formatCurrency(data.budget) : "—"
-                }
-                sublabel={data.isAutoBudget ? "auto" : undefined}
+              <BudgetStat
+                amount={data.budget}
+                isAuto={data.isAutoBudget}
+                onSave={handleSaveBudget}
               />
               <Stat
                 label="Left"
@@ -634,6 +639,110 @@ function Stat({
       {sublabel && (
         <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
           {sublabel}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BudgetStat({
+  amount,
+  isAuto,
+  onSave,
+}: {
+  amount: number;
+  isAuto: boolean;
+  onSave: (amount: number | null) => Promise<void> | void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  const startEdit = () => {
+    setDraft(amount > 0 ? Math.round(amount).toString() : "");
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    setEditing(false);
+    setDraft("");
+  };
+
+  const commit = async () => {
+    if (saving) return;
+    const trimmed = draft.trim();
+    let next: number | null;
+    if (trimmed === "") {
+      next = null;
+    } else {
+      const parsed = Number(trimmed);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        cancel();
+        return;
+      }
+      next = parsed === 0 ? null : parsed;
+    }
+    setSaving(true);
+    try {
+      await onSave(next);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        Budget
+      </div>
+      {editing ? (
+        <input
+          ref={inputRef}
+          type="number"
+          inputMode="numeric"
+          min={0}
+          step={1}
+          value={draft}
+          disabled={saving}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void commit();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+          className="mt-0.5 w-full rounded-md border border-border bg-background/70 px-1.5 py-0.5 font-serif text-xl tabular-nums outline-none focus:border-foreground/40 disabled:opacity-60"
+          placeholder="auto"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={startEdit}
+          className="group mt-0.5 flex w-full cursor-pointer items-center gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label="Edit budget amount"
+        >
+          <span className="font-serif text-xl tabular-nums">
+            {amount > 0 ? formatCurrency(amount) : "—"}
+          </span>
+          <Pencil className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+        </button>
+      )}
+      {!editing && isAuto && amount > 0 && (
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          auto
         </div>
       )}
     </div>

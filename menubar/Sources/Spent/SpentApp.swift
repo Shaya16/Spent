@@ -2,9 +2,11 @@ import SwiftUI
 import AppKit
 import Foundation
 
-// All network access is restricted to 127.0.0.1 by NSAppTransportSecurity
-// in Info.plist. Do not change these URLs without re-reviewing that.
-private let loopbackBase = URL(string: "http://127.0.0.1:41234")!
+// In-app network access is restricted to 127.0.0.1 by NSAppTransportSecurity
+// in Info.plist. Do not change healthURL/syncURL/sameOrigin without re-reviewing
+// that. openInBrowserURL is handed to NSWorkspace and opens in the user's
+// browser, which is not subject to ATS, so it can use the friendly hostname.
+private let openInBrowserURL = URL(string: "http://spent.local:41234")!
 private let healthURL = URL(string: "http://127.0.0.1:41234/api/health")!
 private let syncURL = URL(string: "http://127.0.0.1:41234/api/sync")!
 private let sameOrigin = "http://127.0.0.1:41234"
@@ -136,7 +138,7 @@ final class StatusModel: ObservableObject {
 // MARK: - Actions
 
 private func openSpent() {
-    NSWorkspace.shared.open(loopbackBase)
+    NSWorkspace.shared.open(openInBrowserURL)
 }
 
 private func syncNow() {
