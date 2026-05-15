@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { getBankCredentials } from "@/server/db/queries/bank-credentials";
 import { scrapeBank } from "@/server/scrapers";
 import type { BankProvider } from "@/lib/types";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 export async function POST(request: Request) {
+  const workspaceId = getWorkspaceIdFromRequest(request);
   const body = (await request.json()) as { provider: string };
 
-  const credentials = getBankCredentials(body.provider);
+  const credentials = getBankCredentials(workspaceId, body.provider);
   if (!credentials) {
     return NextResponse.json(
       { success: false, message: "No credentials found for this provider" },
@@ -18,6 +20,7 @@ export async function POST(request: Request) {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const result = await scrapeBank(
+    workspaceId,
     body.provider as BankProvider,
     credentials,
     sevenDaysAgo

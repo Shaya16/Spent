@@ -11,7 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { BudgetStatus, CategoryWithData } from "@/lib/types";
+import type {
+  BudgetStatus,
+  CategoryViewMode,
+  CategoryWithData,
+} from "@/lib/types";
 
 type Filter = "all" | BudgetStatus;
 type Sort = "most-spent" | "least-spent" | "alphabetical" | "over-pace";
@@ -22,6 +26,7 @@ interface CategoryGridProps {
   periodTotal: number;
   from: string;
   to: string;
+  viewMode: CategoryViewMode;
 }
 
 const FILTER_LABELS: { id: Filter; label: string }[] = [
@@ -32,58 +37,82 @@ const FILTER_LABELS: { id: Filter; label: string }[] = [
   { id: "plenty-left", label: "Plenty left" },
 ];
 
+function applySort(list: CategoryWithData[], sort: Sort): CategoryWithData[] {
+  const copy = [...list];
+  switch (sort) {
+    case "most-spent":
+      copy.sort((a, b) => b.spent - a.spent);
+      break;
+    case "least-spent":
+      copy.sort((a, b) => a.spent - b.spent);
+      break;
+    case "alphabetical":
+      copy.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+      break;
+    case "over-pace":
+      copy.sort((a, b) => b.percentSpent - a.percentSpent);
+      break;
+  }
+  return copy;
+}
+
 export function CategoryGrid({
   categories,
   loading,
   periodTotal,
   from,
   to,
+  viewMode,
 }: CategoryGridProps) {
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("most-spent");
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // Drop categories with no spending AND no explicit budget - nothing to show.
+  // Drop categories with no spending AND no explicit budget.
   const activeCategories = useMemo(
     () =>
-      categories.filter((c) => c.spent > 0 || (!c.isAutoBudget && c.budget > 0)),
+      categories.filter(
+        (c) => c.spent > 0 || (!c.isAutoBudget && c.budget > 0)
+      ),
     [categories]
   );
 
+  // In collapsed mode, the "visible" list contains parent rollups + orphan
+  // leaves only (children get hidden — their parent represents them).
+  // In expanded mode, the visible list contains the leaves and we render
+  // section headers per parent client-side.
+  const visible = useMemo(() => {
+    if (viewMode === "collapsed") {
+      const parentIds = new Set(
+        activeCategories.filter((c) => c.isParent).map((c) => c.categoryId)
+      );
+      return activeCategories.filter(
+        (c) => c.isParent || c.parentId == null || !parentIds.has(c.parentId)
+      );
+    }
+    // expanded: hide synthetic parent rollup rows; show all leaves
+    return activeCategories.filter((c) => !c.isParent);
+  }, [activeCategories, viewMode]);
+
   const counts = useMemo(() => {
     const c: Record<Filter, number> = {
-      all: activeCategories.length,
+      all: visible.length,
       "on-track": 0,
       "heads-up": 0,
       over: 0,
       "plenty-left": 0,
     };
-    for (const cat of activeCategories) c[cat.status]++;
+    for (const cat of visible) c[cat.status]++;
     return c;
-  }, [activeCategories]);
+  }, [visible]);
 
   const filtered = useMemo(() => {
     const list =
       filter === "all"
-        ? [...activeCategories]
-        : activeCategories.filter((c) => c.status === filter);
-
-    switch (sort) {
-      case "most-spent":
-        list.sort((a, b) => b.spent - a.spent);
-        break;
-      case "least-spent":
-        list.sort((a, b) => a.spent - b.spent);
-        break;
-      case "alphabetical":
-        list.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
-        break;
-      case "over-pace":
-        list.sort((a, b) => b.percentSpent - a.percentSpent);
-        break;
-    }
-    return list;
-  }, [activeCategories, filter, sort]);
+        ? visible
+        : visible.filter((c) => c.status === filter);
+    return applySort(list, sort);
+  }, [visible, filter, sort]);
 
   if (loading) {
     return (

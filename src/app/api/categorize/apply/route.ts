@@ -5,8 +5,10 @@ import {
 import {
   ensureCategory,
   getCategoryByName,
+  getParentIds,
 } from "@/server/db/queries/categories";
 import type { CategoryKind } from "@/lib/types";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 interface ApplyBody {
   /**
@@ -33,6 +35,7 @@ interface ApplyBody {
 }
 
 export async function POST(request: Request) {
+  const workspaceId = getWorkspaceIdFromRequest(request);
   const body = (await request.json()) as ApplyBody;
   const approved = new Set(
     (body.approvedNewCategoryNames ?? []).map((n) => n.toLowerCase())
@@ -44,6 +47,10 @@ export async function POST(request: Request) {
   // - approved new categories: ensureCategory creates them
   // - rejected new categories with a fallback: use the fallback's id
   // - rejected new categories without a fallback: skip (transaction stays uncategorized)
+  // Parents must never receive transactions. If the AI somehow returns a
+  // parent name (despite the prompt guidance), skip rather than assign.
+  const parentIds = getParentIds(workspaceId);
+
   const newCategoryCache = new Map<string, number>();
   const updates: { id: number; categoryId: number }[] = [];
   let createdCount = 0;
@@ -58,8 +65,9 @@ export async function POST(request: Request) {
           updates.push({ id: a.transactionId, categoryId: cached });
         } else {
           // Check if it already exists before creating
-          const wasExisting = getCategoryByName(a.categoryName);
+          const wasExisting = getCategoryByName(workspaceId, a.categoryName);
           const cat = ensureCategory(
+            workspaceId,
             a.categoryName,
             undefined,
             a.kind ?? "expense"
@@ -72,8 +80,8 @@ export async function POST(request: Request) {
         // Rejected. Try a fallback if user set one.
         const fallbackName = fallbacks[a.categoryName];
         if (fallbackName) {
-          const fallbackCat = getCategoryByName(fallbackName);
-          if (fallbackCat) {
+          const fallbackCat = getCategoryByName(workspaceId, fallbackName);
+          if (fallbackCat && !parentIds.has(fallbackCat.id)) {
             updates.push({
               id: a.transactionId,
               categoryId: fallbackCat.id,
@@ -87,8 +95,8 @@ export async function POST(request: Request) {
       }
     } else {
       // Existing category
-      const cat = getCategoryByName(a.categoryName);
-      if (cat) {
+      const cat = getCategoryByName(workspaceId, a.categoryName);
+      if (cat && !parentIds.has(cat.id)) {
         updates.push({ id: a.transactionId, categoryId: cat.id });
       } else {
         skippedCount++;
@@ -96,7 +104,7 @@ export async function POST(request: Request) {
     }
   }
 
-  batchUpdateCategories(updates);
+  batchUpdateCategories(workspaceId, updates);
 
   return NextResponse.json({
     appliedCount: updates.length,

@@ -65,6 +65,7 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
   const Icon = ICON_MAP[data.categoryIcon ?? "circle-dot"] ?? CircleDot;
   const percent = Math.min(999, Math.round(data.percentSpent));
   const vsLast = data.vsLastMonth;
+  const isTracking = data.budgetMode === "tracking";
   return (
     <button
       type="button"
@@ -79,10 +80,30 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
             <Icon className="h-5 w-5" style={{ color: shade(data.categoryColor) }} />
           </div>
           <div className="min-w-0 flex-1">
+            {data.parentName && (
+              <div
+                className="text-[10px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: shade(data.categoryColor) }}
+              >
+                {data.parentName}
+              </div>
+            )}
             <div className="flex items-center gap-1.5">
               <span className="font-medium leading-tight">
                 {data.categoryName}
               </span>
+              {data.isParent && data.childCount != null && (
+                <span
+                  className="rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums"
+                  style={{
+                    background: tint(data.categoryColor, 0.22),
+                    color: shade(data.categoryColor),
+                  }}
+                  title={`${data.childCount} sub-categories`}
+                >
+                  {data.childCount}
+                </span>
+              )}
               {data.needsReviewCount > 0 && (
                 <span
                   className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums"
@@ -97,6 +118,21 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
                   {data.needsReviewCount}
                 </span>
               )}
+              {isTracking && (
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  tracking
+                </span>
+              )}
+              {data.isParent && data.budgetSource === "own" && !isTracking && (
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  own budget
+                </span>
+              )}
+              {data.isParent && data.budgetSource === "rollup" && !isTracking && (
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  rolled up
+                </span>
+              )}
             </div>
             <div className="mt-0.5 truncate text-xs text-muted-foreground">
               {data.transactionCount}{" "}
@@ -105,11 +141,13 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
             </div>
           </div>
         </div>
-        <ProgressDonut
-          percent={percent}
-          color={data.categoryColor}
-          status={data.status}
-        />
+        {!isTracking && (
+          <ProgressDonut
+            percent={percent}
+            color={data.categoryColor}
+            status={data.status}
+          />
+        )}
       </div>
 
       <div className="mt-4">
@@ -117,42 +155,70 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
           {formatCurrency(data.spent)}
         </div>
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-          {data.budget > 0 ? (
-            <span className="tabular-nums">of {formatCurrency(data.budget)}</span>
+          {isTracking ? (
+            <VsTypical vsTypical={data.vsTypical} color={data.categoryColor} />
           ) : (
-            <span>no budget set</span>
-          )}
-          {vsLast != null && (
-            <VsLastMonth pct={vsLast} />
+            <>
+              {data.budget > 0 ? (
+                <span className="tabular-nums">of {formatCurrency(data.budget)}</span>
+              ) : (
+                <span>no budget set</span>
+              )}
+              {vsLast != null && <VsLastMonth pct={vsLast} />}
+            </>
           )}
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2 text-xs">
-        <div className="text-muted-foreground tabular-nums">
-          {data.budget > 0 ? (
-            data.spent <= data.budget ? (
-              <>
-                {formatCurrency(data.remaining)} left
-                {data.perDayRemaining != null && (
-                  <> · ≈ {formatCurrency(data.perDayRemaining)}/day</>
-                )}
-              </>
+      {!isTracking && (
+        <div className="mt-4 flex items-center justify-between gap-2 text-xs">
+          <div className="text-muted-foreground tabular-nums">
+            {data.budget > 0 ? (
+              data.spent <= data.budget ? (
+                <>
+                  {formatCurrency(data.remaining)} left
+                  {data.perDayRemaining != null && (
+                    <> · ≈ {formatCurrency(data.perDayRemaining)}/day</>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="text-[var(--status-over)]">
+                    {formatCurrency(data.spent - data.budget)} over
+                  </span>
+                  {" · ease up"}
+                </>
+              )
             ) : (
-              <>
-                <span className="text-[var(--status-over)]">
-                  {formatCurrency(data.spent - data.budget)} over
-                </span>
-                {" · ease up"}
-              </>
-            )
-          ) : (
-            <span>set a budget to track pacing</span>
-          )}
+              <span>set a budget to track pacing</span>
+            )}
+          </div>
+          <StatusPill status={data.status} />
         </div>
-        <StatusPill status={data.status} />
-      </div>
+      )}
     </button>
+  );
+}
+
+function VsTypical({
+  vsTypical,
+  color,
+}: {
+  vsTypical: { typical: number; percentDiff: number } | null;
+  color: string;
+}) {
+  if (!vsTypical || vsTypical.typical <= 0) {
+    return <span>no history yet</span>;
+  }
+  const rounded = Math.round(vsTypical.percentDiff);
+  const arrow = Math.abs(rounded) < 5 ? "≈" : rounded > 0 ? "↑" : "↓";
+  const accent = shade(color);
+  return (
+    <span className="flex items-center gap-1 tabular-nums">
+      <span style={{ color: accent }}>{arrow}</span>
+      {Math.abs(rounded) >= 5 && <span>{Math.abs(rounded)}%</span>}
+      <span>vs {formatCurrency(vsTypical.typical)} typical</span>
+    </span>
   );
 }
 

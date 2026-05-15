@@ -6,18 +6,56 @@ import type {
   Category,
   SyncRun,
   Budget,
+  BudgetMode,
   Integration,
+  Workspace,
 } from "./types";
+import { getActiveWorkspaceIdSync } from "./workspace-store";
 
 const BASE = "";
 
+function withWorkspaceHeader(init?: RequestInit): RequestInit {
+  const wsId = getActiveWorkspaceIdSync();
+  const headers = new Headers(init?.headers);
+  if (wsId != null && !headers.has("x-workspace-id")) {
+    headers.set("x-workspace-id", String(wsId));
+  }
+  return { ...init, headers };
+}
+
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${url}`, init);
+  const res = await fetch(`${BASE}${url}`, withWorkspaceHeader(init));
   if (!res.ok) {
     const text = await res.text().catch(() => "Request failed");
     throw new Error(text);
   }
   return res.json() as Promise<T>;
+}
+
+export function listWorkspaces() {
+  return fetchJSON<Workspace[]>("/api/workspaces");
+}
+
+export function createWorkspace(name: string) {
+  return fetchJSON<Workspace>("/api/workspaces", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function renameWorkspace(id: number, name: string) {
+  return fetchJSON<Workspace>(`/api/workspaces/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function deleteWorkspace(id: number) {
+  return fetchJSON<{ success: boolean }>(`/api/workspaces/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export function getSetupStatus() {
@@ -102,6 +140,7 @@ export function getTransactions(params: {
   to?: string;
   search?: string;
   category?: number;
+  categoryIds?: number[];
   sort?: string;
   order?: "asc" | "desc";
   limit?: number;
@@ -111,7 +150,12 @@ export function getTransactions(params: {
 }) {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined) searchParams.set(key, String(value));
+    if (value === undefined) return;
+    if (key === "categoryIds" && Array.isArray(value)) {
+      for (const id of value) searchParams.append("categoryIds", String(id));
+      return;
+    }
+    searchParams.set(key, String(value));
   });
   return fetchJSON<{ transactions: TransactionWithCategory[]; total: number }>(
     `/api/transactions?${searchParams}`
@@ -160,17 +204,34 @@ export function updateTransactionCategory(id: number, categoryId: number) {
   });
 }
 
+export interface CategoryChildBreakdown {
+  id: number;
+  name: string;
+  color: string;
+  icon: string | null;
+  spent: number;
+  budget: number;
+  budgetMode: BudgetMode;
+  isAutoBudget: boolean;
+  percentSpent: number;
+}
+
 export interface CategoryDetail {
   category: {
     id: number;
+    parentId: number | null;
     name: string;
     color: string;
     icon: string | null;
     kind: "expense" | "income";
+    budgetMode: BudgetMode;
+    isParent: boolean;
   };
   spent: number;
   budget: number;
   isAutoBudget: boolean;
+  budgetSource: "own" | "rollup" | "leaf";
+  vsTypical: { typical: number; percentDiff: number } | null;
   remaining: number;
   percentSpent: number;
   transactionCount: number;
@@ -184,6 +245,7 @@ export interface CategoryDetail {
   needsReviewTransactions: TransactionWithCategory[];
   needsReviewCount: number;
   period: { from: string; to: string };
+  children: CategoryChildBreakdown[] | null;
 }
 
 export function getCategoryDetail(
@@ -203,6 +265,61 @@ export function updateBudget(categoryId: number, amount: number | null) {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ categoryId, amount }),
+  });
+}
+
+export function updateCategoryBudgetMode(
+  categoryId: number,
+  mode: BudgetMode
+) {
+  return fetchJSON<{ success: boolean }>(`/api/categories/${categoryId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ budgetMode: mode }),
+  });
+}
+
+export function updateCategoryDescription(
+  categoryId: number,
+  description: string | null
+) {
+  return fetchJSON<{ success: boolean }>(`/api/categories/${categoryId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ description }),
+  });
+}
+
+export function setCategoryParent(
+  categoryId: number,
+  parentId: number | null
+) {
+  return fetchJSON<{ success: boolean }>(`/api/categories/${categoryId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ parentId }),
+  });
+}
+
+export function createCategory(input: {
+  name: string;
+  kind: CategoryKindFilter;
+  isParent?: boolean;
+  icon?: string;
+  description?: string | null;
+}) {
+  return fetchJSON<Category>("/api/categories", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function setBudgetModesBulk(budgetedIds: number[]) {
+  return fetchJSON<{ success: boolean }>("/api/categories/budget-modes", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ budgetedIds }),
   });
 }
 
@@ -304,12 +421,15 @@ export function startSync(
 
   (async () => {
     try {
-      const res = await fetch("/api/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(provider ? { provider } : {}),
-        signal: controller.signal,
-      });
+      const res = await fetch(
+        "/api/sync",
+        withWorkspaceHeader({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(provider ? { provider } : {}),
+          signal: controller.signal,
+        })
+      );
 
       const reader = res.body?.getReader();
       if (!reader) return;
@@ -387,12 +507,15 @@ export function pullOllamaModel(
 
   (async () => {
     try {
-      const res = await fetch("/api/ai/ollama/pull", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, url }),
-        signal: controller.signal,
-      });
+      const res = await fetch(
+        "/api/ai/ollama/pull",
+        withWorkspaceHeader({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model, url }),
+          signal: controller.signal,
+        })
+      );
 
       const reader = res.body?.getReader();
       if (!reader) return;

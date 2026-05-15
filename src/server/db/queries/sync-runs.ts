@@ -4,15 +4,16 @@ import { getDb } from "../index";
 import type { SyncRun } from "@/lib/types";
 
 export function createSyncRun(
+  workspaceId: number,
   provider: string,
   scrapeFromDate: string
 ): number {
   const result = getDb()
     .prepare(
-      `INSERT INTO sync_runs (provider, started_at, status, scrape_from_date)
-       VALUES (?, datetime('now'), 'running', ?)`
+      `INSERT INTO sync_runs (workspace_id, provider, started_at, status, scrape_from_date)
+       VALUES (?, ?, datetime('now'), 'running', ?)`
     )
-    .run(provider, scrapeFromDate);
+    .run(workspaceId, provider, scrapeFromDate);
   return Number(result.lastInsertRowid);
 }
 
@@ -48,22 +49,25 @@ interface ProviderStats {
   transactionCount: number;
 }
 
-export function getProviderStats(provider: string): ProviderStats {
+export function getProviderStats(
+  workspaceId: number,
+  provider: string
+): ProviderStats {
   const db = getDb();
   const lastRun = db
     .prepare(
       `SELECT completed_at, status FROM sync_runs
-       WHERE provider = ? AND status = 'completed'
+       WHERE workspace_id = ? AND provider = ? AND status = 'completed'
        ORDER BY started_at DESC LIMIT 1`
     )
-    .get(provider) as
+    .get(workspaceId, provider) as
     | { completed_at: string; status: string }
     | undefined;
   const txnCount = db
     .prepare(
-      `SELECT COUNT(*) as count FROM transactions WHERE provider = ?`
+      `SELECT COUNT(*) as count FROM transactions WHERE workspace_id = ? AND provider = ?`
     )
-    .get(provider) as { count: number };
+    .get(workspaceId, provider) as { count: number };
   return {
     provider,
     lastSyncAt: lastRun?.completed_at ?? null,
@@ -72,14 +76,22 @@ export function getProviderStats(provider: string): ProviderStats {
   };
 }
 
-export function getLastSyncRun(provider?: string): SyncRun | null {
-  const sql = provider
-    ? `SELECT * FROM sync_runs WHERE provider = ? ORDER BY started_at DESC LIMIT 1`
-    : `SELECT * FROM sync_runs ORDER BY started_at DESC LIMIT 1`;
-
+export function getLastSyncRun(
+  workspaceId: number,
+  provider?: string
+): SyncRun | null {
+  const db = getDb();
   const row = provider
-    ? getDb().prepare(sql).get(provider)
-    : getDb().prepare(sql).get();
+    ? db
+        .prepare(
+          `SELECT * FROM sync_runs WHERE workspace_id = ? AND provider = ? ORDER BY started_at DESC LIMIT 1`
+        )
+        .get(workspaceId, provider)
+    : db
+        .prepare(
+          `SELECT * FROM sync_runs WHERE workspace_id = ? ORDER BY started_at DESC LIMIT 1`
+        )
+        .get(workspaceId);
 
   if (!row) return null;
 

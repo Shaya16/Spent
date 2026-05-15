@@ -64,7 +64,7 @@ export function CompleteStep({ onFinish }: CompleteStepProps) {
 
       <div>
         <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
-          Step 3 of 3 · Done
+          Step 4 of 4 · Done
         </div>
         <motion.h1
           initial={{ y: 8, opacity: 0 }}

@@ -20,6 +20,7 @@ export interface MerchantMapping {
 }
 
 export function lookupMerchantCategory(
+  workspaceId: number,
   description: string
 ): MerchantMapping | null {
   const key = normalizeMerchant(description);
@@ -31,13 +32,14 @@ export function lookupMerchantCategory(
               kind,
               source
        FROM merchant_categories
-       WHERE merchant_key = ?`
+       WHERE workspace_id = ? AND merchant_key = ?`
     )
-    .get(key) as MerchantMapping | undefined;
+    .get(workspaceId, key) as MerchantMapping | undefined;
   return row ?? null;
 }
 
 export function lookupMerchantCategoriesBulk(
+  workspaceId: number,
   descriptions: string[]
 ): Map<string, MerchantMapping> {
   if (descriptions.length === 0) return new Map();
@@ -59,9 +61,9 @@ export function lookupMerchantCategoriesBulk(
               kind,
               source
        FROM merchant_categories
-       WHERE merchant_key IN (${placeholders})`
+       WHERE workspace_id = ? AND merchant_key IN (${placeholders})`
     )
-    .all(...Array.from(keys)) as MerchantMapping[];
+    .all(workspaceId, ...Array.from(keys)) as MerchantMapping[];
   const lookupByKey = new Map<string, MerchantMapping>();
   for (const r of rows) lookupByKey.set(r.merchantKey, r);
   const result = new Map<string, MerchantMapping>();
@@ -73,6 +75,7 @@ export function lookupMerchantCategoriesBulk(
 }
 
 export function recordMerchantCategory(
+  workspaceId: number,
   description: string,
   categoryId: number,
   kind: CategoryKind,
@@ -83,9 +86,9 @@ export function recordMerchantCategory(
   getDb()
     .prepare(
       `INSERT INTO merchant_categories
-         (merchant_key, category_id, kind, source, hit_count)
-       VALUES (?, ?, ?, ?, 0)
-       ON CONFLICT(merchant_key) DO UPDATE SET
+         (workspace_id, merchant_key, category_id, kind, source, hit_count)
+       VALUES (?, ?, ?, ?, ?, 0)
+       ON CONFLICT(workspace_id, merchant_key) DO UPDATE SET
          category_id = excluded.category_id,
          kind = excluded.kind,
          source = CASE
@@ -95,16 +98,19 @@ export function recordMerchantCategory(
          END,
          updated_at = datetime('now')`
     )
-    .run(key, categoryId, kind, source);
+    .run(workspaceId, key, categoryId, kind, source);
 }
 
-export function incrementMerchantHits(merchantKeys: string[]): void {
+export function incrementMerchantHits(
+  workspaceId: number,
+  merchantKeys: string[]
+): void {
   if (merchantKeys.length === 0) return;
   const db = getDb();
   const stmt = db.prepare(
-    "UPDATE merchant_categories SET hit_count = hit_count + 1 WHERE merchant_key = ?"
+    "UPDATE merchant_categories SET hit_count = hit_count + 1 WHERE workspace_id = ? AND merchant_key = ?"
   );
   db.transaction(() => {
-    for (const k of merchantKeys) stmt.run(k);
+    for (const k of merchantKeys) stmt.run(workspaceId, k);
   })();
 }

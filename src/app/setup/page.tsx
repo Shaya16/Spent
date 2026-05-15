@@ -1,19 +1,28 @@
 import { redirect } from "next/navigation";
-import { hasBankCredentials } from "@/server/db/queries/bank-credentials";
+import { getDb } from "@/server/db/index";
 import { SetupWizard } from "@/components/setup/setup-wizard";
 
 export const dynamic = "force-dynamic";
 
 interface SetupPageProps {
-  searchParams: Promise<{ force?: string }>;
+  searchParams: Promise<{ force?: string; mode?: string }>;
+}
+
+function anyWorkspaceHasBank(): boolean {
+  const row = getDb()
+    .prepare("SELECT COUNT(*) as count FROM bank_credentials")
+    .get() as { count: number };
+  return row.count > 0;
 }
 
 export default async function SetupPage({ searchParams }: SetupPageProps) {
-  const { force } = await searchParams;
+  const { force, mode } = await searchParams;
 
-  if (hasBankCredentials() && force !== "1") {
+  const newWorkspaceMode = mode === "new-workspace";
+
+  if (!newWorkspaceMode && force !== "1" && anyWorkspaceHasBank()) {
     redirect("/");
   }
 
-  return <SetupWizard />;
+  return <SetupWizard mode={newWorkspaceMode ? "new-workspace" : "first-run"} />;
 }

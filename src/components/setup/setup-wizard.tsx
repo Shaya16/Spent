@@ -3,21 +3,66 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "sonner";
 import { BankStep } from "@/components/setup/bank-step";
 import { AIStep } from "@/components/setup/ai-step";
+import { BudgetsStep } from "@/components/setup/budgets-step";
 import { CompleteStep } from "@/components/setup/complete-step";
+import { WorkspaceNameStep } from "@/components/setup/workspace-name-step";
+import { createWorkspace } from "@/lib/api";
+import { setActiveWorkspaceId } from "@/lib/workspace-store";
+import { useQueryClient } from "@tanstack/react-query";
 
-type StepIndex = 1 | 2 | 3;
+export type SetupMode = "first-run" | "new-workspace";
 
-const STEPS = [
+type FirstRunStep = 1 | 2 | 3 | 4;
+type NewWorkspaceStep = 0 | 1 | 2 | 3 | 4;
+
+const FIRST_RUN_STEPS = [
   { n: 1 as const, label: "Connect" },
   { n: 2 as const, label: "AI" },
-  { n: 3 as const, label: "Done" },
+  { n: 3 as const, label: "Budgets" },
+  { n: 4 as const, label: "Done" },
 ];
 
-export function SetupWizard() {
-  const [step, setStep] = useState<StepIndex>(1);
+const NEW_WORKSPACE_STEPS = [
+  { n: 0 as const, label: "Name" },
+  { n: 1 as const, label: "Connect" },
+  { n: 2 as const, label: "AI" },
+  { n: 3 as const, label: "Budgets" },
+  { n: 4 as const, label: "Done" },
+];
+
+export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [step, setStep] = useState<NewWorkspaceStep>(
+    mode === "new-workspace" ? 0 : 1
+  );
+  const [creating, setCreating] = useState(false);
+
+  const steps = mode === "new-workspace" ? NEW_WORKSPACE_STEPS : FIRST_RUN_STEPS;
+
+  async function handleNameSubmit(name: string) {
+    setCreating(true);
+    try {
+      const ws = await createWorkspace(name);
+      setActiveWorkspaceId(ws.id);
+      queryClient.invalidateQueries();
+      setStep(1);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create workspace"
+      );
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  function handleFinish() {
+    queryClient.invalidateQueries();
+    router.push("/");
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
@@ -55,7 +100,7 @@ export function SetupWizard() {
           </div>
         </div>
 
-        <Stepper step={step} />
+        <Stepper step={step} steps={steps} />
 
         <div className="hidden text-xs text-muted-foreground md:block">
           <a
@@ -78,6 +123,12 @@ export function SetupWizard() {
             exit={{ opacity: 0, x: -30 }}
             transition={{ duration: 0.28, ease: [0.2, 0.7, 0.3, 1] }}
           >
+            {step === 0 && (
+              <WorkspaceNameStep
+                onComplete={handleNameSubmit}
+                submitting={creating}
+              />
+            )}
             {step === 1 && <BankStep onComplete={() => setStep(2)} />}
             {step === 2 && (
               <AIStep
@@ -85,7 +136,13 @@ export function SetupWizard() {
                 onBack={() => setStep(1)}
               />
             )}
-            {step === 3 && <CompleteStep onFinish={() => router.push("/")} />}
+            {step === 3 && (
+              <BudgetsStep
+                onComplete={() => setStep(4)}
+                onBack={() => setStep(2)}
+              />
+            )}
+            {step === 4 && <CompleteStep onFinish={handleFinish} />}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -93,16 +150,27 @@ export function SetupWizard() {
   );
 }
 
-function Stepper({ step }: { step: StepIndex }) {
+interface StepDef {
+  n: 0 | 1 | 2 | 3 | 4;
+  label: string;
+}
+
+function Stepper({
+  step,
+  steps,
+}: {
+  step: NewWorkspaceStep;
+  steps: ReadonlyArray<StepDef>;
+}) {
   return (
     <div className="flex items-center gap-3">
-      {STEPS.map((s, i) => {
+      {steps.map((s, i) => {
         const state =
           step > s.n ? "done" : step === s.n ? "active" : "todo";
         return (
           <div key={s.n} className="flex items-center gap-3">
             <StepBadge n={s.n} label={s.label} state={state} />
-            {i < STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <motion.div
                 animate={{
                   background:
@@ -166,7 +234,7 @@ function StepBadge({
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
             >
-              {n}
+              {n === 0 ? "·" : n}
             </motion.span>
           )}
         </AnimatePresence>

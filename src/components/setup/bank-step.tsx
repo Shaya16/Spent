@@ -47,7 +47,7 @@ export function BankStep({ onComplete }: BankStepProps) {
     <div className="space-y-6">
       <header className="space-y-2">
         <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
-          Step 1 of 3
+          Step 1 of 4
         </div>
         <h1 className="font-serif text-4xl leading-tight">
           Connect your accounts

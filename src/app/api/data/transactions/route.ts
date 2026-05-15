@@ -1,30 +1,35 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/server/db/index";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
+  const workspaceId = getWorkspaceIdFromRequest(request);
   const db = getDb();
 
   const result = db.transaction(() => {
     const txCount = (
-      db.prepare("SELECT COUNT(*) as c FROM transactions").get() as {
-        c: number;
-      }
+      db
+        .prepare("SELECT COUNT(*) as c FROM transactions WHERE workspace_id = ?")
+        .get(workspaceId) as { c: number }
     ).c;
     const syncCount = (
-      db.prepare("SELECT COUNT(*) as c FROM sync_runs").get() as { c: number }
+      db
+        .prepare("SELECT COUNT(*) as c FROM sync_runs WHERE workspace_id = ?")
+        .get(workspaceId) as { c: number }
     ).c;
     const memoryCount = (
       db
-        .prepare("SELECT COUNT(*) as c FROM merchant_categories")
-        .get() as { c: number }
+        .prepare(
+          "SELECT COUNT(*) as c FROM merchant_categories WHERE workspace_id = ?"
+        )
+        .get(workspaceId) as { c: number }
     ).c;
 
-    db.exec("DELETE FROM transactions");
-    db.exec("DELETE FROM sync_runs");
-    db.exec("DELETE FROM merchant_categories");
-    db.exec(
-      "DELETE FROM sqlite_sequence WHERE name IN ('transactions', 'sync_runs', 'merchant_categories')"
-    );
+    db.prepare("DELETE FROM transactions WHERE workspace_id = ?").run(workspaceId);
+    db.prepare("DELETE FROM sync_runs WHERE workspace_id = ?").run(workspaceId);
+    db.prepare(
+      "DELETE FROM merchant_categories WHERE workspace_id = ?"
+    ).run(workspaceId);
 
     return { txCount, syncCount, memoryCount };
   })();

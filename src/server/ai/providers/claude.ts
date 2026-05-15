@@ -2,17 +2,21 @@ import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
 import type {
-  AIConfidence,
   AIProvider,
+  CategoryForCategorization,
   CategoryMapping,
+  PastCorrection,
   TransactionForCategorization,
 } from "../types";
-
-function parseConfidence(raw: unknown): AIConfidence | undefined {
-  if (raw === "high" || raw === "medium" || raw === "low") return raw;
-  return undefined;
-}
 import { buildCategorizationPrompt, SYSTEM_PROMPT } from "../prompts";
+
+function parseConfidence(raw: unknown): number | undefined {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return undefined;
+  const clamped = Math.round(n);
+  if (clamped < 1 || clamped > 7) return undefined;
+  return clamped;
+}
 
 export class ClaudeProvider implements AIProvider {
   private client: Anthropic;
@@ -23,14 +27,16 @@ export class ClaudeProvider implements AIProvider {
 
   async categorize(
     transactions: TransactionForCategorization[],
-    categoryNames: string[],
-    options?: { allowProposals?: boolean }
+    categories: CategoryForCategorization[],
+    options?: { allowProposals?: boolean; pastCorrections?: PastCorrection[] }
   ): Promise<CategoryMapping[]> {
     const allowProposals = options?.allowProposals ?? false;
+    const pastCorrections = options?.pastCorrections ?? [];
     const prompt = buildCategorizationPrompt(
       transactions,
-      categoryNames,
-      allowProposals
+      categories,
+      allowProposals,
+      pastCorrections
     );
 
     const response = await this.client.messages.create({
@@ -43,7 +49,7 @@ export class ClaudeProvider implements AIProvider {
     const text =
       response.content[0].type === "text" ? response.content[0].text : "";
 
-    return parseResponse(text, categoryNames, allowProposals);
+    return parseResponse(text, categories.map((c) => c.name), allowProposals);
   }
 }
 

@@ -4,18 +4,21 @@ import {
   getTransactionsForCategorization,
 } from "@/server/db/queries/transactions";
 import { getAllCategories } from "@/server/db/queries/categories";
+import { getRecentCorrections } from "@/server/db/queries/category-corrections";
 import { createAIProvider } from "@/server/ai/factory";
 import { ensureOllamaRunning } from "@/server/ai/ollama-manager";
 import { getAppSettings } from "@/server/db/queries/settings";
 import type { CategoryMapping } from "@/server/ai/types";
 import type { CategoryKind } from "@/lib/types";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 /**
  * Preview mode: run AI categorization with proposal-enabled prompt, split by
  * expense vs income so each transaction is offered categories of its own kind.
  */
-export async function POST() {
-  const settings = getAppSettings();
+export async function POST(request: Request) {
+  const workspaceId = getWorkspaceIdFromRequest(request);
+  const settings = getAppSettings(workspaceId);
 
   const aiProvider = createAIProvider();
   if (!aiProvider) {
@@ -52,17 +55,33 @@ export async function POST() {
   let totalUncategorized = 0;
 
   for (const kind of KINDS) {
-    const ids = getUncategorizedIdsByKind(kind);
+    const ids = getUncategorizedIdsByKind(workspaceId, kind);
     totalUncategorized += ids.length;
     if (ids.length === 0) continue;
 
-    const categories = getAllCategories(kind);
+    const categories = getAllCategories(workspaceId, kind);
     if (categories.length === 0) continue;
-    const categoryNames = categories.map((c) => c.name);
+
+    // Build a parentId -> name lookup so we can attach parent context to
+    // each leaf row. Parents themselves are excluded from the AI-visible
+    // list - the AI must target leaves only.
+    const parentNameById = new Map<number, string>();
+    for (const c of categories) {
+      if (c.parentId === null) parentNameById.set(c.id, c.name);
+    }
+    const parentIdSet = new Set(parentNameById.keys());
+    const categoryInput = categories
+      .filter((c) => !parentIdSet.has(c.id))
+      .map((c) => ({
+        name: c.name,
+        description: c.description,
+        parentName: c.parentId != null ? parentNameById.get(c.parentId) ?? null : null,
+      }));
+    const pastCorrections = getRecentCorrections(workspaceId, kind);
 
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
       const batchIds = ids.slice(i, i + BATCH_SIZE);
-      const txns = getTransactionsForCategorization(batchIds);
+      const txns = getTransactionsForCategorization(workspaceId, batchIds);
 
       try {
         const mappings: CategoryMapping[] = await aiProvider.categorize(
@@ -72,8 +91,8 @@ export async function POST() {
             currency: t.originalCurrency,
             memo: t.memo,
           })),
-          categoryNames,
-          { allowProposals: true }
+          categoryInput,
+          { allowProposals: true, pastCorrections }
         );
 
         for (const m of mappings) {

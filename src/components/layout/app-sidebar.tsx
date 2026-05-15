@@ -20,6 +20,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { WorkspaceSwitcher } from "./workspace-switcher";
 
 const NAV = [
   {
@@ -74,6 +75,7 @@ export function AppSidebar() {
             </div>
           </div>
         </Link>
+        <WorkspaceSwitcher />
       </SidebarHeader>
 
       <SidebarContent>

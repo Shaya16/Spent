@@ -1,17 +1,21 @@
 import "server-only";
 
 import type {
-  AIConfidence,
   AIProvider,
+  CategoryForCategorization,
   CategoryMapping,
+  PastCorrection,
   TransactionForCategorization,
 } from "../types";
-
-function parseConfidence(raw: unknown): AIConfidence | undefined {
-  if (raw === "high" || raw === "medium" || raw === "low") return raw;
-  return undefined;
-}
 import { buildCategorizationPrompt, SYSTEM_PROMPT } from "../prompts";
+
+function parseConfidence(raw: unknown): number | undefined {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return undefined;
+  const clamped = Math.round(n);
+  if (clamped < 1 || clamped > 7) return undefined;
+  return clamped;
+}
 
 export class OllamaProvider implements AIProvider {
   constructor(
@@ -21,14 +25,16 @@ export class OllamaProvider implements AIProvider {
 
   async categorize(
     transactions: TransactionForCategorization[],
-    categoryNames: string[],
-    options?: { allowProposals?: boolean }
+    categories: CategoryForCategorization[],
+    options?: { allowProposals?: boolean; pastCorrections?: PastCorrection[] }
   ): Promise<CategoryMapping[]> {
     const allowProposals = options?.allowProposals ?? false;
+    const pastCorrections = options?.pastCorrections ?? [];
     const prompt = buildCategorizationPrompt(
       transactions,
-      categoryNames,
-      allowProposals
+      categories,
+      allowProposals,
+      pastCorrections
     );
 
     const response = await fetch(`${this.baseUrl}/api/chat`, {
@@ -54,7 +60,7 @@ export class OllamaProvider implements AIProvider {
     };
     const text = data.message?.content ?? "";
 
-    return parseResponse(text, categoryNames, allowProposals);
+    return parseResponse(text, categories.map((c) => c.name), allowProposals);
   }
 }
 

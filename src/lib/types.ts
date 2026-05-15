@@ -1,3 +1,11 @@
+export interface Workspace {
+  id: number;
+  name: string;
+  slug: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Transaction {
   id: number;
   accountNumber: string;
@@ -16,6 +24,7 @@ export interface Transaction {
   installmentTotal: number | null;
   categoryId: number | null;
   categorySource: "ai" | "user" | null;
+  aiConfidence: number | null;
   provider: string;
   syncRunId: number;
   kind: "expense" | "income" | "transfer";
@@ -31,13 +40,22 @@ export interface TransactionWithCategory extends Transaction {
 
 export type CategoryKind = "expense" | "income";
 
+export type BudgetMode = "budgeted" | "tracking";
+
 export interface Category {
   id: number;
+  parentId: number | null;
   name: string;
   color: string;
   icon: string | null;
   kind: CategoryKind;
+  budgetMode: BudgetMode;
+  description: string | null;
 }
+
+export type CategoryViewMode = "collapsed" | "expanded";
+
+export type BudgetSource = "own" | "rollup" | "leaf";
 
 export interface SyncRun {
   id: number;
@@ -79,9 +97,15 @@ export type BudgetStatus =
 
 export interface CategoryWithData {
   categoryId: number;
+  parentId: number | null;
+  parentName: string | null;
+  isParent: boolean;
+  budgetSource: BudgetSource;
+  childCount?: number;
   categoryName: string;
   categoryColor: string;
   categoryIcon: string | null;
+  budgetMode: BudgetMode;
   spent: number;
   transactionCount: number;
   topMerchant: string | null;
@@ -93,6 +117,7 @@ export interface CategoryWithData {
   percentSpent: number;
   status: BudgetStatus;
   needsReviewCount: number;
+  vsTypical: { typical: number; percentDiff: number } | null;
 }
 
 export interface DashboardSummary {
@@ -103,6 +128,7 @@ export interface DashboardSummary {
   categoryBreakdown: CategoryBreakdown[];
   categoriesWithData: CategoryWithData[];
   totalBudget: number;
+  budgetedSpent: number;
   overallPercentSpent: number;
   timeElapsedPercent: number;
   daysUntilPayday: number;

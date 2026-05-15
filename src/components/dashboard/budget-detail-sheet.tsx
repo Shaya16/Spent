@@ -55,11 +55,14 @@ import {
   approveTransactionCategory,
   getCategories,
   getCategoryDetail,
+  updateCategoryBudgetMode,
   updateTransactionCategory,
   type CategoryDetail,
 } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { Switch } from "@/components/ui/switch";
 import type { Category, TransactionWithCategory } from "@/lib/types";
+import type { CategoryChildBreakdown } from "@/lib/api";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   "shopping-basket": ShoppingBasket,
@@ -111,7 +114,7 @@ export function BudgetDetailSheet({
     >
       <SheetContent
         side="right"
-        className="w-full p-0 sm:max-w-xl md:max-w-2xl lg:max-w-4xl"
+        className="w-full p-0 sm:max-w-xl! md:max-w-2xl! lg:max-w-[35vw]!"
       >
         {detailQuery.isLoading || !detailQuery.data ? (
           <DetailSkeleton />
@@ -145,6 +148,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
     queryClient.invalidateQueries({ queryKey: ["category-detail"] });
     queryClient.invalidateQueries({ queryKey: ["summary"] });
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["transactions-summary"] });
   };
 
   const handleApprove = async (id: number) => {
@@ -156,10 +160,18 @@ function DetailContent({ data }: { data: CategoryDetail }) {
     invalidate();
   };
 
+  const handleToggleMode = async (checked: boolean) => {
+    await updateCategoryBudgetMode(
+      data.category.id,
+      checked ? "budgeted" : "tracking"
+    );
+    invalidate();
+  };
+
   const Icon = ICON_MAP[data.category.icon ?? "circle-dot"] ?? CircleDot;
-  const tintBg = tint(data.category.color, 0.18);
   const iconColor = shade(data.category.color);
   const pct = Math.min(100, Math.round(data.percentSpent));
+  const isTracking = data.category.budgetMode === "tracking";
 
   const chartData = useMemo(
     () =>
@@ -193,37 +205,75 @@ function DetailContent({ data }: { data: CategoryDetail }) {
               {data.category.name}
             </SheetTitle>
           </div>
+          {data.category.kind !== "income" && (
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+              <span>Budget</span>
+              <Switch
+                size="sm"
+                checked={!isTracking}
+                onCheckedChange={handleToggleMode}
+              />
+            </label>
+          )}
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-3">
-          <Stat label="Spent" value={formatCurrency(data.spent)} />
-          <Stat
-            label="Budget"
-            value={
-              data.budget > 0 ? formatCurrency(data.budget) : "—"
-            }
-            sublabel={data.isAutoBudget ? "auto" : undefined}
-          />
-          <Stat
-            label="Left"
-            value={formatCurrency(Math.max(0, data.budget - data.spent))}
-          />
-        </div>
-
-        {data.budget > 0 && (
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-background/40">
-            <div
-              className="h-full rounded-full transition-all"
-              style={{
-                width: `${pct}%`,
-                background: shade(data.category.color),
-              }}
+        {isTracking ? (
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            <Stat label="Spent" value={formatCurrency(data.spent)} />
+            <Stat
+              label="Typical / month"
+              value={
+                data.vsTypical && data.vsTypical.typical > 0
+                  ? formatCurrency(data.vsTypical.typical)
+                  : "—"
+              }
+              sublabel={
+                data.vsTypical && data.vsTypical.typical > 0
+                  ? `${Math.round(data.vsTypical.percentDiff) >= 0 ? "+" : ""}${Math.round(data.vsTypical.percentDiff)}% this month`
+                  : undefined
+              }
             />
           </div>
+        ) : (
+          <>
+            <div className="mt-2 grid grid-cols-3 gap-3">
+              <Stat label="Spent" value={formatCurrency(data.spent)} />
+              <Stat
+                label="Budget"
+                value={
+                  data.budget > 0 ? formatCurrency(data.budget) : "—"
+                }
+                sublabel={data.isAutoBudget ? "auto" : undefined}
+              />
+              <Stat
+                label="Left"
+                value={formatCurrency(Math.max(0, data.budget - data.spent))}
+              />
+            </div>
+
+            {data.budget > 0 && (
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-background/40">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${pct}%`,
+                    background: shade(data.category.color),
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
       </SheetHeader>
 
       <div className="space-y-5 p-6 pt-3">
+        {data.category.isParent && data.children && data.children.length > 0 && (
+          <ChildrenBreakdownSection
+            children={data.children}
+            budgetSource={data.budgetSource}
+            color={data.category.color}
+          />
+        )}
         {data.needsReviewCount > 0 && (
           <NeedsReviewSection
             transactions={data.needsReviewTransactions}
@@ -361,6 +411,32 @@ function DetailContent({ data }: { data: CategoryDetail }) {
                         {formatDate(t.date)}
                       </div>
                     </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-accent">
+                        <Badge
+                          variant="outline"
+                          className="border-none p-0"
+                          style={{ color: t.categoryColor ?? undefined }}
+                        >
+                          {t.categoryName ?? "Uncategorized"}
+                        </Badge>
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {(sameKindCategoriesQuery.data ?? []).map((cat) => (
+                          <DropdownMenuItem
+                            key={cat.id}
+                            onClick={() => handleChangeCategory(t.id, cat.id)}
+                          >
+                            <div
+                              className="mr-2 h-2 w-2 rounded-full"
+                              style={{ backgroundColor: cat.color }}
+                            />
+                            {cat.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <div className="shrink-0 text-sm font-medium tabular-nums">
                       {formatCurrency(t.chargedAmount)}
                     </div>
@@ -371,6 +447,79 @@ function DetailContent({ data }: { data: CategoryDetail }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ChildrenBreakdownSection({
+  children,
+  budgetSource,
+  color,
+}: {
+  children: CategoryChildBreakdown[];
+  budgetSource: "own" | "rollup" | "leaf";
+  color: string;
+}) {
+  const banner =
+    budgetSource === "own"
+      ? "Budget set on this parent. Children's budgets are tracked individually but don't roll up here."
+      : "Budget rolled up from sub-categories. Set a budget on this parent to override.";
+  return (
+    <div
+      className="space-y-3 rounded-2xl p-4"
+      style={{ background: tint(color, 0.12) }}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="text-sm font-medium">
+          Sub-categories · {children.length}
+        </h3>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          {budgetSource === "own" ? "Own budget" : "Rolled up"}
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground">{banner}</p>
+      <ul className="space-y-1.5">
+        {children.map((c) => {
+          const pct = Math.min(100, Math.round(c.percentSpent));
+          return (
+            <li
+              key={c.id}
+              className="flex items-center justify-between gap-3 rounded-xl bg-background/70 px-3 py-2"
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: c.color }}
+                />
+                <span className="truncate text-sm font-medium">{c.name}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-3 text-xs tabular-nums">
+                <div className="text-right">
+                  <div className="font-medium">{formatCurrency(c.spent)}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {c.budget > 0
+                      ? `of ${formatCurrency(c.budget)}`
+                      : c.budgetMode === "tracking"
+                        ? "tracking"
+                        : "no budget"}
+                  </div>
+                </div>
+                {c.budget > 0 && (
+                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${pct}%`,
+                        background: shade(c.color),
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

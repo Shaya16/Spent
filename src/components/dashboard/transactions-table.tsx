@@ -107,6 +107,7 @@ export function TransactionsTable({
       await updateTransactionCategory(txnId, categoryId);
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions-summary"] });
     } finally {
       setUpdatingId(null);
     }
@@ -118,6 +119,7 @@ export function TransactionsTable({
       await setTransactionKind(txnId, next);
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions-summary"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     } finally {
       setUpdatingId(null);
@@ -130,6 +132,7 @@ export function TransactionsTable({
       await approveTransactionCategory(txnId);
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions-summary"] });
     } finally {
       setUpdatingId(null);
     }
@@ -180,17 +183,72 @@ export function TransactionsTable({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All categories</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={String(cat.id)}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: cat.color }}
-                      />
-                      {cat.name}
-                    </div>
-                  </SelectItem>
-                ))}
+                {(() => {
+                  // Group children under their parents so the dropdown reads
+                  // as a tree. Parents are bolded; children are indented.
+                  const parentIds = new Set(
+                    categories
+                      .map((c) => c.parentId)
+                      .filter((p): p is number => p != null)
+                  );
+                  const childrenByParent = new Map<number, typeof categories>();
+                  for (const c of categories) {
+                    if (c.parentId != null) {
+                      const list = childrenByParent.get(c.parentId) ?? [];
+                      list.push(c);
+                      childrenByParent.set(c.parentId, list);
+                    }
+                  }
+                  const tops = categories
+                    .filter((c) => c.parentId == null)
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                  const nodes: React.ReactNode[] = [];
+                  for (const top of tops) {
+                    const kids = childrenByParent.get(top.id) ?? [];
+                    if (parentIds.has(top.id)) {
+                      nodes.push(
+                        <SelectItem key={top.id} value={String(top.id)}>
+                          <div className="flex items-center gap-2 font-semibold">
+                            <div
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: top.color }}
+                            />
+                            {top.name}
+                          </div>
+                        </SelectItem>
+                      );
+                      for (const child of kids) {
+                        nodes.push(
+                          <SelectItem
+                            key={child.id}
+                            value={String(child.id)}
+                          >
+                            <div className="flex items-center gap-2 pl-3">
+                              <div
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: child.color }}
+                              />
+                              {child.name}
+                            </div>
+                          </SelectItem>
+                        );
+                      }
+                    } else {
+                      nodes.push(
+                        <SelectItem key={top.id} value={String(top.id)}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: top.color }}
+                            />
+                            {top.name}
+                          </div>
+                        </SelectItem>
+                      );
+                    }
+                  }
+                  return nodes;
+                })()}
               </SelectContent>
             </Select>
           </div>
@@ -259,10 +317,19 @@ export function TransactionsTable({
                                 "color-mix(in oklch, var(--status-heads-up) 18%, transparent)",
                               color: "var(--status-heads-up)",
                             }}
-                            title="AI wasn't sure — review"
+                            title={
+                              txn.aiConfidence != null
+                                ? `AI confidence: ${txn.aiConfidence}/7 — review`
+                                : "AI wasn't sure — review"
+                            }
                           >
                             <HelpCircle className="h-3 w-3" />
                             Review
+                            {txn.aiConfidence != null && (
+                              <span className="ml-0.5 tabular-nums">
+                                {txn.aiConfidence}/7
+                              </span>
+                            )}
                           </span>
                         )}
                       </div>

@@ -3,12 +3,14 @@ import {
   ensureOllamaRunning,
   listOllamaModels,
 } from "@/server/ai/ollama-manager";
-import { getAppSettings } from "@/server/db/queries/settings";
+import { getGlobalSetting } from "@/server/db/queries/settings";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const url =
-    searchParams.get("url") ?? getAppSettings().ollamaUrl;
+    searchParams.get("url") ??
+    getGlobalSetting("ai_ollama_url") ??
+    "http://localhost:11434";
 
   const status = await ensureOllamaRunning(url);
   if (!status.ok) {

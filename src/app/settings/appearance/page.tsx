@@ -1,15 +1,8 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useIsHydrated } from "@/hooks/use-is-hydrated";
-import { SectionShell, SettingCard } from "./section-shell";
+import { SectionShell, SettingCard } from "@/components/settings/section-shell";
 
 const OPTIONS = [
   {
@@ -29,13 +22,9 @@ const OPTIONS = [
   },
 ];
 
-export function AppearanceSection() {
+export default function AppearanceSettingsPage() {
   const { theme, setTheme } = useTheme();
   const hydrated = useIsHydrated();
-  // Until hydration we don't know what theme is active (might be system,
-  // might be a value persisted in localStorage). Render every card in its
-  // neutral state on both server and the matching first client render to
-  // avoid a mismatch, then flip the active one in.
   const active = hydrated ? (theme ?? "system") : null;
 
   return (
@@ -64,25 +53,6 @@ export function AppearanceSection() {
               </button>
             );
           })}
-        </div>
-      </SettingCard>
-
-      <SettingCard title="Quick switch">
-        <div className="flex items-center gap-3">
-          <span className="text-sm">Current</span>
-          <Select
-            value={hydrated ? (theme ?? "system") : "system"}
-            onValueChange={(v) => v && setTheme(v)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="light">Light</SelectItem>
-              <SelectItem value="dark">Dark</SelectItem>
-              <SelectItem value="system">Follow system</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </SettingCard>
     </SectionShell>

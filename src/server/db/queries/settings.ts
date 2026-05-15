@@ -3,14 +3,17 @@ import "server-only";
 import { getDb } from "../index";
 import type { AppSettings } from "@/lib/types";
 
-export function getSetting(key: string): string | null {
+// Global settings live in the `settings` table and apply to every workspace.
+// Currently: ai_provider, ai_ollama_url, ai_ollama_model, plus the encrypted
+// Claude API key triple (ai_api_key_encrypted/iv/auth_tag).
+export function getGlobalSetting(key: string): string | null {
   const row = getDb()
     .prepare("SELECT value FROM settings WHERE key = ?")
     .get(key) as { value: string } | undefined;
   return row?.value ?? null;
 }
 
-export function setSetting(key: string, value: string): void {
+export function setGlobalSetting(key: string, value: string): void {
   getDb()
     .prepare(
       `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
@@ -19,40 +22,86 @@ export function setSetting(key: string, value: string): void {
     .run(key, value);
 }
 
-export function getAppSettings(): AppSettings {
+export function deleteGlobalSetting(key: string): void {
+  getDb().prepare("DELETE FROM settings WHERE key = ?").run(key);
+}
+
+// Per-workspace settings live in `workspace_settings`.
+// Currently: months_to_sync, payday_day, scraper_show_browser.
+export function getWorkspaceSetting(
+  workspaceId: number,
+  key: string
+): string | null {
+  const row = getDb()
+    .prepare(
+      "SELECT value FROM workspace_settings WHERE workspace_id = ? AND key = ?"
+    )
+    .get(workspaceId, key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setWorkspaceSetting(
+  workspaceId: number,
+  key: string,
+  value: string
+): void {
+  getDb()
+    .prepare(
+      `INSERT INTO workspace_settings (workspace_id, key, value, updated_at)
+       VALUES (?, ?, ?, datetime('now'))
+       ON CONFLICT(workspace_id, key) DO UPDATE SET
+         value = excluded.value,
+         updated_at = excluded.updated_at`
+    )
+    .run(workspaceId, key, value);
+}
+
+// Back-compat aliases so existing call sites that store the Claude API key
+// (settings.ts in src/server/ai/providers/claude.ts) keep working unchanged.
+export const getSetting = getGlobalSetting;
+export const setSetting = setGlobalSetting;
+
+export function getAppSettings(workspaceId: number): AppSettings {
   return {
-    monthsToSync: Number(getSetting("months_to_sync") ?? "3"),
-    aiProvider: (getSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
-    ollamaUrl: getSetting("ai_ollama_url") ?? "http://localhost:11434",
-    ollamaModel: getSetting("ai_ollama_model") ?? "llama3.2:3b",
-    showBrowser: getSetting("scraper_show_browser") === "true",
-    paydayDay: Number(getSetting("payday_day") ?? "1"),
+    monthsToSync: Number(getWorkspaceSetting(workspaceId, "months_to_sync") ?? "3"),
+    aiProvider: (getGlobalSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
+    ollamaUrl: getGlobalSetting("ai_ollama_url") ?? "http://localhost:11434",
+    ollamaModel: getGlobalSetting("ai_ollama_model") ?? "llama3.2:3b",
+    showBrowser: getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true",
+    paydayDay: Number(getWorkspaceSetting(workspaceId, "payday_day") ?? "1"),
   };
 }
 
-export function updateAppSettings(settings: Partial<AppSettings>): AppSettings {
+export function updateAppSettings(
+  workspaceId: number,
+  settings: Partial<AppSettings>
+): AppSettings {
   const db = getDb();
   const update = db.transaction(() => {
     if (settings.monthsToSync !== undefined) {
-      setSetting("months_to_sync", String(settings.monthsToSync));
+      setWorkspaceSetting(workspaceId, "months_to_sync", String(settings.monthsToSync));
     }
     if (settings.aiProvider !== undefined) {
-      setSetting("ai_provider", settings.aiProvider);
+      setGlobalSetting("ai_provider", settings.aiProvider);
     }
     if (settings.ollamaUrl !== undefined) {
-      setSetting("ai_ollama_url", settings.ollamaUrl);
+      setGlobalSetting("ai_ollama_url", settings.ollamaUrl);
     }
     if (settings.ollamaModel !== undefined) {
-      setSetting("ai_ollama_model", settings.ollamaModel);
+      setGlobalSetting("ai_ollama_model", settings.ollamaModel);
     }
     if (settings.showBrowser !== undefined) {
-      setSetting("scraper_show_browser", settings.showBrowser ? "true" : "false");
+      setWorkspaceSetting(
+        workspaceId,
+        "scraper_show_browser",
+        settings.showBrowser ? "true" : "false"
+      );
     }
     if (settings.paydayDay !== undefined) {
       const clamped = Math.max(1, Math.min(28, Math.round(settings.paydayDay)));
-      setSetting("payday_day", String(clamped));
+      setWorkspaceSetting(workspaceId, "payday_day", String(clamped));
     }
   });
   update();
-  return getAppSettings();
+  return getAppSettings(workspaceId);
 }

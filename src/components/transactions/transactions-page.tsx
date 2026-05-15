@@ -34,6 +34,28 @@ export function TransactionsPage() {
 
   const { from, to } = getMonthRange(selectedDate);
 
+  // Resolve the user-selected category filter into either a single leaf id
+  // (passed as `category`) or, when a parent is picked, the set of its
+  // children (passed as `categoryIds`). Parents never directly carry
+  // transactions, so filtering by parent id alone would yield zero rows.
+  const allCategoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => getCategories(),
+  });
+  const expandedFilter = (() => {
+    if (categoryFilter === undefined) {
+      return { category: undefined, categoryIds: undefined };
+    }
+    const all = allCategoriesQuery.data ?? [];
+    const childIds = all
+      .filter((c) => c.parentId === categoryFilter)
+      .map((c) => c.id);
+    if (childIds.length > 0) {
+      return { category: undefined, categoryIds: childIds };
+    }
+    return { category: categoryFilter, categoryIds: undefined };
+  })();
+
   const transactionsQuery = useQuery({
     queryKey: ["transactions", from, to, search, categoryFilter, page, kind],
     queryFn: () =>
@@ -41,7 +63,8 @@ export function TransactionsPage() {
         from,
         to,
         search: search || undefined,
-        category: categoryFilter,
+        category: expandedFilter.category,
+        categoryIds: expandedFilter.categoryIds,
         limit: 50,
         offset: page * 50,
         kind,

@@ -3,13 +3,16 @@ import {
   getAppSettings,
   updateAppSettings,
 } from "@/server/db/queries/settings";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
-export async function GET() {
-  return NextResponse.json(getAppSettings());
+export async function GET(request: Request) {
+  const workspaceId = getWorkspaceIdFromRequest(request);
+  return NextResponse.json(getAppSettings(workspaceId));
 }
 
 export async function PUT(request: Request) {
+  const workspaceId = getWorkspaceIdFromRequest(request);
   const body = await request.json();
-  const updated = updateAppSettings(body);
+  const updated = updateAppSettings(workspaceId, body);
   return NextResponse.json(updated);
 }

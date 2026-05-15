@@ -4,12 +4,15 @@ import {
   setBudget,
   deleteBudget,
 } from "@/server/db/queries/budgets";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
-export async function GET() {
-  return NextResponse.json(getAllBudgets());
+export async function GET(request: Request) {
+  const workspaceId = getWorkspaceIdFromRequest(request);
+  return NextResponse.json(getAllBudgets(workspaceId));
 }
 
 export async function PUT(request: Request) {
+  const workspaceId = getWorkspaceIdFromRequest(request);
   const body = (await request.json()) as {
     categoryId: number;
     amount?: number | null;
@@ -23,7 +26,7 @@ export async function PUT(request: Request) {
   }
 
   if (body.amount == null) {
-    deleteBudget(body.categoryId);
+    deleteBudget(workspaceId, body.categoryId);
     return NextResponse.json({ success: true });
   }
 
@@ -34,6 +37,6 @@ export async function PUT(request: Request) {
     );
   }
 
-  setBudget(body.categoryId, body.amount, false);
+  setBudget(workspaceId, body.categoryId, body.amount, false);
   return NextResponse.json({ success: true });
 }

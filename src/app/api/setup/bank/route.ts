@@ -4,8 +4,10 @@ import {
   saveBankCredentials,
 } from "@/server/db/queries/bank-credentials";
 import { BANK_PROVIDERS } from "@/lib/types";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 export async function POST(request: Request) {
+  const workspaceId = getWorkspaceIdFromRequest(request);
   const body = (await request.json()) as {
     provider: string;
     credentials: Record<string, string>;
@@ -23,7 +25,7 @@ export async function POST(request: Request) {
   const info = BANK_PROVIDERS.find((b) => b.id === body.provider);
   const passwordKeys =
     info?.credentialFields.filter((f) => f.type === "password").map((f) => f.key) ?? [];
-  const existing = getBankCredentials(body.provider);
+  const existing = getBankCredentials(workspaceId, body.provider);
 
   const merged: Record<string, string> = { ...body.credentials };
   for (const key of passwordKeys) {
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
     }
   }
 
-  saveBankCredentials(body.provider, merged);
+  saveBankCredentials(workspaceId, body.provider, merged);
 
   return NextResponse.json({ success: true });
 }

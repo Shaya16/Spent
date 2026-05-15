@@ -4,6 +4,7 @@ import { getDb } from "../index";
 import { encrypt, decrypt } from "../../lib/encryption";
 
 export function saveBankCredentials(
+  workspaceId: number,
   provider: string,
   credentials: Record<string, string>
 ): void {
@@ -11,25 +12,26 @@ export function saveBankCredentials(
 
   getDb()
     .prepare(
-      `INSERT INTO bank_credentials (provider, credentials_encrypted, iv, auth_tag, updated_at)
-       VALUES (?, ?, ?, ?, datetime('now'))
-       ON CONFLICT(provider) DO UPDATE SET
+      `INSERT INTO bank_credentials (workspace_id, provider, credentials_encrypted, iv, auth_tag, updated_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(workspace_id, provider) DO UPDATE SET
          credentials_encrypted = excluded.credentials_encrypted,
          iv = excluded.iv,
          auth_tag = excluded.auth_tag,
          updated_at = excluded.updated_at`
     )
-    .run(provider, encrypted, iv, authTag);
+    .run(workspaceId, provider, encrypted, iv, authTag);
 }
 
 export function getBankCredentials(
+  workspaceId: number,
   provider: string
 ): Record<string, string> | null {
   const row = getDb()
     .prepare(
-      "SELECT credentials_encrypted, iv, auth_tag FROM bank_credentials WHERE provider = ?"
+      "SELECT credentials_encrypted, iv, auth_tag FROM bank_credentials WHERE workspace_id = ? AND provider = ?"
     )
-    .get(provider) as
+    .get(workspaceId, provider) as
     | { credentials_encrypted: Buffer; iv: Buffer; auth_tag: Buffer }
     | undefined;
 
@@ -44,17 +46,20 @@ export function getBankCredentials(
   return JSON.parse(json);
 }
 
-export function hasBankCredentials(): boolean {
+export function hasBankCredentials(workspaceId: number): boolean {
   const row = getDb()
-    .prepare("SELECT COUNT(*) as count FROM bank_credentials")
-    .get() as { count: number };
+    .prepare("SELECT COUNT(*) as count FROM bank_credentials WHERE workspace_id = ?")
+    .get(workspaceId) as { count: number };
   return row.count > 0;
 }
 
-export function deleteBankCredentials(provider: string): void {
+export function deleteBankCredentials(
+  workspaceId: number,
+  provider: string
+): void {
   getDb()
-    .prepare("DELETE FROM bank_credentials WHERE provider = ?")
-    .run(provider);
+    .prepare("DELETE FROM bank_credentials WHERE workspace_id = ? AND provider = ?")
+    .run(workspaceId, provider);
 }
 
 export interface BankCredentialMeta {
@@ -63,11 +68,11 @@ export interface BankCredentialMeta {
   updatedAt: string;
 }
 
-export function listBankCredentials(): BankCredentialMeta[] {
+export function listBankCredentials(workspaceId: number): BankCredentialMeta[] {
   return getDb()
     .prepare(
       `SELECT provider, created_at as createdAt, updated_at as updatedAt
-       FROM bank_credentials ORDER BY provider`
+       FROM bank_credentials WHERE workspace_id = ? ORDER BY provider`
     )
-    .all() as BankCredentialMeta[];
+    .all(workspaceId) as BankCredentialMeta[];
 }

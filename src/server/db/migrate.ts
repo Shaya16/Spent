@@ -41,9 +41,26 @@ export function runMigrations(db: Database.Database): void {
 
     const sql = fs.readFileSync(path.join(migrationDir, file), "utf-8");
 
-    db.transaction(() => {
-      db.exec(sql);
-      db.prepare("INSERT INTO _migrations (name) VALUES (?)").run(file);
-    })();
+    // Some migrations need to drop and recreate FK-referenced tables. SQLite
+    // can't disable foreign_keys inside a transaction, and the recreate
+    // pattern temporarily produces dangling refs, so flip the pragma off
+    // for the duration of the migration. Then verify with foreign_key_check
+    // and turn it back on once we're done.
+    db.pragma("foreign_keys = OFF");
+    try {
+      db.transaction(() => {
+        db.exec(sql);
+        db.prepare("INSERT INTO _migrations (name) VALUES (?)").run(file);
+      })();
+
+      const violations = db.pragma("foreign_key_check") as unknown[];
+      if (violations.length > 0) {
+        throw new Error(
+          `Foreign key violations after migration ${file}: ${JSON.stringify(violations)}`
+        );
+      }
+    } finally {
+      db.pragma("foreign_keys = ON");
+    }
   }
 }

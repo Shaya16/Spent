@@ -2,7 +2,7 @@ import {
   ensureOllamaRunning,
   pullOllamaModel,
 } from "@/server/ai/ollama-manager";
-import { getAppSettings } from "@/server/db/queries/settings";
+import { getGlobalSetting } from "@/server/db/queries/settings";
 
 function sseEvent(event: string, data: Record<string, unknown>): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -17,7 +17,10 @@ export async function POST(request: Request) {
     return new Response("model is required", { status: 400 });
   }
 
-  const url = body.url ?? getAppSettings().ollamaUrl;
+  const url =
+    body.url ??
+    getGlobalSetting("ai_ollama_url") ??
+    "http://localhost:11434";
   const model = body.model;
 
   const encoder = new TextEncoder();

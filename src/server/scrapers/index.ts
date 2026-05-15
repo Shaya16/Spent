@@ -3,7 +3,7 @@ import "server-only";
 import { CompanyTypes, createScraper } from "israeli-bank-scrapers";
 import type { ScrapeResult, ScrapedTransaction } from "./types";
 import type { BankProvider } from "@/lib/types";
-import { getAppSettings } from "../db/queries/settings";
+import { getWorkspaceSetting } from "../db/queries/settings";
 
 const PROVIDER_MAP: Record<string, CompanyTypes> = {
   isracard: CompanyTypes.isracard,
@@ -205,11 +205,13 @@ async function runScrape(
 }
 
 export async function scrapeBank(
+  workspaceId: number,
   provider: BankProvider,
   credentials: Record<string, string>,
   startDate: Date
 ): Promise<ScrapeResult> {
-  const { showBrowser } = getAppSettings();
+  const showBrowser =
+    getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true";
   const MAX_ATTEMPTS = 2;
   let lastError: unknown = null;
 

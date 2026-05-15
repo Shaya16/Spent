@@ -74,32 +74,38 @@ export function computeStatus(
 
 /**
  * Conversational sentence for the hero card.
+ *
+ * `displaySpent` is the amount shown to the user (total period spend).
+ * `budgetedSpent` is the amount used for pace calculation (spend in
+ * categories that have a budget). They differ when some categories are in
+ * tracking-only mode.
  */
 export function pacePhrase(
-  totalSpent: number,
+  displaySpent: number,
+  budgetedSpent: number,
   totalBudget: number,
   timeElapsedPercent: number,
   monthLabel: string
 ): string {
   if (totalBudget <= 0) {
-    return `You've spent ${formatILS(totalSpent)} this ${monthLabel} — set budgets to see how you're pacing.`;
+    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — set budgets to see how you're pacing.`;
   }
-  const pctSpent = (totalSpent / totalBudget) * 100;
+  const pctSpent = (budgetedSpent / totalBudget) * 100;
   const delta = pctSpent - timeElapsedPercent;
 
   if (pctSpent > 100) {
-    return `You've spent ${formatILS(totalSpent)} this ${monthLabel} — over your monthly target, time to slow down.`;
+    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — over your monthly target, time to slow down.`;
   }
   if (delta >= 25) {
-    return `You've spent ${formatILS(totalSpent)} this ${monthLabel} — a touch over pace, but easy to recover.`;
+    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — a touch over pace, but easy to recover.`;
   }
   if (delta <= -25) {
-    return `You've spent ${formatILS(totalSpent)} this ${monthLabel} — comfortably under pace.`;
+    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — comfortably under pace.`;
   }
   if (delta <= -10) {
-    return `You've spent ${formatILS(totalSpent)} this ${monthLabel} — well within pace for the month.`;
+    return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — well within pace for the month.`;
   }
-  return `You've spent ${formatILS(totalSpent)} this ${monthLabel} — on track for your monthly target.`;
+  return `You've spent ${formatILS(displaySpent)} this ${monthLabel} — on track for your monthly target.`;
 }
 
 function formatILS(amount: number): string {
