@@ -72,7 +72,7 @@ export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
         <BrandMark />
         <DotStepper step={step} steps={steps} />
         <a
-          href="https://github.com"
+          href="https://github.com/Shaya16/Spent"
           target="_blank"
           rel="noreferrer"
           className="hidden text-xs text-muted-foreground hover:text-foreground md:inline"

@@ -195,7 +195,7 @@ You can change providers any time from **Settings → AI provider**. Existing ca
 ## Install
 
 ```bash
-git clone https://github.com/<your-fork>/spent.git
+git clone https://github.com/Shaya16/Spent.git
 cd spent
 npm install
 npm run build
