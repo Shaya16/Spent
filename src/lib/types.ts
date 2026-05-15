@@ -404,6 +404,6 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
       { key: "username", label: "Username", type: "text" },
       { key: "password", label: "Password", type: "password" },
     ],
-    enabled: false,
+    enabled: true,
   },
 ];
