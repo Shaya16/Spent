@@ -16,10 +16,17 @@ fi
 OUT_DIR="build"
 APP_DIR="$OUT_DIR/Spent.app"
 
-echo "Building release binary..."
-swift build -c release
+if [[ "${SPENT_UNIVERSAL:-}" == "1" ]]; then
+  SWIFT_ARGS=(-c release --arch x86_64 --arch arm64)
+  echo "Building release binary (universal)..."
+else
+  SWIFT_ARGS=(-c release)
+  echo "Building release binary..."
+fi
 
-BIN_DIR=$(swift build -c release --show-bin-path)
+swift build "${SWIFT_ARGS[@]}"
+
+BIN_DIR=$(swift build "${SWIFT_ARGS[@]}" --show-bin-path)
 BIN_PATH="$BIN_DIR/Spent"
 
 if [[ ! -f "$BIN_PATH" ]]; then

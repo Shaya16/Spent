@@ -7,14 +7,24 @@ $ErrorActionPreference = "Stop"
 
 Set-Location -Path $PSScriptRoot
 
-if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+function Fail-MissingSdk {
     Write-Error @"
-dotnet not found. Install .NET 8 SDK from:
+.NET 8 SDK not found. (The dotnet launcher can be installed without an SDK.)
+Install .NET 8 SDK from:
   https://dotnet.microsoft.com/download/dotnet/8.0
 Or via winget:
   winget install Microsoft.DotNet.SDK.8
 "@
     exit 1
+}
+
+if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+    Fail-MissingSdk
+}
+
+$sdks = & dotnet --list-sdks 2>$null
+if (-not ($sdks | Where-Object { $_ -match '^(8|9|1\d)\.' })) {
+    Fail-MissingSdk
 }
 
 $outDir = "build"
@@ -23,11 +33,16 @@ if (Test-Path $outDir) {
 }
 
 Write-Host "Building release binary..."
-dotnet publish -c Release -r win-x64 --self-contained true `
+& dotnet publish -c Release -r win-x64 --self-contained true `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=true `
     -o $outDir
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "dotnet publish failed with exit code $LASTEXITCODE."
+    exit 1
+}
 
 $exe = Join-Path $outDir "Spent.exe"
 if (-not (Test-Path $exe)) {

@@ -206,30 +206,34 @@ npm run service:install
 
 Open **`http://spent.local:41234`** and bookmark it.
 
-**Menu bar / tray app (optional)** — native status icon with one-click open, sync, and start/stop:
+**Menu bar / tray app (optional)** — native status icon with one-click open, sync, and start/stop. Pre-built binaries are attached to every [release](https://github.com/Shaya16/Spent/releases/latest), so no toolchain needed.
 
-macOS:
+**macOS** (`Spent.app.zip`):
 ```bash
-npm run menubar:install
-open ~/Applications/Spent.app   # right-click → Open first time for Gatekeeper
+unzip Spent.app.zip -d ~/Applications/
+xattr -dr com.apple.quarantine ~/Applications/Spent.app   # if Gatekeeper complains
+open ~/Applications/Spent.app
 ```
 
-Windows (requires .NET 8 SDK — `winget install Microsoft.DotNet.SDK.8`):
+**Windows** (`Spent.exe`):
 ```powershell
-npm run menubar:build:windows
 mkdir $env:LOCALAPPDATA\Programs\Spent
-Copy-Item menubar\windows\build\Spent.exe $env:LOCALAPPDATA\Programs\Spent\
-# Drop a shortcut into shell:startup for auto-launch on login
+Move-Item .\Spent.exe $env:LOCALAPPDATA\Programs\Spent\
+# SmartScreen on first launch: "More info" → "Run anyway"
+# For auto-start: drop a shortcut to Spent.exe into shell:startup
 ```
+
+First launch on either platform shows an unsigned-binary warning. That's expected for an open-source project without paid code-signing certificates.
 
 ## First-time setup
 
 In the browser:
 
 1. **Connect your bank** — credentials are AES-256-GCM encrypted before they touch disk.
-2. **Choose an AI provider** — Claude, Ollama, or none.
-3. **Set your monthly target and category budgets** — or let Spent auto-fill from your history.
-4. **Click "Sync Now"** — first sync pulls 3 months of transactions and runs categorization.
+2. **Choose an AI provider** — Claude (default), Ollama, or none.
+3. **Set your monthly ceiling** — total spend you want to stay under each month.
+4. **Set per-category budgets** — type an amount on any category to budget it; leave blank to track without a limit.
+5. **Done.** Sync starts automatically: 3 months of transactions, then AI categorization.
 
 ## How you'll use it
 
@@ -241,7 +245,7 @@ In the browser:
 
 Rare cases:
 
-- Changed the menu bar app → macOS: `npm run menubar:install` and relaunch `Spent.app`. Windows: `npm run menubar:build:windows`, replace `Spent.exe` in `%LOCALAPPDATA%\Programs\Spent\`.
+- Hacking on the menu bar app itself → see [Building the menubar from source](#building-the-menubar-from-source) under Contributing.
 - Changed install scripts or hostname → `npm run service:uninstall && npm run service:install`.
 
 ## Service commands
@@ -335,6 +339,21 @@ Conventions:
 - TypeScript strict mode. No `any` without a comment.
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`.
 - Comments only where the "why" isn't obvious. No em dashes in code, commits, or docs.
+
+### Building the menubar from source
+
+End users should grab the prebuilt binaries from [Releases](https://github.com/Shaya16/Spent/releases/latest). Local builds are only needed when you're changing the menubar app itself:
+
+```bash
+# macOS: needs Xcode Command Line Tools (xcode-select --install)
+npm run menubar:install                  # builds + copies to ~/Applications/
+
+# Windows: needs .NET 8 SDK (winget install Microsoft.DotNet.SDK.8)
+npm run menubar:build:windows
+Copy-Item menubar\windows\build\Spent.exe $env:LOCALAPPDATA\Programs\Spent\
+```
+
+Release artifacts are built by [.github/workflows/release.yml](.github/workflows/release.yml) on every `v*` tag push. Trigger a smoke-test build without tagging via the Actions tab → release → Run workflow.
 
 ## License
 

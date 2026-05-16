@@ -1,0 +1,75 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build Spent.exe
+        shell: pwsh
+        run: ./menubar/windows/build.ps1
+
+      - name: Stage artifact
+        shell: pwsh
+        run: |
+          $name = "${env:GITHUB_REF_NAME}".Replace('/', '_')
+          Copy-Item menubar/windows/build/Spent.exe "Spent-$name.exe"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: Spent-*.exe
+          if-no-files-found: error
+
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Spent.app (universal)
+        env:
+          SPENT_UNIVERSAL: '1'
+        run: bash menubar/mac/build.sh
+
+      - name: Stage artifact
+        run: |
+          name="${GITHUB_REF_NAME//\//_}"
+          cd menubar/mac/build
+          zip -ry "$GITHUB_WORKSPACE/Spent-${name}.app.zip" Spent.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-app
+          path: Spent-*.app.zip
+          if-no-files-found: error
+
+  release:
+    needs: [build-windows, build-mac]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/Spent-*.exe
+            artifacts/Spent-*.app.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
