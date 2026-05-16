@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, InputGroup } from "@/components/ui/input";
 import { updateSettings } from "@/lib/api";
@@ -28,25 +29,33 @@ export function MonthlyTargetStep({ onComplete, onBack }: MonthlyTargetStepProps
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[520px] space-y-6">
       <header className="space-y-2">
-        <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
           Step 3 of 5
         </div>
-        <h1 className="font-serif text-4xl leading-tight">
-          What's a fair monthly spending target?
+        <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
+          Set your monthly ceiling
         </h1>
-        <p className="max-w-xl text-sm text-muted-foreground">
-          This single number drives the pace verdict on your dashboard. It's
-          your overall ceiling for the month — per-category budgets come in the
-          next step.
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          A single number for how much you want to spend each month.
         </p>
       </header>
 
-      <div className="max-w-sm space-y-2">
+      <div className="flex items-start gap-3 rounded-xl border border-border bg-card/60 p-3">
+        <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground">
+          <Info className="h-3 w-3" />
+        </div>
+        <p className="text-[12px] leading-relaxed text-muted-foreground">
+          Your dashboard will show a <strong className="text-foreground">pace meter</strong>:
+          green when you&apos;re tracking under, amber as you near the limit, red if you go over.
+        </p>
+      </div>
+
+      <div className="space-y-2">
         <label
           htmlFor="monthly-target"
-          className="text-xs font-medium text-foreground/80"
+          className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground"
         >
           Monthly target
         </label>
@@ -65,7 +74,7 @@ export function MonthlyTargetStep({ onComplete, onBack }: MonthlyTargetStepProps
           />
         </InputGroup>
         <p className="text-[11px] text-muted-foreground">
-          Not sure yet? You can skip this and set it later in settings.
+          You can change this any time in settings.
         </p>
       </div>
 
@@ -73,22 +82,24 @@ export function MonthlyTargetStep({ onComplete, onBack }: MonthlyTargetStepProps
         <Button variant="outline" onClick={onBack} disabled={saving}>
           ← Back
         </Button>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            onClick={() => save(null)}
-            disabled={saving}
-          >
-            Skip
-          </Button>
-          <Button
-            onClick={() => save(valid ? parsed : null)}
-            disabled={saving || !valid}
-          >
-            {saving ? "Saving..." : "Continue →"}
-          </Button>
-        </div>
+        <Button
+          onClick={() => save(valid ? parsed : null)}
+          disabled={saving || !valid}
+        >
+          {saving ? "Saving..." : "Continue →"}
+        </Button>
       </footer>
+
+      <div className="flex justify-center pt-1">
+        <button
+          type="button"
+          onClick={() => save(null)}
+          disabled={saving}
+          className="text-[11px] text-muted-foreground underline decoration-muted-foreground/30 underline-offset-4 transition-colors hover:text-foreground"
+        >
+          Skip for now
+        </button>
+      </div>
     </div>
   );
 }

@@ -61,9 +61,12 @@ export function setWorkspaceSetting(
 export const getSetting = getGlobalSetting;
 export const setSetting = setGlobalSetting;
 
+const AUTO_SYNC_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 export function getAppSettings(workspaceId: number): AppSettings {
   const targetRaw = getWorkspaceSetting(workspaceId, "monthly_target");
   const target = targetRaw != null ? Number(targetRaw) : NaN;
+  const storedTime = getGlobalSetting("auto_sync_time");
   return {
     monthsToSync: Number(getWorkspaceSetting(workspaceId, "months_to_sync") ?? "3"),
     aiProvider: (getGlobalSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
@@ -72,6 +75,9 @@ export function getAppSettings(workspaceId: number): AppSettings {
     showBrowser: getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true",
     paydayDay: Number(getWorkspaceSetting(workspaceId, "payday_day") ?? "1"),
     monthlyTarget: Number.isFinite(target) && target > 0 ? target : null,
+    autoSyncEnabled: getGlobalSetting("auto_sync_enabled") === "true",
+    autoSyncTime:
+      storedTime && AUTO_SYNC_TIME_RE.test(storedTime) ? storedTime : "06:00",
   };
 }
 
@@ -115,6 +121,18 @@ export function updateAppSettings(
       } else {
         setWorkspaceSetting(workspaceId, "monthly_target", String(Math.round(t)));
       }
+    }
+    if (settings.autoSyncEnabled !== undefined) {
+      setGlobalSetting(
+        "auto_sync_enabled",
+        settings.autoSyncEnabled ? "true" : "false"
+      );
+    }
+    if (settings.autoSyncTime !== undefined) {
+      if (!AUTO_SYNC_TIME_RE.test(settings.autoSyncTime)) {
+        throw new Error("autoSyncTime must be HH:MM 24-hour");
+      }
+      setGlobalSetting("auto_sync_time", settings.autoSyncTime);
     }
   });
   update();

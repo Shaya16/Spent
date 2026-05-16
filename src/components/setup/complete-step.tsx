@@ -38,7 +38,7 @@ export function CompleteStep({ onFinish }: CompleteStepProps) {
         : "Manual categorization";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-7 text-center">
+    <div className="mx-auto w-full max-w-[520px] space-y-7 text-center">
       <motion.div
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}

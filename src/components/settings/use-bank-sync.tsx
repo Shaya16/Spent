@@ -20,11 +20,32 @@ export function useBankSync() {
         ...prev,
         [provider]: { syncing: true, stage: "Connecting…" },
       }));
-      startSync(provider, (event: SyncProgressEvent) => {
+      const { cancel } = startSync(provider, (event: SyncProgressEvent) => {
         if (event.type === "provider-start") {
           setState((prev) => ({
             ...prev,
             [provider]: { syncing: true, stage: "Pulling transactions…" },
+          }));
+        } else if (event.type === "provider-2fa-needed") {
+          // The settings page doesn't mount the SyncProgressDialog with an OTP
+          // input. Cancel this sync and direct the user to the dashboard sync
+          // where the OTP input is wired up. Once the long-term token is
+          // saved, future syncs from this page will work without 2FA.
+          cancel();
+          setState((prev) => ({
+            ...prev,
+            [provider]: { syncing: false, stage: "" },
+          }));
+          toast.warning(`${provider} needs a 2FA code`, {
+            description:
+              "Use the global Sync button on the dashboard to enter the one-time code. Spent will remember the token for future syncs.",
+            duration: 12000,
+            closeButton: true,
+          });
+        } else if (event.type === "provider-2fa-manual") {
+          setState((prev) => ({
+            ...prev,
+            [provider]: { syncing: true, stage: "Solve 2FA in popup…" },
           }));
         } else if (event.type === "stage") {
           const s = event.data.stage as string;

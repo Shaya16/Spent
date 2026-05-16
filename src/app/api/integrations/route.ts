@@ -14,6 +14,8 @@ export async function GET(request: Request) {
       updatedAt: c.updatedAt,
       lastSyncAt: stats.lastSyncAt,
       transactionCount: stats.transactionCount,
+      requiresManualTwoFactor: c.requiresManualTwoFactor,
+      hasTwoFactorToken: c.hasTwoFactorToken,
     };
   });
   return NextResponse.json(items);

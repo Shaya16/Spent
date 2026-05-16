@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/app-shell";
 import { TransactionsTable } from "@/components/dashboard/transactions-table";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { AINotConnectedBanner } from "@/components/ai-not-connected-banner";
 import { KpiCards } from "./kpi-cards";
 import { WidgetsRow } from "./widgets-row";
 import {
@@ -97,6 +98,7 @@ export function TransactionsPage() {
       />
 
       <div className="space-y-6 p-4 md:p-6 lg:p-8">
+        <AINotConnectedBanner />
         <KpiCards summary={summaryQuery.data} loading={summaryQuery.isLoading} />
 
         <WidgetsRow

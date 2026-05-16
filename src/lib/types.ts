@@ -232,6 +232,7 @@ export interface HomePayload {
   topMerchants: HomeTopMerchant[] | null;
   needsAttention: HomeNeedsAttention | null;
   bankHealth: HomeBankHealthItem[] | null;
+  nextScheduledSync: string | null;
   errors: HomeSectionError[];
 }
 
@@ -241,6 +242,10 @@ export interface Integration {
   updatedAt: string;
   lastSyncAt: string | null;
   transactionCount: number;
+  /** True when the user has flagged this bank as needing manual 2FA (showBrowser fallback). */
+  requiresManualTwoFactor: boolean;
+  /** True when a long-term OTP token is already stored (programmatic 2FA banks only). */
+  hasTwoFactorToken: boolean;
 }
 
 export interface SetupStatus {
@@ -257,9 +262,29 @@ export interface AppSettings {
   showBrowser: boolean;
   paydayDay: number;
   monthlyTarget: number | null;
+  autoSyncEnabled: boolean;
+  autoSyncTime: string;
 }
 
-export type BankProvider = "isracard" | "cal" | "max" | "hapoalim" | "leumi";
+export type BankProvider =
+  | "isracard"
+  | "cal"
+  | "max"
+  | "amex"
+  | "hapoalim"
+  | "leumi"
+  | "mizrahi"
+  | "discount"
+  | "mercantile"
+  | "beinleumi"
+  | "otsarHahayal"
+  | "union"
+  | "pagi"
+  | "yahav"
+  | "massad"
+  | "beyahadBishvilha"
+  | "behatsdaa"
+  | "oneZero";
 
 export interface CredentialField {
   key: string;
@@ -284,6 +309,13 @@ export interface BankProviderInfo {
   domain: string;
   credentialFields: CredentialField[];
   enabled: boolean;
+  /**
+   * True when the underlying scraper supports OTP-driven login flows that we
+   * can drive in-process. Currently only OneZero — Hapoalim/Leumi/etc. expose
+   * the methods on the base interface but no concrete implementation, so 2FA
+   * on those banks falls back to the manual (showBrowser) path.
+   */
+  supportsProgrammaticTwoFactor?: boolean;
 }
 
 export interface OllamaModelInfo {
@@ -365,7 +397,7 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
       { key: "username", label: "Username", type: "text" },
       { key: "password", label: "Password", type: "password" },
     ],
-    enabled: false,
+    enabled: true,
   },
   {
     id: "max",
@@ -405,5 +437,258 @@ export const BANK_PROVIDERS: BankProviderInfo[] = [
       { key: "password", label: "Password", type: "password" },
     ],
     enabled: true,
+  },
+  {
+    id: "mizrahi",
+    name: "Mizrahi Tefahot",
+    kind: "bank",
+    color: "#0066B3",
+    blurb: "Personal & mortgage banking",
+    domain: "mizrahi-tefahot.co.il",
+    credentialFields: [
+      { key: "username", label: "Username", type: "text" },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "discount",
+    name: "Bank Discount",
+    kind: "bank",
+    color: "#2E9C5C",
+    blurb: "Personal & business accounts",
+    domain: "discountbank.co.il",
+    credentialFields: [
+      {
+        key: "id",
+        label: "ID Number",
+        type: "text",
+        placeholder: "9-digit Israeli ID",
+        maxLength: 9,
+        numeric: true,
+      },
+      { key: "password", label: "Password", type: "password" },
+      {
+        key: "num",
+        label: "Account Number",
+        type: "text",
+        placeholder: "Your Discount account number",
+        numeric: true,
+      },
+    ],
+    enabled: true,
+  },
+  {
+    id: "mercantile",
+    name: "Mercantile Discount",
+    kind: "bank",
+    color: "#1B6A3C",
+    blurb: "Discount-owned subsidiary",
+    domain: "mercantile.co.il",
+    credentialFields: [
+      {
+        key: "id",
+        label: "ID Number",
+        type: "text",
+        placeholder: "9-digit Israeli ID",
+        maxLength: 9,
+        numeric: true,
+      },
+      { key: "password", label: "Password", type: "password" },
+      {
+        key: "num",
+        label: "Account Number",
+        type: "text",
+        placeholder: "Your Mercantile account number",
+        numeric: true,
+      },
+    ],
+    enabled: true,
+  },
+  {
+    id: "beinleumi",
+    name: "First International (FIBI)",
+    kind: "bank",
+    color: "#C8102E",
+    blurb: "Beinleumi / FIBI",
+    domain: "fibi.co.il",
+    credentialFields: [
+      { key: "username", label: "Username", type: "text" },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "otsarHahayal",
+    name: "Otsar Hahayal",
+    kind: "bank",
+    color: "#7A1F2B",
+    blurb: "FIBI subsidiary (merged 2020)",
+    domain: "fibi.co.il",
+    credentialFields: [
+      { key: "username", label: "Username", type: "text" },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "pagi",
+    name: "Bank Pagi",
+    kind: "bank",
+    color: "#9F2241",
+    blurb: "Hapoalim's religious-community branch",
+    domain: "bankpagi.co.il",
+    credentialFields: [
+      { key: "username", label: "Username", type: "text" },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "yahav",
+    name: "Bank Yahav",
+    kind: "bank",
+    color: "#0F4D8C",
+    blurb: "Public-sector employees · 6 months history",
+    domain: "bank-yahav.co.il",
+    credentialFields: [
+      { key: "username", label: "Username", type: "text" },
+      {
+        key: "nationalID",
+        label: "ID Number",
+        type: "text",
+        placeholder: "9-digit Israeli ID",
+        maxLength: 9,
+        numeric: true,
+      },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "massad",
+    name: "Bank Massad",
+    kind: "bank",
+    color: "#2B5F2B",
+    blurb: "Teachers' bank",
+    domain: "bankmassad.co.il",
+    credentialFields: [
+      { key: "username", label: "Username", type: "text" },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "union",
+    name: "Union Bank",
+    kind: "bank",
+    color: "#003F87",
+    blurb: "Merged into Mizrahi-Tefahot (2019)",
+    domain: "unionbank.co.il",
+    credentialFields: [
+      { key: "username", label: "Username", type: "text" },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "amex",
+    name: "American Express IL",
+    kind: "card",
+    color: "#006FCF",
+    blurb: "Isracard-issued Amex cards",
+    domain: "americanexpress.co.il",
+    credentialFields: [
+      {
+        key: "id",
+        label: "ID Number",
+        type: "text",
+        placeholder: "9-digit Israeli ID",
+        maxLength: 9,
+        numeric: true,
+      },
+      {
+        key: "card6Digits",
+        label: "Last 6 Digits of Your Card",
+        type: "text",
+        placeholder: "e.g. 123456",
+        exactLength: 6,
+        numeric: true,
+      },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "beyahadBishvilha",
+    name: "Beyahad Bishvilha",
+    kind: "card",
+    color: "#7E3F8F",
+    blurb: "Histadrut benefits / credit",
+    domain: "beyahad-bishvilha.co.il",
+    credentialFields: [
+      {
+        key: "id",
+        label: "ID Number",
+        type: "text",
+        placeholder: "9-digit Israeli ID",
+        maxLength: 9,
+        numeric: true,
+      },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "behatsdaa",
+    name: "Behatsdaa",
+    kind: "card",
+    color: "#6E3A7A",
+    blurb: "Histadrut subsidies / credit",
+    domain: "behatsdaa.org.il",
+    credentialFields: [
+      {
+        key: "id",
+        label: "ID Number",
+        type: "text",
+        placeholder: "9-digit Israeli ID",
+        maxLength: 9,
+        numeric: true,
+      },
+      { key: "password", label: "Password", type: "password" },
+    ],
+    enabled: true,
+  },
+  {
+    id: "oneZero",
+    name: "One Zero",
+    kind: "bank",
+    color: "#000000",
+    blurb: "Programmatic 2FA via SMS code",
+    domain: "onezerobank.com",
+    credentialFields: [
+      {
+        key: "email",
+        label: "Email",
+        type: "email",
+        placeholder: "you@example.com",
+        hint: "The email you use to sign in to One Zero.",
+      },
+      {
+        key: "password",
+        label: "Password",
+        type: "password",
+        placeholder: "Your One Zero password",
+      },
+      {
+        key: "phoneNumber",
+        label: "Phone number",
+        type: "tel",
+        placeholder: "+972501234567",
+        hint: "Where the SMS one-time code will be sent. International format including the country code.",
+      },
+    ],
+    enabled: true,
+    supportsProgrammaticTwoFactor: true,
   },
 ];

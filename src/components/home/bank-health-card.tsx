@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CardShell, CardAction } from "./card-shell";
+import { formatLastSync } from "@/lib/formatters";
 import type { HomeBankHealthItem } from "@/lib/types";
 
 interface Props {
@@ -11,30 +12,34 @@ interface Props {
 export function BankHealthCard({ items }: Props) {
   if (items.length === 0) {
     return (
-      <CardShell
-        label="Bank connections"
-        action={<CardAction href="/settings/bank">Manage →</CardAction>}
-      >
-        <div className="flex flex-1 items-center justify-center py-6 text-sm text-muted-foreground">
-          No banks connected yet.
-        </div>
-      </CardShell>
+      <div id="bank-health" className="contents">
+        <CardShell
+          label="Bank connections"
+          action={<CardAction href="/settings/bank">Manage →</CardAction>}
+        >
+          <div className="flex flex-1 items-center justify-center py-6 text-sm text-muted-foreground">
+            No banks connected yet.
+          </div>
+        </CardShell>
+      </div>
     );
   }
 
   return (
-    <CardShell
-      label="Bank connections"
-      action={<CardAction href="/settings/bank">Manage →</CardAction>}
-    >
-      <ul className="flex flex-1 flex-col gap-3">
-        {items.map((item) => (
-          <li key={item.provider}>
-            <Row item={item} />
-          </li>
-        ))}
-      </ul>
-    </CardShell>
+    <div id="bank-health" className="contents">
+      <CardShell
+        label="Bank connections"
+        action={<CardAction href="/settings/bank">Manage →</CardAction>}
+      >
+        <ul className="flex flex-1 flex-col gap-3">
+          {items.map((item) => (
+            <li key={item.provider}>
+              <Row item={item} />
+            </li>
+          ))}
+        </ul>
+      </CardShell>
+    </div>
   );
 }
 
@@ -52,7 +57,7 @@ function Row({ item }: { item: HomeBankHealthItem }) {
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{providerName}</div>
           <div className="text-xs text-muted-foreground">
-            {formatLastSync(lastSyncAt, status)}
+            {describeLastSync(lastSyncAt, status)}
           </div>
         </div>
       </div>
@@ -93,26 +98,10 @@ function StatusLabel({ status }: { status: HomeBankHealthItem["status"] }) {
   return <span className={`text-xs font-medium ${cls}`}>{text}</span>;
 }
 
-function formatLastSync(
+function describeLastSync(
   iso: string | null,
   status: HomeBankHealthItem["status"]
 ): string {
   if (!iso) return status === "error" ? "Last attempt failed" : "Never synced";
-  // The DB returns datetime('now') in UTC without a Z suffix.
-  const synced = new Date(iso + "Z").getTime();
-  const ageMs = Date.now() - synced;
-  if (!Number.isFinite(ageMs) || ageMs < 0) return "just now";
-
-  const sec = Math.floor(ageMs / 1000);
-  if (sec < 60) return "just now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 7) return `${day}d ago`;
-  const wk = Math.floor(day / 7);
-  if (wk < 5) return `${wk}w ago`;
-  const mo = Math.floor(day / 30);
-  return `${mo}mo ago`;
+  return formatLastSync(iso);
 }

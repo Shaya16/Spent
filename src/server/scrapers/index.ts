@@ -5,12 +5,25 @@ import type { ScrapeResult, ScrapedTransaction } from "./types";
 import type { BankProvider } from "@/lib/types";
 import { getWorkspaceSetting } from "../db/queries/settings";
 
-const PROVIDER_MAP: Record<string, CompanyTypes> = {
+export const PROVIDER_MAP: Record<string, CompanyTypes> = {
   isracard: CompanyTypes.isracard,
   cal: CompanyTypes.visaCal,
   max: CompanyTypes.max,
+  amex: CompanyTypes.amex,
   hapoalim: CompanyTypes.hapoalim,
   leumi: CompanyTypes.leumi,
+  mizrahi: CompanyTypes.mizrahi,
+  discount: CompanyTypes.discount,
+  mercantile: CompanyTypes.mercantile,
+  beinleumi: CompanyTypes.beinleumi,
+  otsarHahayal: CompanyTypes.otsarHahayal,
+  union: CompanyTypes.union,
+  pagi: CompanyTypes.pagi,
+  yahav: CompanyTypes.yahav,
+  massad: CompanyTypes.massad,
+  beyahadBishvilha: CompanyTypes.beyahadBishvilha,
+  behatsdaa: CompanyTypes.behatsdaa,
+  oneZero: CompanyTypes.oneZero,
 };
 
 function sanitizeError(error: unknown): string {
@@ -105,7 +118,7 @@ const FRIENDLY_ERRORS: Record<string, string> = {
   TIMEOUT:
     "The scrape timed out. The bank's site may be slow or down. Try again.",
   TWO_FACTOR_RETRIEVER_MISSING:
-    "This account has 2FA enabled. Disable 2FA on the bank's site (most scrapers don't support it).",
+    "This account is asking for 2FA. For most banks, turn on 'This account requires 2FA' in the bank's settings so Spent shows the browser and you can solve it manually. For One Zero, make sure the phone number is set on the account.",
   GENERIC:
     "The scraper failed unexpectedly. Run with 'Show browser during sync' enabled to see what's happening.",
   GENERAL_ERROR:
@@ -204,21 +217,32 @@ async function runScrape(
   return { success: true, accounts };
 }
 
+interface ScrapeBankOptions {
+  /**
+   * When true, force showBrowser regardless of the workspace setting. Used for
+   * the per-bank manual-2FA flag so the user can solve a 2FA challenge in the
+   * popup for just that one provider.
+   */
+  manualTwoFactor?: boolean;
+}
+
 export async function scrapeBank(
   workspaceId: number,
   provider: BankProvider,
   credentials: Record<string, string>,
-  startDate: Date
+  startDate: Date,
+  options: ScrapeBankOptions = {}
 ): Promise<ScrapeResult> {
-  const showBrowser =
+  const workspaceShowBrowser =
     getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true";
+  const showBrowser = options.manualTwoFactor === true || workspaceShowBrowser;
   const MAX_ATTEMPTS = 2;
   let lastError: unknown = null;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       console.log(
-        `[scraper] starting scrape for ${provider} from ${startDate.toISOString()} (attempt ${attempt}/${MAX_ATTEMPTS})`
+        `[scraper] starting scrape for ${provider} from ${startDate.toISOString()} (attempt ${attempt}/${MAX_ATTEMPTS}, showBrowser=${showBrowser})`
       );
       return await runScrape(provider, credentials, startDate, showBrowser);
     } catch (error) {

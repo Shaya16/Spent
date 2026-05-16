@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ShoppingBasket,
@@ -25,7 +24,6 @@ import {
   Gift,
   Baby,
   Briefcase,
-  Check,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,47 +65,41 @@ export function BudgetsStep({ onComplete, onBack }: BudgetsStepProps) {
     queryFn: () => getCategories("expense"),
   });
 
-  const [selected, setSelected] = useState<Map<number, string>>(new Map());
+  const [amounts, setAmounts] = useState<Map<number, string>>(new Map());
   const [saving, setSaving] = useState(false);
 
-  const toggle = (id: number) => {
-    setSelected((prev) => {
+  const setAmount = (id: number, value: string) => {
+    setAmounts((prev) => {
       const next = new Map(prev);
-      if (next.has(id)) {
+      if (value.trim() === "") {
         next.delete(id);
       } else {
-        next.set(id, "");
+        next.set(id, value);
       }
       return next;
     });
   };
 
-  const setAmount = (id: number, value: string) => {
-    setSelected((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Map(prev);
-      next.set(id, value);
-      return next;
-    });
-  };
+  const budgeted = useMemo(() => {
+    const out: Array<{ id: number; amount: number }> = [];
+    for (const [id, raw] of amounts.entries()) {
+      const parsed = Number(raw.trim());
+      if (Number.isFinite(parsed) && parsed > 0) {
+        out.push({ id, amount: parsed });
+      }
+    }
+    return out;
+  }, [amounts]);
 
-  const handleContinue = async () => {
+  const total = budgeted.reduce((sum, b) => sum + b.amount, 0);
+
+  const finish = async (commit: boolean) => {
     setSaving(true);
     try {
-      const ids = Array.from(selected.keys());
-      await setBudgetModesBulk(ids);
-      const withAmounts: Array<{ id: number; amount: number }> = [];
-      for (const [id, raw] of selected.entries()) {
-        const trimmed = raw.trim();
-        if (!trimmed) continue;
-        const parsed = Number(trimmed);
-        if (Number.isFinite(parsed) && parsed > 0) {
-          withAmounts.push({ id, amount: parsed });
-        }
-      }
-      if (withAmounts.length > 0) {
+      if (commit && budgeted.length > 0) {
+        await setBudgetModesBulk(budgeted.map((b) => b.id));
         await Promise.all(
-          withAmounts.map((b) => updateBudget(b.id, b.amount))
+          budgeted.map((b) => updateBudget(b.id, b.amount))
         );
       }
       onComplete();
@@ -117,49 +109,49 @@ export function BudgetsStep({ onComplete, onBack }: BudgetsStepProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[520px] space-y-6">
       <header className="space-y-2">
-        <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
           Step 4 of 5
         </div>
-        <h1 className="font-serif text-4xl leading-tight">
-          Want to set per-category budgets too? (optional)
+        <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
+          Set a budget for each category
         </h1>
-        <p className="max-w-xl text-sm text-muted-foreground">
-          On top of your monthly target, pick categories you want to manage
-          individually — like groceries or restaurants. The rest will just show
-          their spending each month. You can change this anytime.
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Type an amount for the ones you want to cap. Leave blank to just track.
         </p>
       </header>
 
       {isLoading ? (
-        <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 12 }).map((_, i) => (
+        <div className="grid grid-cols-3 gap-1.5">
+          {Array.from({ length: 18 }).map((_, i) => (
             <div
               key={i}
-              className="h-[88px] animate-pulse rounded-2xl bg-card/60"
+              className="h-9 animate-pulse rounded-lg bg-card/60"
             />
           ))}
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-3 gap-1.5">
           {categories.map((cat) => (
-            <CategoryPickerCard
+            <CategoryCell
               key={cat.id}
               category={cat}
-              selected={selected.has(cat.id)}
-              amount={selected.get(cat.id) ?? ""}
-              onToggle={() => toggle(cat.id)}
-              onAmountChange={(value) => setAmount(cat.id, value)}
+              value={amounts.get(cat.id) ?? ""}
+              onChange={(v) => setAmount(cat.id, v)}
             />
           ))}
         </div>
       )}
 
-      <div className="text-xs text-muted-foreground">
-        {selected.size} of {categories.length} selected to budget
-        {selected.size === 0 && categories.length > 0 && (
-          <> · everything will just be tracked</>
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>
+          {budgeted.length} of {categories.length} budgeted
+        </span>
+        {total > 0 && (
+          <span className="font-bold tabular-nums text-foreground">
+            ₪ {total.toLocaleString()} / month
+          </span>
         )}
       </div>
 
@@ -167,108 +159,75 @@ export function BudgetsStep({ onComplete, onBack }: BudgetsStepProps) {
         <Button variant="outline" onClick={onBack} disabled={saving}>
           ← Back
         </Button>
-        <Button onClick={handleContinue} disabled={saving || isLoading}>
+        <Button onClick={() => finish(true)} disabled={saving || isLoading}>
           {saving ? "Saving..." : "Continue →"}
         </Button>
       </footer>
+
+      <div className="flex justify-center pt-1">
+        <button
+          type="button"
+          onClick={() => finish(false)}
+          disabled={saving}
+          className="text-[11px] text-muted-foreground underline decoration-muted-foreground/30 underline-offset-4 transition-colors hover:text-foreground"
+        >
+          Skip, auto-set from spending after first sync
+        </button>
+      </div>
     </div>
   );
 }
 
-function CategoryPickerCard({
+function CategoryCell({
   category,
-  selected,
-  amount,
-  onToggle,
-  onAmountChange,
+  value,
+  onChange,
 }: {
   category: Category;
-  selected: boolean;
-  amount: string;
-  onToggle: () => void;
-  onAmountChange: (value: string) => void;
+  value: string;
+  onChange: (v: string) => void;
 }) {
   const Icon = ICON_MAP[category.icon ?? "circle-dot"] ?? CircleDot;
   const accent = shade(category.color);
+  const filled = value.trim() !== "" && Number(value.trim()) > 0;
+
   return (
-    <motion.div
-      layout
-      className="group relative flex flex-col rounded-2xl border-2 bg-card text-left transition-colors duration-150"
+    <label
+      title={category.name}
+      className="group flex min-w-0 items-center gap-1.5 rounded-lg border bg-card px-1.5 py-1.5 transition-colors"
       style={{
-        borderColor: selected ? accent : "var(--border)",
-        background: selected
-          ? `color-mix(in oklch, ${category.color} 8%, var(--card))`
+        borderColor: filled ? accent : "var(--border)",
+        background: filled
+          ? `color-mix(in oklch, ${category.color} 10%, var(--card))`
           : undefined,
       }}
     >
-      <motion.button
-        type="button"
-        onClick={onToggle}
-        whileTap={{ scale: 0.97 }}
-        className="flex items-center gap-3 rounded-2xl p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      <div
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+        style={{ background: tint(category.color, 0.18) }}
       >
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: tint(category.color, 0.18) }}
-        >
-          <Icon className="h-5 w-5" style={{ color: accent }} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">{category.name}</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            {selected ? "Budgeted" : "Just tracking"}
-          </div>
-        </div>
-        <div
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors"
+        <Icon className="h-3.5 w-3.5" style={{ color: accent }} />
+      </div>
+      <span className="min-w-0 flex-1 truncate text-[11px] font-medium">
+        {category.name}
+      </span>
+      <div className="flex items-baseline gap-0.5">
+        <span className="text-[10px] text-muted-foreground">₪</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="—"
+          className="w-12 border-0 bg-transparent p-0 text-right text-[11px] tabular-nums outline-none placeholder:text-muted-foreground/40 focus:underline focus:decoration-foreground/30 focus:underline-offset-4"
           style={{
-            borderColor: selected ? accent : "var(--border)",
-            background: selected ? accent : "transparent",
+            fontWeight: filled ? 600 : 400,
           }}
-        >
-          {selected && (
-            <Check className="h-3 w-3 text-background" strokeWidth={3} />
-          )}
-        </div>
-      </motion.button>
-      <AnimatePresence initial={false}>
-        {selected && (
-          <motion.div
-            key="amount"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.2, 0.7, 0.3, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-border/60 px-4 py-3">
-              <label className="block text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                Monthly budget
-              </label>
-              <div className="mt-1 flex items-center gap-1.5">
-                <span className="font-serif text-base text-muted-foreground">
-                  ₪
-                </span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={1}
-                  value={amount}
-                  onChange={(e) => onAmountChange(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  placeholder="auto"
-                  className="w-full rounded-md border border-border bg-background/70 px-2 py-1 font-serif text-base tabular-nums outline-none focus:border-foreground/40"
-                />
-              </div>
-              <div className="mt-1 text-[10px] text-muted-foreground">
-                Leave blank to auto-set from your past spending.
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+        />
+      </div>
+    </label>
   );
 }
 

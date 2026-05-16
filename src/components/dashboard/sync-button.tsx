@@ -2,23 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { startSync } from "@/lib/api";
+import { startSync, submitSyncOtp } from "@/lib/api";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
-import { SyncProgressDialog } from "./sync-progress-dialog";
+import {
+  SyncProgressDialog,
+  type ProviderRow,
+} from "./sync-progress-dialog";
 
 interface SyncButtonProps {
   onComplete: () => void;
-}
-
-type RowStatus = "idle" | "running" | "done" | "error";
-
-interface ProviderRow {
-  provider: string;
-  status: RowStatus;
-  added: number;
-  updated: number;
-  errorMessage?: string;
 }
 
 export function SyncButton({ onComplete }: SyncButtonProps) {
@@ -33,17 +26,27 @@ export function SyncButton({ onComplete }: SyncButtonProps) {
     updated: number;
     categorized: number;
   } | null>(null);
+  const [aiWarning, setAiWarning] = useState<string | null>(null);
   const cancelRef = useRef<() => void>(() => {});
+  const awaitingOtpRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!done || !dialogOpen) return;
+    if (aiWarning) return;
     const t = setTimeout(() => setDialogOpen(false), 3500);
     return () => clearTimeout(t);
-  }, [done, dialogOpen]);
+  }, [done, dialogOpen, aiWarning]);
 
   const closeDialog = useCallback(() => {
     setDialogOpen(false);
   }, []);
+
+  const handleSubmitOtp = useCallback(
+    async (syncRunId: number, code: string) => {
+      await submitSyncOtp(syncRunId, code);
+    },
+    []
+  );
 
   const handleSync = () => {
     setSyncing(true);
@@ -52,7 +55,9 @@ export function SyncButton({ onComplete }: SyncButtonProps) {
     setStage(null);
     setDone(false);
     setSummary(null);
+    setAiWarning(null);
     setDialogOpen(true);
+    awaitingOtpRef.current = new Set();
 
     const { cancel } = startSync(undefined, (event) => {
       if (event.type === "plan") {
@@ -68,12 +73,39 @@ export function SyncButton({ onComplete }: SyncButtonProps) {
             r.provider === provider ? { ...r, status: "running" } : r
           )
         );
+      } else if (event.type === "provider-2fa-needed") {
+        const provider = event.data.provider as string;
+        const syncRunId = event.data.syncRunId as number;
+        awaitingOtpRef.current.add(provider);
+        setRows((prev) =>
+          prev.map((r) =>
+            r.provider === provider
+              ? { ...r, status: "awaiting-otp", syncRunId }
+              : r
+          )
+        );
+      } else if (event.type === "provider-2fa-submitted") {
+        const provider = event.data.provider as string;
+        awaitingOtpRef.current.delete(provider);
+        setRows((prev) =>
+          prev.map((r) =>
+            r.provider === provider ? { ...r, status: "running" } : r
+          )
+        );
+      } else if (event.type === "provider-2fa-manual") {
+        const provider = event.data.provider as string;
+        setRows((prev) =>
+          prev.map((r) =>
+            r.provider === provider ? { ...r, status: "manual-2fa" } : r
+          )
+        );
       } else if (event.type === "provider-done") {
         const provider = event.data.provider as string;
         const ok = event.data.ok as boolean;
         const added = (event.data.added as number) ?? 0;
         const updated = (event.data.updated as number) ?? 0;
         const errorMessage = event.data.errorMessage as string | undefined;
+        awaitingOtpRef.current.delete(provider);
         setRows((prev) =>
           prev.map((r) =>
             r.provider === provider
@@ -99,15 +131,16 @@ export function SyncButton({ onComplete }: SyncButtonProps) {
         const added = (event.data.added as number) ?? 0;
         const updated = (event.data.updated as number) ?? 0;
         const categorized = (event.data.categorized as number) ?? 0;
-        const aiWarning = event.data.aiWarning as string | null;
+        const warning = event.data.aiWarning as string | null;
         setSummary({ added, updated, categorized });
         setStage(null);
         setDone(true);
         setSyncing(false);
-        if (aiWarning) {
+        setAiWarning(warning ?? null);
+        if (warning) {
           toast.warning("AI categorization issue", {
-            description: aiWarning,
-            duration: Infinity,
+            description: warning,
+            duration: 6000,
             closeButton: true,
           });
         }
@@ -136,7 +169,7 @@ export function SyncButton({ onComplete }: SyncButtonProps) {
         className="gap-1.5"
       >
         <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
-        {syncing ? "Syncing" : "Sync Now"}
+        {syncing ? "Syncing…" : "Sync & Categorize"}
       </Button>
 
       <SyncProgressDialog
@@ -146,7 +179,9 @@ export function SyncButton({ onComplete }: SyncButtonProps) {
         stage={stage}
         done={done}
         summary={summary}
+        aiWarning={aiWarning}
         onClose={closeDialog}
+        onSubmitOtp={handleSubmitOtp}
       />
     </>
   );

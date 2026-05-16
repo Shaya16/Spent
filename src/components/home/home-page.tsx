@@ -6,6 +6,7 @@ import { getHome } from "@/lib/api";
 import { PageHeader } from "@/components/layout/app-shell";
 import { SyncButton } from "@/components/dashboard/sync-button";
 import { CategorizeButton } from "@/components/dashboard/categorize-button";
+import { AINotConnectedBanner } from "@/components/ai-not-connected-banner";
 import { ThisMonthCard } from "./this-month-card";
 import { CashFlowCard } from "./cash-flow-card";
 import { CategorySnapshotCard } from "./category-snapshot-card";
@@ -14,6 +15,8 @@ import { RecentTransactionsCard } from "./recent-transactions-card";
 import { TopMerchantsCard } from "./top-merchants-card";
 import { NeedsAttentionCard } from "./needs-attention-card";
 import { BankHealthCard } from "./bank-health-card";
+import { SyncStatusPill } from "./sync-status-pill";
+import { SyncFailureBanner } from "./sync-failure-banner";
 import { CardError, CardSkeleton } from "./card-shell";
 import type { HomePayload, HomeSection } from "@/lib/types";
 
@@ -34,6 +37,7 @@ export function HomePage() {
     queryClient.invalidateQueries({ queryKey: ["home"] });
     queryClient.invalidateQueries({ queryKey: ["summary"] });
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["settings"] });
   }, [queryClient]);
 
   return (
@@ -42,6 +46,10 @@ export function HomePage() {
         title="Home"
         actions={
           <>
+            <SyncStatusPill
+              items={data?.bankHealth ?? null}
+              nextScheduledSync={data?.nextScheduledSync ?? null}
+            />
             <CategorizeButton onApplied={handleSyncOrCategorizeComplete} />
             <SyncButton onComplete={handleSyncOrCategorizeComplete} />
           </>
@@ -49,6 +57,11 @@ export function HomePage() {
       />
 
       <div className="p-4 md:p-6 lg:p-8">
+        <SyncFailureBanner
+          items={data?.bankHealth ?? null}
+          className="mb-4 md:mb-5 lg:mb-6"
+        />
+        <AINotConnectedBanner className="mb-4 md:mb-5 lg:mb-6" />
         <div className="grid grid-cols-12 gap-4 md:gap-5 lg:gap-6">
           {renderSection("thisMonth", data, isLoading, isError, ROW_1)}
           {renderSection("cashFlow", data, isLoading, isError, ROW_1_SIDE)}

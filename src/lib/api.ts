@@ -65,12 +65,38 @@ export function getSetupStatus() {
 
 export function saveBankCredentials(
   provider: string,
-  credentials: Record<string, string>
+  credentials: Record<string, string>,
+  options?: { requiresManualTwoFactor?: boolean }
 ) {
   return fetchJSON<{ success: boolean }>("/api/setup/bank", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ provider, credentials }),
+    body: JSON.stringify({
+      provider,
+      credentials,
+      ...(options?.requiresManualTwoFactor !== undefined
+        ? { requiresManualTwoFactor: options.requiresManualTwoFactor }
+        : {}),
+    }),
+  });
+}
+
+export function updateIntegrationSettings(
+  provider: string,
+  updates: { requiresManualTwoFactor?: boolean; resetTwoFactorToken?: boolean }
+) {
+  return fetchJSON<{ success: boolean }>(`/api/integrations/${provider}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+}
+
+export function submitSyncOtp(syncRunId: number, code: string) {
+  return fetchJSON<{ success: boolean }>("/api/sync/otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ syncRunId, code }),
   });
 }
 
@@ -350,9 +376,11 @@ export function deleteIntegration(provider: string) {
 }
 
 export function getIntegrationCredentials(provider: string) {
-  return fetchJSON<{ credentials: Record<string, string> | null }>(
-    `/api/integrations/${provider}`
-  );
+  return fetchJSON<{
+    credentials: Record<string, string> | null;
+    requiresManualTwoFactor: boolean;
+    hasTwoFactorToken: boolean;
+  }>(`/api/integrations/${provider}`);
 }
 
 export interface CategorizeAssignment {
@@ -409,6 +437,9 @@ export type SyncEventType =
   | "plan"
   | "provider-start"
   | "provider-done"
+  | "provider-2fa-needed"
+  | "provider-2fa-submitted"
+  | "provider-2fa-manual"
   | "stage"
   | "complete"
   | "error";

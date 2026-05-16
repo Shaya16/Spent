@@ -1,25 +1,42 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Check, X, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Check,
+  X,
+  Loader2,
+  Sparkles,
+  ShieldCheck,
+  ExternalLink,
+} from "lucide-react";
 import { BANK_PROVIDERS } from "@/lib/types";
 import { ProviderBadge } from "@/components/setup/provider-badge";
 import { cn } from "@/lib/utils";
 
-type RowStatus = "idle" | "running" | "done" | "error";
+type RowStatus =
+  | "idle"
+  | "running"
+  | "awaiting-otp"
+  | "manual-2fa"
+  | "done"
+  | "error";
 
-interface ProviderRow {
+export interface ProviderRow {
   provider: string;
   status: RowStatus;
   added: number;
   updated: number;
   errorMessage?: string;
+  syncRunId?: number;
 }
 
 interface SyncProgressDialogProps {
@@ -29,12 +46,14 @@ interface SyncProgressDialogProps {
   stage: string | null;
   done: boolean;
   summary: { added: number; updated: number; categorized: number } | null;
+  aiWarning?: string | null;
   onClose: () => void;
+  onSubmitOtp?: (syncRunId: number, code: string) => Promise<void>;
 }
 
 const STAGE_LABELS: Record<string, string> = {
   "ollama-start": "Starting Ollama…",
-  categorizing: "Categorizing transactions…",
+  categorizing: "Categorizing with AI…",
   "memory-hit": "Recognized from memory",
 };
 
@@ -45,7 +64,9 @@ export function SyncProgressDialog({
   stage,
   done,
   summary,
+  aiWarning,
   onClose,
+  onSubmitOtp,
 }: SyncProgressDialogProps) {
   const fullRows = useMemo(() => {
     const map = new Map(rows.map((r) => [r.provider, r]));
@@ -72,13 +93,19 @@ export function SyncProgressDialog({
         showCloseButton={done}
       >
         <div className="px-6 pt-6 pb-2">
-          <HeroDots done={done} />
+          <HeroDots done={done} warning={Boolean(aiWarning)} />
           <DialogTitle className="mt-4 text-center font-serif text-2xl font-normal">
-            {done ? "All synced!" : "Syncing your accounts"}
+            {done
+              ? aiWarning
+                ? "Synced — categorization skipped"
+                : "All synced!"
+              : "Syncing your accounts"}
           </DialogTitle>
           <DialogDescription className="mt-1 text-center text-xs">
             {done
-              ? "Pulling fresh data from your banks. You're up to date."
+              ? aiWarning
+                ? "Connect an AI provider to auto-categorize transactions."
+                : "Pulling fresh data from your banks. You're up to date."
               : stage
                 ? STAGE_LABELS[stage] ?? "Working…"
                 : "Reaching out to your banks…"}
@@ -87,12 +114,16 @@ export function SyncProgressDialog({
 
         <div className="space-y-2 px-6 pb-2">
           {fullRows.map((row) => (
-            <ProviderRowView key={row.provider} row={row} />
+            <ProviderRowView
+              key={row.provider}
+              row={row}
+              onSubmitOtp={onSubmitOtp}
+            />
           ))}
         </div>
 
         {summary && (
-          <div className="mx-6 mb-6 mt-2 overflow-hidden rounded-xl border border-border bg-card p-4">
+          <div className="mx-6 mb-4 mt-2 overflow-hidden rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-around gap-3 text-center">
               <SummaryStat label="New" value={summary.added} accent />
               <Divider />
@@ -102,61 +133,176 @@ export function SyncProgressDialog({
             </div>
           </div>
         )}
+
+        {done && aiWarning && (
+          <div
+            className="mx-6 mb-6 flex flex-col gap-3 rounded-xl border p-4 text-sm sm:flex-row sm:items-center"
+            style={{
+              background:
+                "color-mix(in oklch, var(--status-heads-up) 14%, var(--card))",
+              borderColor:
+                "color-mix(in oklch, var(--status-heads-up) 35%, var(--border))",
+            }}
+          >
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background:
+                  "color-mix(in oklch, var(--status-heads-up) 28%, var(--card))",
+                color: "var(--status-heads-up)",
+              }}
+            >
+              <Sparkles className="h-4 w-4" strokeWidth={1.75} />
+            </div>
+            <p className="min-w-0 flex-1 text-muted-foreground">{aiWarning}</p>
+            <Button
+              size="sm"
+              nativeButton={false}
+              className="self-start sm:self-auto"
+              render={<Link href="/settings/ai">Connect AI</Link>}
+            />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function ProviderRowView({ row }: { row: ProviderRow }) {
+function ProviderRowView({
+  row,
+  onSubmitOtp,
+}: {
+  row: ProviderRow;
+  onSubmitOtp?: (syncRunId: number, code: string) => Promise<void>;
+}) {
   const info = BANK_PROVIDERS.find((b) => b.id === row.provider);
   const label = info?.name ?? row.provider;
   const color = info?.color ?? "#888";
+  const isInteractive2fa = row.status === "awaiting-otp";
 
   return (
     <div
       className={cn(
-        "relative flex items-center gap-3 overflow-hidden rounded-xl border bg-card p-3 transition-all duration-300",
+        "relative overflow-hidden rounded-xl border bg-card p-3 transition-all duration-300",
         row.status === "running" &&
-          "shadow-[0_0_0_1px_color-mix(in_oklch,var(--ring)_30%,transparent)]"
+          "shadow-[0_0_0_1px_color-mix(in_oklch,var(--ring)_30%,transparent)]",
+        isInteractive2fa &&
+          "shadow-[0_0_0_1px_color-mix(in_oklch,var(--status-heads-up)_50%,transparent)]"
       )}
     >
-      {row.status === "running" && (
-        <div
-          className="pointer-events-none absolute inset-0 animate-pulse opacity-60"
-          style={{
-            background: `linear-gradient(90deg, transparent 0%, ${color}22 50%, transparent 100%)`,
-          }}
-        />
-      )}
+      <div className="relative flex items-center gap-3">
+        {row.status === "running" && (
+          <div
+            className="pointer-events-none absolute inset-0 animate-pulse opacity-60"
+            style={{
+              background: `linear-gradient(90deg, transparent 0%, ${color}22 50%, transparent 100%)`,
+            }}
+          />
+        )}
 
-      <div className="relative">
-        <ProviderBadge
-          color={color}
-          name={label}
-          domain={info?.domain}
-          size={36}
-          radius={10}
-        />
-      </div>
+        <div className="relative">
+          <ProviderBadge
+            color={color}
+            name={label}
+            domain={info?.domain}
+            size={36}
+            radius={10}
+          />
+        </div>
 
-      <div className="relative min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{label}</div>
-        <div className="truncate text-[11px] text-muted-foreground">
-          {row.status === "idle" && "Waiting…"}
-          {row.status === "running" && "Pulling transactions…"}
-          {row.status === "done" &&
-            (row.added === 0 && row.updated === 0
-              ? "Already up to date"
-              : `+${row.added} new${row.updated ? ` · ${row.updated} updated` : ""}`)}
-          {row.status === "error" &&
-            (row.errorMessage?.slice(0, 60) ?? "Failed")}
+        <div className="relative min-w-0 flex-1">
+          <div className="truncate text-sm font-medium">{label}</div>
+          <div className="truncate text-[11px] text-muted-foreground">
+            {row.status === "idle" && "Waiting…"}
+            {row.status === "running" && "Pulling transactions…"}
+            {row.status === "awaiting-otp" &&
+              "Enter the one-time code we just sent you"}
+            {row.status === "manual-2fa" && (
+              <span className="inline-flex items-center gap-1">
+                <ExternalLink className="h-3 w-3" />
+                Solve the 2FA in the popup window
+              </span>
+            )}
+            {row.status === "done" &&
+              (row.added === 0 && row.updated === 0
+                ? "Already up to date"
+                : `+${row.added} new${row.updated ? ` · ${row.updated} updated` : ""}`)}
+            {row.status === "error" &&
+              (row.errorMessage?.slice(0, 60) ?? "Failed")}
+          </div>
+        </div>
+
+        <div className="relative">
+          <StatusBadge status={row.status} color={color} />
         </div>
       </div>
 
-      <div className="relative">
-        <StatusBadge status={row.status} color={color} />
-      </div>
+      {isInteractive2fa && onSubmitOtp && row.syncRunId ? (
+        <OtpInputArea
+          syncRunId={row.syncRunId}
+          onSubmit={onSubmitOtp}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function OtpInputArea({
+  syncRunId,
+  onSubmit,
+}: {
+  syncRunId: number;
+  onSubmit: (syncRunId: number, code: string) => Promise<void>;
+}) {
+  const [code, setCode] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit(syncRunId, trimmed);
+      setCode("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit the code.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="relative mt-3 flex items-center gap-2 border-t border-border/60 pt-3"
+    >
+      <Input
+        autoFocus
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+        inputMode="numeric"
+        pattern="[0-9]*"
+        placeholder="6-digit code"
+        className="font-mono"
+        disabled={submitting}
+        aria-label="One-time code"
+      />
+      <Button
+        type="submit"
+        size="sm"
+        disabled={submitting || code.trim().length < 4}
+      >
+        {submitting ? "Submitting…" : "Submit"}
+      </Button>
+      {error && (
+        <p className="absolute -bottom-5 left-0 text-[11px] text-destructive">
+          {error}
+        </p>
+      )}
+    </form>
   );
 }
 
@@ -172,6 +318,25 @@ function StatusBadge({
       <Loader2
         className="h-4 w-4 animate-spin"
         style={{ color }}
+      />
+    );
+  }
+  if (status === "awaiting-otp") {
+    return (
+      <div
+        className="flex h-6 w-6 items-center justify-center rounded-full"
+        style={{ background: "var(--status-heads-up)" }}
+        aria-label="Waiting for one-time code"
+      >
+        <ShieldCheck className="h-3.5 w-3.5 text-background" strokeWidth={2.5} />
+      </div>
+    );
+  }
+  if (status === "manual-2fa") {
+    return (
+      <Loader2
+        className="h-4 w-4 animate-spin"
+        style={{ color: "var(--status-heads-up)" }}
       />
     );
   }
@@ -198,7 +363,7 @@ function StatusBadge({
   return <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />;
 }
 
-function HeroDots({ done }: { done: boolean }) {
+function HeroDots({ done, warning }: { done: boolean; warning?: boolean }) {
   return (
     <div className="flex justify-center">
       <div
@@ -238,9 +403,20 @@ function HeroDots({ done }: { done: boolean }) {
           >
             <div
               className="flex h-9 w-9 items-center justify-center rounded-full"
-              style={{ background: "var(--status-on-track)" }}
+              style={{
+                background: warning
+                  ? "var(--status-heads-up)"
+                  : "var(--status-on-track)",
+              }}
             >
-              <Check className="h-5 w-5 text-background" strokeWidth={3} />
+              {warning ? (
+                <Sparkles
+                  className="h-5 w-5 text-background"
+                  strokeWidth={2.5}
+                />
+              ) : (
+                <Check className="h-5 w-5 text-background" strokeWidth={3} />
+              )}
             </div>
           </div>
         )}

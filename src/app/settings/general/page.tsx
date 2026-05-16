@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input, InputGroup } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { SectionShell, SettingCard } from "@/components/settings/section-shell";
 import { WorkspaceNameCard } from "@/components/settings/workspace-controls";
 import { getSettings, getSummary, updateSettings } from "@/lib/api";
@@ -58,6 +59,11 @@ export default function GeneralSettingsPage() {
             key={settings.monthsToSync + ":" + settings.paydayDay}
             initialMonths={settings.monthsToSync}
             initialPayday={settings.paydayDay}
+          />
+          <AutoSyncCard
+            key={`auto:${settings.autoSyncEnabled}:${settings.autoSyncTime}`}
+            initialEnabled={settings.autoSyncEnabled}
+            initialTime={settings.autoSyncTime}
           />
         </>
       ) : (
@@ -231,4 +237,81 @@ function ordinal(n: number): string {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function AutoSyncCard({
+  initialEnabled,
+  initialTime,
+}: {
+  initialEnabled: boolean;
+  initialTime: string;
+}) {
+  const queryClient = useQueryClient();
+  const [enabled, setEnabled] = useState(initialEnabled);
+  const [time, setTime] = useState(initialTime);
+
+  const mutation = useMutation({
+    mutationFn: updateSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: ["home"] });
+      toast.success("Saved");
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    },
+  });
+
+  const timeValid = /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+  const dirty =
+    timeValid && (enabled !== initialEnabled || time !== initialTime);
+
+  return (
+    <SettingCard
+      title="Auto-sync"
+      description="Run sync and categorization automatically once a day, while the Spent server is running."
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-1">
+          <Label htmlFor="auto-sync-toggle" className="text-sm font-medium">
+            Daily auto-sync
+          </Label>
+          <p className="text-[11px] text-muted-foreground">
+            Runs in Israel time. Disabled by default to avoid surprise bank logins.
+          </p>
+        </div>
+        <Switch
+          id="auto-sync-toggle"
+          checked={enabled}
+          onCheckedChange={setEnabled}
+        />
+      </div>
+      <div className="mt-5 grid gap-2 sm:max-w-xs">
+        <Label htmlFor="auto-sync-time" className="text-xs font-medium text-foreground/80">
+          Time of day
+        </Label>
+        <Input
+          id="auto-sync-time"
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          disabled={!enabled}
+          className="tabular-nums"
+        />
+        <p className="text-[11px] text-muted-foreground">
+          24-hour, Asia/Jerusalem. Most banks post transactions overnight, so early morning works well.
+        </p>
+      </div>
+      <div className="mt-5 flex justify-end">
+        <Button
+          onClick={() =>
+            mutation.mutate({ autoSyncEnabled: enabled, autoSyncTime: time })
+          }
+          disabled={!dirty || mutation.isPending}
+        >
+          {mutation.isPending ? "Saving..." : "Save changes"}
+        </Button>
+      </div>
+    </SettingCard>
+  );
 }

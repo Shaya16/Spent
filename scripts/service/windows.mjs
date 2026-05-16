@@ -6,11 +6,38 @@ import { PORT, REPO_ROOT, renderTemplate } from "./paths.mjs";
 import { addManagedBlock, removeManagedBlock } from "./hosts.mjs";
 
 const TASK_NAME = "Spent";
+const LAUNCHER_DIR = path.join(os.homedir(), "AppData", "Local", "Spent");
+const LAUNCHER_VBS = path.join(LAUNCHER_DIR, "spent-launcher.vbs");
 
 function whichNode() {
   const r = spawnSync("where", ["node"], { encoding: "utf-8", shell: false });
   if (r.status !== 0) throw new Error("Cannot find `node` on PATH.");
   return r.stdout.split(/\r?\n/).filter(Boolean)[0].trim();
+}
+
+// wscript.exe is a GUI-subsystem host, so launching node through this
+// VBScript avoids the visible console window node.exe would otherwise get.
+function writeLauncherVbs() {
+  fs.mkdirSync(LAUNCHER_DIR, { recursive: true });
+  const content = renderTemplate("spent-launcher.vbs", {
+    port: PORT,
+    repoRoot: REPO_ROOT,
+    nodePath: whichNode(),
+  });
+  fs.writeFileSync(LAUNCHER_VBS, content, { encoding: "utf-8" });
+}
+
+function removeLauncherVbs() {
+  try {
+    fs.unlinkSync(LAUNCHER_VBS);
+  } catch {
+    // best-effort
+  }
+  try {
+    fs.rmdirSync(LAUNCHER_DIR);
+  } catch {
+    // directory not empty or already gone; leave it
+  }
 }
 
 function userId() {
@@ -29,6 +56,7 @@ function writeTaskXml() {
     repoRoot: REPO_ROOT,
     nodePath: whichNode(),
     userId: userId(),
+    launcherVbsPath: LAUNCHER_VBS,
   });
   fs.writeFileSync(xmlPath, "﻿" + content, { encoding: "utf16le" });
   return xmlPath;
@@ -69,6 +97,7 @@ export async function run(cmd, { friendlyUrl, loopbackUrl }) {
   switch (cmd) {
     case "install": {
       preflight();
+      writeLauncherVbs();
       const xmlPath = writeTaskXml();
       try {
         const r = schtasks(["/Create", "/TN", TASK_NAME, "/XML", xmlPath, "/F"]);
@@ -110,6 +139,7 @@ export async function run(cmd, { friendlyUrl, loopbackUrl }) {
       if (r.status !== 0 && !/cannot find/i.test(r.stderr ?? "")) {
         console.error(r.stderr || r.stdout);
       }
+      removeLauncherVbs();
       try {
         removeManagedBlock();
       } catch (err) {

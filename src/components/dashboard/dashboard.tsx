@@ -10,6 +10,7 @@ import { CategoryGrid } from "./category-grid";
 import { PeriodSelector } from "./period-selector";
 import { SyncButton } from "./sync-button";
 import { CategorizeButton } from "./categorize-button";
+import { AINotConnectedBanner } from "@/components/ai-not-connected-banner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CategoryViewMode } from "@/lib/types";
 
@@ -54,6 +55,7 @@ export function Dashboard() {
   const handleSyncComplete = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["summary"] });
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["settings"] });
   }, [queryClient]);
 
   const monthLabel = formatMonthLabel(selectedDate);
@@ -78,6 +80,7 @@ export function Dashboard() {
       />
 
       <div className="space-y-6 p-4 md:p-6 lg:p-8">
+        <AINotConnectedBanner />
         <HeroCard data={summary} loading={summaryQuery.isLoading} />
 
         <div className="flex items-center justify-end">

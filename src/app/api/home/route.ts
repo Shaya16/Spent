@@ -12,6 +12,7 @@ import {
   getRecentTransactionsForHome,
 } from "@/server/db/queries/home";
 import { getWorkspaceSetting } from "@/server/db/queries/settings";
+import { getNextRunAt } from "@/server/sync/scheduler";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 import {
   daysInMonth,
@@ -167,6 +168,7 @@ export async function GET(request: Request) {
     topMerchants,
     needsAttention,
     bankHealth,
+    nextScheduledSync: getNextRunAt(),
     errors,
   };
 

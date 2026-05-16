@@ -44,8 +44,8 @@
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>{{nodePath}}</Command>
-      <Arguments>"{{repoRoot}}\node_modules\next\dist\bin\next" start -H 127.0.0.1 -p {{port}}</Arguments>
+      <Command>wscript.exe</Command>
+      <Arguments>"{{launcherVbsPath}}"</Arguments>
       <WorkingDirectory>{{repoRoot}}</WorkingDirectory>
     </Exec>
   </Actions>

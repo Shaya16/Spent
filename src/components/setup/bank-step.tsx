@@ -19,6 +19,7 @@ import {
   deleteIntegration,
 } from "@/lib/api";
 import { ProviderBadge } from "./provider-badge";
+import { TwoFactorSection } from "./two-factor-section";
 
 type Sub = "pick" | "form" | "ready";
 
@@ -110,11 +111,11 @@ export function BankStep({ onComplete }: BankStepProps) {
       : `${NUMBER_WORDS[integrations.length] ?? integrations.length} accounts ready. Add another or move on.`;
 
   return (
-    <div className="mx-auto flex max-w-[560px] flex-col items-center gap-4 pt-8 text-center">
+    <div className="mx-auto flex w-full max-w-[520px] flex-col gap-6">
       {sub === "pick" && (
           <div
             key="pick"
-            className="flex w-full flex-col items-center gap-4"
+            className="flex w-full flex-col gap-4"
           >
             {integrations.length > 0 && (
               <button
@@ -125,17 +126,19 @@ export function BankStep({ onComplete }: BankStepProps) {
                 ← back to connected accounts
               </button>
             )}
-            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              Step Two · Accounts
-            </div>
-            <h1 className="max-w-[440px] font-serif text-4xl leading-[1.08] tracking-tight">
-              Which accounts should Spent watch?
-            </h1>
-            <p className="max-w-[400px] text-sm leading-relaxed text-muted-foreground">
-              Add every bank and card you want to track. Credentials are
-              encrypted with AES-256 and stored on this machine only — they
-              never leave your computer.
-            </p>
+            <header className="space-y-2">
+              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                Step 1 of 5 · Accounts
+              </div>
+              <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
+                Which accounts should Spent watch?
+              </h1>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Add every bank and card you want to track. Credentials are
+                encrypted with AES-256 and stored on this machine only, never
+                leaving your computer.
+              </p>
+            </header>
 
             <PickerCard
               providers={filteredProviders}
@@ -158,7 +161,7 @@ export function BankStep({ onComplete }: BankStepProps) {
               >
                 Open an issue
               </a>{" "}
-              — we&apos;ll add a scraper.
+              and we&apos;ll add a scraper.
             </p>
           </div>
         )}
@@ -166,7 +169,7 @@ export function BankStep({ onComplete }: BankStepProps) {
         {sub === "form" && selected && (
           <div
             key={`form-${selected.id}`}
-            className="flex w-full flex-col items-center gap-4"
+            className="flex w-full flex-col gap-4"
           >
             <button
               type="button"
@@ -175,17 +178,19 @@ export function BankStep({ onComplete }: BankStepProps) {
             >
               ← back to providers
             </button>
-            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              Connecting · {selected.name}
-            </div>
-            <h1 className="max-w-[440px] font-serif text-4xl leading-[1.08] tracking-tight">
-              Sign in to {selected.name}
-            </h1>
-            <p className="max-w-[380px] text-sm leading-relaxed text-muted-foreground">
-              Same credentials you use at{" "}
-              <span className="text-foreground">{selected.domain}</span>.
-              They&apos;re encrypted locally — nothing leaves this machine.
-            </p>
+            <header className="space-y-2">
+              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                Step 1 of 5 · Connecting {selected.name}
+              </div>
+              <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
+                Sign in to {selected.name}
+              </h1>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Same credentials you use at{" "}
+                <span className="text-foreground">{selected.domain}</span>.
+                They&apos;re encrypted locally, nothing leaves this machine.
+              </p>
+            </header>
 
             <CredentialForm
               info={selected}
@@ -199,19 +204,21 @@ export function BankStep({ onComplete }: BankStepProps) {
         {sub === "ready" && integrations.length > 0 && (
           <div
             key="ready"
-            className="flex w-full flex-col items-center gap-4"
+            className="flex w-full flex-col gap-4"
           >
-            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              Step Two · Accounts
-            </div>
-            <h1 className="max-w-[460px] font-serif text-4xl leading-[1.08] tracking-tight">
-              {readyCountLabel}
-            </h1>
-            <p className="max-w-[380px] text-sm leading-relaxed text-muted-foreground">
-              You can always come back from Settings to add or remove accounts.
-            </p>
+            <header className="space-y-2">
+              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                Step 1 of 5 · Accounts
+              </div>
+              <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
+                {readyCountLabel}
+              </h1>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                You can always come back from Settings to add or remove accounts.
+              </p>
+            </header>
 
-            <div className="w-full max-w-[460px] space-y-2 text-left">
+            <div className="w-full space-y-2 text-left">
               <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                 Connected · {integrations.length}
               </div>
@@ -266,26 +273,24 @@ export function BankStep({ onComplete }: BankStepProps) {
               </AnimatePresence>
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5">
+            <footer className="mt-2 flex items-center justify-between pt-2">
               <Button
                 variant="outline"
                 onClick={() => setSub("pick")}
-                className="rounded-full px-5 py-2.5 text-sm font-semibold"
               >
                 + Add another account
               </Button>
               <Button
                 onClick={onComplete}
                 disabled={integrations.length === 0}
-                className="rounded-full px-5 py-2.5 text-sm font-semibold"
               >
                 Continue to AI →
               </Button>
-            </div>
+            </footer>
           </div>
         )}
 
-      <div className="mt-6 flex w-full max-w-[460px] items-center justify-between text-[10px] text-muted-foreground/80">
+      <div className="mt-2 flex w-full items-center justify-between text-[10px] text-muted-foreground/80">
         <span>🔐 AES-256-GCM · stored locally</span>
         <span>
           {integrations.length} of {BANK_PROVIDERS.length} providers connected
@@ -315,7 +320,7 @@ function PickerCard({
   onPick: (id: string) => void;
 }) {
   return (
-    <div className="w-full max-w-[480px] rounded-2xl border border-border bg-card p-5 text-left shadow-sm">
+    <div className="w-full rounded-2xl border border-border bg-card p-5 text-left shadow-sm">
       <div className="mb-3 flex items-baseline justify-between">
         <div className="text-[11px] font-bold tracking-tight">
           Supported providers · {total}
@@ -448,6 +453,7 @@ function CredentialForm({
 }) {
   const queryClient = useQueryClient();
   const [credentials, setCredentials] = useState<Record<string, string>>({});
+  const [requiresManualTwoFactor, setRequiresManualTwoFactor] = useState(false);
   const [loaded, setLoaded] = useState(!isEdit);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -461,10 +467,10 @@ function CredentialForm({
     let cancelled = false;
     (async () => {
       try {
-        const { credentials: existing } = await getIntegrationCredentials(
-          info.id
-        );
-        if (!cancelled && existing) setCredentials(existing);
+        const res = await getIntegrationCredentials(info.id);
+        if (cancelled) return;
+        if (res.credentials) setCredentials(res.credentials);
+        setRequiresManualTwoFactor(res.requiresManualTwoFactor);
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -486,7 +492,9 @@ function CredentialForm({
     setStatus("idle");
     setErrorMsg(null);
     try {
-      await saveBankCredentials(info.id, credentials);
+      await saveBankCredentials(info.id, credentials, {
+        requiresManualTwoFactor,
+      });
       const res = await testBankConnection(info.id);
       if (res.success) {
         setStatus("testing-ok");
@@ -505,7 +513,9 @@ function CredentialForm({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await saveBankCredentials(info.id, credentials);
+      await saveBankCredentials(info.id, credentials, {
+        requiresManualTwoFactor,
+      });
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
       setStatus("saved");
       setTimeout(onSaved, 500);
@@ -518,7 +528,7 @@ function CredentialForm({
   };
 
   return (
-    <div className="w-full max-w-[440px] rounded-2xl border border-border bg-card p-6 text-left shadow-sm">
+    <div className="w-full rounded-2xl border border-border bg-card p-6 text-left shadow-sm">
       <div className="mb-5 flex items-center gap-3 border-b border-border/60 pb-4">
         <ProviderBadge
           color={info.color}
@@ -606,6 +616,12 @@ function CredentialForm({
               </div>
             );
           })}
+
+          <TwoFactorSection
+            info={info}
+            requiresManualTwoFactor={requiresManualTwoFactor}
+            onChangeManualFlag={setRequiresManualTwoFactor}
+          />
 
           <AnimatePresence>
             {status === "testing-ok" && (

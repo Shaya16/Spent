@@ -20,8 +20,9 @@ import {
   getIntegrationCredentials,
   saveBankCredentials,
   testBankConnection,
+  updateIntegrationSettings,
 } from "@/lib/api";
-import { useBankSync } from "@/components/settings/use-bank-sync";
+import { TwoFactorSection } from "@/components/setup/two-factor-section";
 import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
 
 export interface BankDetailSheetProps {
@@ -144,6 +145,9 @@ function CredentialsForm({
   const [loaded, setLoaded] = useState(!isEdit);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [requiresManualTwoFactor, setRequiresManualTwoFactor] = useState(false);
+  const [hasTwoFactorToken, setHasTwoFactorToken] = useState(false);
+  const [resetPending, setResetPending] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
@@ -154,11 +158,11 @@ function CredentialsForm({
     let cancelled = false;
     (async () => {
       try {
-        const { credentials: existing } = await getIntegrationCredentials(
-          info.id
-        );
+        const res = await getIntegrationCredentials(info.id);
         if (cancelled) return;
-        if (existing) setCredentials(existing);
+        if (res.credentials) setCredentials(res.credentials);
+        setRequiresManualTwoFactor(res.requiresManualTwoFactor);
+        setHasTwoFactorToken(res.hasTwoFactorToken);
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -179,7 +183,9 @@ function CredentialsForm({
     setTesting(true);
     setResult(null);
     try {
-      await saveBankCredentials(info.id, credentials);
+      await saveBankCredentials(info.id, credentials, {
+        requiresManualTwoFactor,
+      });
       const res = await testBankConnection(info.id);
       setResult(res);
     } catch {
@@ -192,7 +198,9 @@ function CredentialsForm({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await saveBankCredentials(info.id, credentials);
+      await saveBankCredentials(info.id, credentials, {
+        requiresManualTwoFactor,
+      });
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
       queryClient.invalidateQueries({ queryKey: ["setupStatus"] });
       toast.success(`${info.name} credentials saved`);
@@ -201,6 +209,22 @@ function CredentialsForm({
       setResult({ success: false, message: "Failed to save credentials." });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetToken = async () => {
+    setResetPending(true);
+    try {
+      await updateIntegrationSettings(info.id, { resetTwoFactorToken: true });
+      setHasTwoFactorToken(false);
+      queryClient.invalidateQueries({ queryKey: ["integrations"] });
+      toast.success(
+        `Saved 2FA token cleared. Your next ${info.name} sync will ask for a fresh code.`
+      );
+    } catch {
+      toast.error("Could not reset the 2FA token.");
+    } finally {
+      setResetPending(false);
     }
   };
 
@@ -255,6 +279,16 @@ function CredentialsForm({
           </div>
         );
       })}
+
+      <TwoFactorSection
+        info={info}
+        requiresManualTwoFactor={requiresManualTwoFactor}
+        hasTwoFactorToken={hasTwoFactorToken}
+        onChangeManualFlag={setRequiresManualTwoFactor}
+        onResetToken={handleResetToken}
+        resetPending={resetPending}
+        showResetButton={isEdit}
+      />
 
       {result && (
         <div

@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     provider: string;
     credentials: Record<string, string>;
+    requiresManualTwoFactor?: boolean;
   };
 
   if (!body.provider || !body.credentials) {
@@ -46,7 +47,16 @@ export async function POST(request: Request) {
     }
   }
 
-  saveBankCredentials(workspaceId, body.provider, merged);
+  // Preserve any previously stored long-term OTP token across credential
+  // updates. Users edit email/password/phone independently of the token, and
+  // the form never sends it back.
+  if (existing?.otpLongTermToken && !merged.otpLongTermToken) {
+    merged.otpLongTermToken = existing.otpLongTermToken;
+  }
+
+  saveBankCredentials(workspaceId, body.provider, merged, {
+    requiresManualTwoFactor: body.requiresManualTwoFactor,
+  });
 
   return NextResponse.json({ success: true });
 }

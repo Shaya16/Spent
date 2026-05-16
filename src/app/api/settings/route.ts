@@ -13,6 +13,15 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const body = await request.json();
-  const updated = updateAppSettings(workspaceId, body);
-  return NextResponse.json(updated);
+  try {
+    const updated = updateAppSettings(workspaceId, body);
+    if (body.autoSyncEnabled !== undefined || body.autoSyncTime !== undefined) {
+      const { reschedule } = await import("@/server/sync/scheduler");
+      reschedule();
+    }
+    return NextResponse.json(updated);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update settings";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }
