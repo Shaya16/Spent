@@ -172,6 +172,10 @@ private func stopService() {
     _ = runLaunchctl(["bootout", "gui/\(getuid())/\(launchAgentLabel)"])
 }
 
+private func restartService() {
+    _ = runLaunchctl(["kickstart", "-k", "gui/\(getuid())/\(launchAgentLabel)"])
+}
+
 // Deactivating the app closes the MenuBarExtra(.window) popover.
 private func dismissPopover() {
     NSApp.deactivate()
@@ -320,6 +324,14 @@ private struct PopoverContent: View {
     private var serviceSection: some View {
         VStack(spacing: 1) {
             if model.isOnline {
+                MenuRow(
+                    icon: "arrow.clockwise",
+                    title: "Restart service",
+                    action: {
+                        restartService()
+                        Task { await model.pollOnce() }
+                    }
+                )
                 MenuRow(
                     icon: "stop.fill",
                     title: "Stop service",

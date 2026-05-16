@@ -48,6 +48,7 @@ internal sealed class SpentTray : IDisposable
         menu.Items.Add("Sync now", null, (_, _) => Services.SyncNow());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Start service", null, (_, _) => Services.StartService());
+        menu.Items.Add("Restart service", null, (_, _) => Services.RestartService());
         menu.Items.Add("Stop service", null, (_, _) => Services.StopService());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Quit", null, (_, _) => Application.Exit());

@@ -50,6 +50,12 @@ internal static class Services
         RunSchtasks("/End", "/TN", Constants.TaskName);
     }
 
+    public static void RestartService()
+    {
+        RunSchtasks("/End", "/TN", Constants.TaskName);
+        RunSchtasks("/Run", "/TN", Constants.TaskName);
+    }
+
     private static void RunSchtasks(params string[] args)
     {
         try

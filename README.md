@@ -75,7 +75,7 @@ Polished buttercream-and-sage palette in light mode, warm charcoal in dark. Syst
 <td valign="top">
 
 ### 🍎 Menu bar / tray app
-Optional native companion lives in your menu bar (macOS) or notification area (Windows) — one click to open the dashboard or trigger a sync.
+Native companion in your menu bar (macOS) or notification area (Windows). Status indicator, one-click open dashboard, sync, and start/stop/restart the service.
 
 </td>
 </tr>
@@ -190,6 +190,9 @@ You can change providers any time from **Settings → AI provider**. Existing ca
 
 - **Node.js 22+**
 - **macOS 13+**, **Ubuntu 22+** (with systemd), or **Windows 11**
+- **Build tools for the menubar** (only if you want the tray):
+  - macOS: Xcode Command Line Tools: `xcode-select --install`
+  - Windows: .NET 8 SDK: `winget install Microsoft.DotNet.SDK.8`
 - A bank account with **2FA disabled** (most Israeli banks require this for automation — OneZero is the exception)
 
 ## Install
@@ -198,32 +201,16 @@ You can change providers any time from **Settings → AI provider**. Existing ca
 git clone https://github.com/Shaya16/Spent.git
 cd spent
 npm install
-npm run build
-npm run service:install
+npm run setup
 ```
 
-`service:install` registers an auto-start unit (LaunchAgent on macOS / systemd on Linux / Task Scheduler on Windows) and adds `127.0.0.1 spent.local` to your hosts file. The hosts edit is the only step that asks for `sudo` / Administrator.
+`npm run setup` does everything: builds the Next.js app, installs the always-on service (LaunchAgent on macOS / systemd on Linux / Task Scheduler on Windows), adds `127.0.0.1 spent.local` to your hosts file, builds the platform menubar from source, installs it to the standard location, registers it to auto-start at login, and opens the dashboard. The hosts edit is the only step that asks for `sudo` / Administrator.
+
+On Linux there is no native menubar. `npm run setup` installs the service and opens the browser. Control the service with `npm run service:*` (see below).
+
+First launch of the menubar on macOS/Windows shows an unsigned-binary warning (Gatekeeper / SmartScreen). That's expected: you built it locally and didn't pay for a code-signing certificate. Right-click → Open (macOS) or "More info" → "Run anyway" (Windows). One-time.
 
 Open **`http://spent.local:41234`** and bookmark it.
-
-**Menu bar / tray app (optional)** — native status icon with one-click open, sync, and start/stop. Pre-built binaries are attached to every [release](https://github.com/Shaya16/Spent/releases/latest), so no toolchain needed.
-
-**macOS** (`Spent.app.zip`):
-```bash
-unzip Spent.app.zip -d ~/Applications/
-xattr -dr com.apple.quarantine ~/Applications/Spent.app   # if Gatekeeper complains
-open ~/Applications/Spent.app
-```
-
-**Windows** (`Spent.exe`):
-```powershell
-mkdir $env:LOCALAPPDATA\Programs\Spent
-Move-Item .\Spent.exe $env:LOCALAPPDATA\Programs\Spent\
-# SmartScreen on first launch: "More info" → "Run anyway"
-# For auto-start: drop a shortcut to Spent.exe into shell:startup
-```
-
-First launch on either platform shows an unsigned-binary warning. That's expected for an open-source project without paid code-signing certificates.
 
 ## First-time setup
 
@@ -245,7 +232,7 @@ In the browser:
 
 Rare cases:
 
-- Hacking on the menu bar app itself → see [Building the menubar from source](#building-the-menubar-from-source) under Contributing.
+- Changed the menu bar app source → `npm run menubar:install:mac` (or `:windows`) to rebuild and reinstall.
 - Changed install scripts or hostname → `npm run service:uninstall && npm run service:install`.
 
 ## Service commands
@@ -258,6 +245,30 @@ Rare cases:
 | `npm run service:logs` | Tail server logs |
 | `npm run service:open` | Open the app in your browser |
 | `npm run service:uninstall` | Remove auto-start and hosts entry. `data/` is untouched. |
+
+## Uninstall
+
+```bash
+npm run uninstall
+```
+
+Reverses everything `npm run setup` installed:
+
+- Stops the background service and removes the LaunchAgent / Task Scheduler entry / systemd unit.
+- Removes the `127.0.0.1 spent.local` line from your hosts file (asks for `sudo` / Administrator).
+- Quits the menubar, removes the installed app, and removes it from Login Items / Startup.
+
+**Kept on purpose:**
+
+- `data/`: your transactions, budgets, and encryption key. To wipe your data: `rm -rf data/`.
+- The repo itself. To remove Spent entirely: `rm -rf data/ && cd .. && rm -rf spent/`.
+
+If you only want to remove the menubar but keep the always-on web app:
+
+- **macOS**: `rm -rf ~/Applications/Spent.app` and remove "Spent" from System Settings → General → Login Items.
+- **Windows**: delete `%LOCALAPPDATA%\Programs\Spent\` and remove `Spent.lnk` from `shell:startup`.
+
+If you only want to remove the always-on service but keep the menubar (so it's there if you reinstall later): `npm run service:uninstall`.
 
 ## Security at a glance
 
@@ -301,7 +312,7 @@ spent/
 │       ├── db/               SQLite singleton, migrations, query helpers
 │       ├── lib/              Encryption, dedup, transfer detection, pace
 │       └── scrapers/         Wrapper around israeli-bank-scrapers
-├── menubar/                  Optional tray companions
+├── menubar/                  Tray companions (built locally by `npm run setup`)
 │   ├── mac/                  Swift MenuBarExtra app
 │   └── windows/              C# WPF NotifyIcon app
 ├── scripts/service/          LaunchAgent / systemd installer
@@ -339,21 +350,6 @@ Conventions:
 - TypeScript strict mode. No `any` without a comment.
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`.
 - Comments only where the "why" isn't obvious. No em dashes in code, commits, or docs.
-
-### Building the menubar from source
-
-End users should grab the prebuilt binaries from [Releases](https://github.com/Shaya16/Spent/releases/latest). Local builds are only needed when you're changing the menubar app itself:
-
-```bash
-# macOS: needs Xcode Command Line Tools (xcode-select --install)
-npm run menubar:install                  # builds + copies to ~/Applications/
-
-# Windows: needs .NET 8 SDK (winget install Microsoft.DotNet.SDK.8)
-npm run menubar:build:windows
-Copy-Item menubar\windows\build\Spent.exe $env:LOCALAPPDATA\Programs\Spent\
-```
-
-Release artifacts are built by [.github/workflows/release.yml](.github/workflows/release.yml) on every `v*` tag push, or on demand via Actions tab → release → Run workflow (you type the tag name in the input field).
 
 ## License
 

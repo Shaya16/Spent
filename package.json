@@ -9,6 +9,8 @@
     "lint": "eslint",
     "security:audit": "npm audit --omit=dev",
     "security:outdated": "npm outdated",
+    "setup": "node scripts/setup.mjs",
+    "uninstall": "node scripts/uninstall.mjs",
     "service:install": "node scripts/service/install.mjs install",
     "service:uninstall": "node scripts/service/install.mjs uninstall",
     "service:start": "node scripts/service/install.mjs start",
@@ -18,8 +20,9 @@
     "service:logs": "node scripts/service/install.mjs logs",
     "service:open": "node scripts/service/install.mjs open",
     "menubar:build": "bash menubar/mac/build.sh",
-    "menubar:install": "bash menubar/mac/build.sh && cp -R menubar/mac/build/Spent.app ~/Applications/",
-    "menubar:build:windows": "powershell -ExecutionPolicy Bypass -File menubar/windows/build.ps1"
+    "menubar:install:mac": "bash menubar/mac/build.sh && cp -R menubar/mac/build/Spent.app ~/Applications/",
+    "menubar:build:windows": "powershell -ExecutionPolicy Bypass -File menubar/windows/build.ps1",
+    "menubar:install:windows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& './menubar/windows/build.ps1'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $d = Join-Path $env:LOCALAPPDATA 'Programs\\Spent'; New-Item -ItemType Directory -Force -Path $d | Out-Null; Copy-Item -Force 'menubar/windows/build/Spent.exe' (Join-Path $d 'Spent.exe')\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.95.2",
