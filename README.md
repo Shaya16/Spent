@@ -353,7 +353,7 @@ npm run menubar:build:windows
 Copy-Item menubar\windows\build\Spent.exe $env:LOCALAPPDATA\Programs\Spent\
 ```
 
-Release artifacts are built by [.github/workflows/release.yml](.github/workflows/release.yml) on every `v*` tag push. Trigger a smoke-test build without tagging via the Actions tab → release → Run workflow.
+Release artifacts are built by [.github/workflows/release.yml](.github/workflows/release.yml) on every `v*` tag push. For a smoke-test build, use Actions tab → release → Run workflow: this overwrites the rolling `dev` pre-release with fresh binaries instead of cluttering the Releases page.
 
 ## License
 
