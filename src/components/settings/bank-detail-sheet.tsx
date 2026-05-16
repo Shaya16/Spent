@@ -170,6 +170,8 @@ function CredentialsForm({
 
   const allValid = info.credentialFields.every((f) => {
     const v = credentials[f.key]?.trim() ?? "";
+    // In edit mode, blank password fields are intentional: blank = keep existing.
+    if (!v && isEdit && f.type === "password") return true;
     if (!v) return false;
     if (f.exactLength != null && v.length !== f.exactLength) return false;
     return true;
@@ -224,7 +226,10 @@ function CredentialsForm({
           field.exactLength != null &&
           value.length > 0 &&
           value.length !== field.exactLength;
-        const placeholder = field.placeholder ?? field.label;
+        const placeholder =
+          isEdit && field.type === "password"
+            ? "Leave blank to keep current"
+            : (field.placeholder ?? field.label);
         const hint = field.hint;
         return (
           <div key={field.key} className="space-y-1.5">

@@ -4,11 +4,11 @@ import {
   getBankCredentials,
 } from "@/server/db/queries/bank-credentials";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
+import { BANK_PROVIDERS } from "@/lib/types";
 
-// Returns the full decrypted credential set for one provider, including
-// password fields. Spent is a local-only app - this stays on 127.0.0.1
-// and lets the Edit form pre-fill every field so users only retype what
-// they actually want to change.
+// Returns credentials with password-type fields stripped out. The edit form
+// leaves those inputs blank; the POST handler's blank=keep logic preserves
+// the stored value when the user saves without retyping a password.
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ provider: string }> }
@@ -19,7 +19,17 @@ export async function GET(
   if (!credentials) {
     return NextResponse.json({ credentials: null });
   }
-  return NextResponse.json({ credentials });
+
+  const info = BANK_PROVIDERS.find((b) => b.id === provider);
+  const passwordKeys = new Set(
+    info?.credentialFields.filter((f) => f.type === "password").map((f) => f.key) ?? []
+  );
+  const safe: Record<string, string> = {};
+  for (const [k, v] of Object.entries(credentials)) {
+    safe[k] = passwordKeys.has(k) ? "" : v;
+  }
+
+  return NextResponse.json({ credentials: safe });
 }
 
 export async function DELETE(

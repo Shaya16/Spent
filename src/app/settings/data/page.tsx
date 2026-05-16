@@ -42,10 +42,10 @@ export default function DataSettingsPage() {
       )}
       <SettingCard
         title="How your data is stored"
-        description="Bank credentials and your Claude API key are encrypted with AES-256-GCM. The encryption key lives at data/.encryption-key on your machine (gitignored) and is auto-generated on first run. All transaction data lives in data/spent.db. To reset everything, stop the dev server and delete the data/ directory."
+        description="Bank credentials and your Claude API key are encrypted with AES-256-GCM. The encryption key is stored separately from the database so a copy of data/ alone cannot decrypt your credentials. All transaction data lives in data/spent.db. To reset everything, stop the dev server and delete the data/ directory."
       >
         <div className="rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          <code>data/spent.db</code> · <code>data/.encryption-key</code>
+          <code>data/spent.db</code> · <code>~/.config/spent/.encryption-key</code>
         </div>
       </SettingCard>
       <DangerZone />
@@ -245,7 +245,9 @@ function ShowBrowserCard({ initial }: { initial: boolean }) {
           <p className="text-xs text-muted-foreground">
             Opens a visible Chromium window so you can watch the scrape happen
             (useful for debugging or solving 2FA / captcha challenges). Also
-            enables verbose scraper logs in your dev terminal.
+            enables verbose scraper logs in your terminal, which may include
+            your bank credentials. Do not share terminal output while this is
+            enabled.
           </p>
         </div>
         <Switch

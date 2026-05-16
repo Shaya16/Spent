@@ -20,6 +20,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!BANK_PROVIDERS.find((b) => b.id === body.provider)) {
+    return NextResponse.json(
+      { success: false, message: "Unknown provider" },
+      { status: 400 }
+    );
+  }
+
   // If any password-type field is blank, keep the existing value.
   // Lets users update non-secret fields without retyping their password.
   const info = BANK_PROVIDERS.find((b) => b.id === body.provider);
