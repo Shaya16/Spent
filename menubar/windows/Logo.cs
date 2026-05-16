@@ -67,16 +67,36 @@ internal static class Logo
         var rtb = new RenderTargetBitmap(pixelSize, pixelSize, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(visual);
 
-        // H.NotifyIcon's ImageSource->stream helper only handles URI-backed
-        // images, so write the PNG to %TEMP% and load it back via file URI.
+        // H.NotifyIcon ultimately feeds the stream into new System.Drawing.Icon(stream),
+        // which requires ICO format. Wrap our PNG in an ICO container (Vista+ supports
+        // PNG-in-ICO entries) and write to a temp file so the URI-based helper can load it.
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(rtb));
+        byte[] pngBytes;
+        using (var pngMs = new System.IO.MemoryStream())
+        {
+            encoder.Save(pngMs);
+            pngBytes = pngMs.ToArray();
+        }
+
         var tempPath = System.IO.Path.Combine(
             System.IO.Path.GetTempPath(),
-            $"spent-tray-{pixelSize}-{(uint)color.ToString().GetHashCode():x8}.png");
+            $"spent-tray-{pixelSize}-{(uint)color.ToString().GetHashCode():x8}.ico");
         using (var fs = System.IO.File.Create(tempPath))
+        using (var bw = new System.IO.BinaryWriter(fs))
         {
-            encoder.Save(fs);
+            bw.Write((ushort)0);                                // reserved
+            bw.Write((ushort)1);                                // type: 1 = ICO
+            bw.Write((ushort)1);                                // image count
+            bw.Write((byte)(pixelSize >= 256 ? 0 : pixelSize)); // width (0 = 256)
+            bw.Write((byte)(pixelSize >= 256 ? 0 : pixelSize)); // height (0 = 256)
+            bw.Write((byte)0);                                  // color palette size
+            bw.Write((byte)0);                                  // reserved
+            bw.Write((ushort)1);                                // color planes
+            bw.Write((ushort)32);                               // bits per pixel
+            bw.Write((uint)pngBytes.Length);                    // image data size
+            bw.Write((uint)22);                                 // offset to image data
+            bw.Write(pngBytes);
         }
 
         var bi = new BitmapImage();
