@@ -33,9 +33,11 @@ export function CompleteStep({ onFinish }: CompleteStepProps) {
   const aiLabel =
     settings?.aiProvider === "claude"
       ? "Claude (Anthropic)"
-      : settings?.aiProvider === "ollama"
-        ? `Ollama · ${settings?.ollamaModel ?? "local"}`
-        : "Manual categorization";
+      : settings?.aiProvider === "openai"
+        ? `OpenAI · ${settings?.openaiModel ?? "gpt-4o-mini"}`
+        : settings?.aiProvider === "ollama"
+          ? `Ollama · ${settings?.ollamaModel ?? "local"}`
+          : "Manual categorization";
 
   return (
     <div className="mx-auto w-full max-w-[520px] space-y-7 text-center">

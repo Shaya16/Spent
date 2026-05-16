@@ -1,19 +1,52 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { Sparkles } from "lucide-react";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 import { AppSidebar } from "./app-sidebar";
+import { ChatDrawer } from "@/components/chat/chat-drawer";
+import { useChatStatus } from "@/hooks/use-chat";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const [chatOpen, setChatOpen] = useState(false);
+
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset>
+        {children}
+        <AssistantFab open={chatOpen} onOpen={() => setChatOpen(true)} />
+      </SidebarInset>
+      <ChatDrawer open={chatOpen} onOpenChange={setChatOpen} />
     </SidebarProvider>
+  );
+}
+
+function AssistantFab({ open, onOpen }: { open: boolean; onOpen: () => void }) {
+  // We still render the FAB while the drawer is open (Sheet uses its own
+  // overlay) so the user always sees the entry point on every page.
+  const status = useChatStatus();
+  // Hide the FAB outright when the provider is Ollama or none, so users with
+  // a tools-incompatible setup don't see a dead button. They can still reach
+  // /settings/ai through the sidebar.
+  if (status.data && !status.data.available && status.data.provider !== "claude" && status.data.provider !== "openai") {
+    return null;
+  }
+  return (
+    <Button
+      onClick={onOpen}
+      aria-label="Open Spent Assistant"
+      className="fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full shadow-lg ring-1 ring-foreground/10 hover:shadow-xl"
+      size="icon"
+      data-state={open ? "open" : "closed"}
+    >
+      <Sparkles className="h-5 w-5" />
+    </Button>
   );
 }
 

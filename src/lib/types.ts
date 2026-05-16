@@ -256,7 +256,8 @@ export interface SetupStatus {
 
 export interface AppSettings {
   monthsToSync: number;
-  aiProvider: "claude" | "ollama" | "none";
+  aiProvider: "claude" | "openai" | "ollama" | "none";
+  openaiModel: string;
   ollamaUrl: string;
   ollamaModel: string;
   showBrowser: boolean;
@@ -324,6 +325,12 @@ export interface OllamaModelInfo {
   description: string;
   recommended?: boolean;
 }
+
+/** Quick picks for OpenAI chat models (any valid model id can be typed). */
+export const SUGGESTED_OPENAI_MODELS: readonly string[] = [
+  "gpt-4o-mini",
+  "gpt-4o",
+];
 
 export const RECOMMENDED_OLLAMA_MODELS: OllamaModelInfo[] = [
   {

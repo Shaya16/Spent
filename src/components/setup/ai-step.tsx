@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   RECOMMENDED_OLLAMA_MODELS,
+  SUGGESTED_OPENAI_MODELS,
   type OllamaModelInfo,
 } from "@/lib/types";
 import {
@@ -17,7 +18,7 @@ import {
   type PullEvent,
 } from "@/lib/api";
 
-type AIChoice = "claude" | "ollama" | "none";
+type AIChoice = "claude" | "openai" | "ollama" | "none";
 
 interface AIStepProps {
   onComplete: () => void;
@@ -34,6 +35,7 @@ interface PullState {
 
 const TINTS = {
   claude: { bg: "#fad6c0", mid: "#e89968", ink: "#7a4222" },
+  openai: { bg: "#d4e8f7", mid: "#6b9bd2", ink: "#1e3a52" },
   ollama: { bg: "#dbedd1", mid: "#a8d18d", ink: "#3e5a2e" },
   none: { bg: "#e6dfd1", mid: "#a89978", ink: "#5b5240" },
 } as const;
@@ -55,6 +57,12 @@ const PROVIDERS: ProviderMeta[] = [
     recommended: true,
   },
   {
+    id: "openai",
+    title: "OpenAI",
+    tagline: "ChatGPT API models (cloud)",
+    icon: "●",
+  },
+  {
     id: "ollama",
     title: "Ollama",
     tagline: "Runs locally, free and private",
@@ -71,7 +79,10 @@ const PROVIDERS: ProviderMeta[] = [
 export function AIStep({ onComplete, onBack }: AIStepProps) {
   const [choice, setChoice] = useState<AIChoice>("claude");
   const [apiKey, setApiKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
+  const [showClaudeKey, setShowClaudeKey] = useState(false);
+  const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [ollamaModel, setOllamaModel] = useState("llama3.2:3b");
   const [installedModels, setInstalledModels] = useState<string[]>([]);
@@ -104,9 +115,13 @@ export function AIStep({ onComplete, onBack }: AIStepProps) {
 
   const modelInstalled = installedModels.includes(ollamaModel);
 
+  const openaiKeyOk =
+    /^sk-/i.test(openaiApiKey.trim()) && openaiApiKey.trim().length >= 20;
+
   const canContinue =
     choice === "none" ||
     (choice === "claude" && /^sk-ant-/.test(apiKey) && apiKey.length > 25) ||
+    (choice === "openai" && openaiKeyOk && openaiModel.trim().length > 0) ||
     (choice === "ollama" && modelInstalled);
 
   const handlePull = () => {
@@ -149,7 +164,13 @@ export function AIStep({ onComplete, onBack }: AIStepProps) {
     try {
       await saveAIConfig({
         provider: choice,
-        apiKey: choice === "claude" ? apiKey : undefined,
+        apiKey:
+          choice === "claude"
+            ? apiKey
+            : choice === "openai"
+              ? openaiApiKey
+              : undefined,
+        openaiModel: choice === "openai" ? openaiModel.trim() : undefined,
         ollamaUrl: choice === "ollama" ? ollamaUrl : undefined,
         ollamaModel: choice === "ollama" ? ollamaModel : undefined,
       });
@@ -197,8 +218,18 @@ export function AIStep({ onComplete, onBack }: AIStepProps) {
                       <ClaudeConfig
                         apiKey={apiKey}
                         setApiKey={setApiKey}
-                        showKey={showKey}
-                        setShowKey={setShowKey}
+                        showKey={showClaudeKey}
+                        setShowKey={setShowClaudeKey}
+                      />
+                    )}
+                    {p.id === "openai" && (
+                      <OpenAIConfig
+                        apiKey={openaiApiKey}
+                        setApiKey={setOpenaiApiKey}
+                        model={openaiModel}
+                        setModel={setOpenaiModel}
+                        showKey={showOpenaiKey}
+                        setShowKey={setShowOpenaiKey}
                       />
                     )}
                     {p.id === "ollama" && (
@@ -350,6 +381,88 @@ function ClaudeConfig({
   );
 }
 
+function OpenAIConfig({
+  apiKey,
+  setApiKey,
+  model,
+  setModel,
+  showKey,
+  setShowKey,
+}: {
+  apiKey: string;
+  setApiKey: (v: string) => void;
+  model: string;
+  setModel: (v: string) => void;
+  showKey: boolean;
+  setShowKey: (v: boolean) => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-card/60 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor="openai-api-key" className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          API key
+        </Label>
+        <a
+          href="https://platform.openai.com/api-keys"
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11px] font-medium text-primary hover:underline"
+        >
+          Get a key ↗
+        </a>
+      </div>
+      <div className="relative">
+        <Input
+          id="openai-api-key"
+          type={showKey ? "text" : "password"}
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder="sk-..."
+          className="font-mono pr-14"
+        />
+        <button
+          type="button"
+          onClick={() => setShowKey(!showKey)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+        >
+          {showKey ? "hide" : "show"}
+        </button>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="openai-model" className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          Model
+        </Label>
+        <div className="flex flex-wrap gap-1.5">
+          {SUGGESTED_OPENAI_MODELS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setModel(id)}
+              className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                model === id
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-background hover:border-primary/40"
+              }`}
+            >
+              {id}
+            </button>
+          ))}
+        </div>
+        <Input
+          id="openai-model"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          placeholder="e.g. gpt-4o-mini"
+          className="font-mono text-[12px]"
+        />
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Encrypted with AES-256-GCM and stored locally. Transaction summaries are sent to OpenAI when you categorize.
+      </p>
+    </div>
+  );
+}
+
 function OllamaConfig({
   url,
   setUrl,
@@ -475,7 +588,7 @@ function ManualNote() {
     <div className="rounded-xl border border-border bg-card/60 p-4 text-[12px] leading-relaxed text-muted-foreground">
       Spent will leave transactions <span className="text-foreground">uncategorized</span>;
       you can assign categories from the transactions table any time. Switch to
-      Claude or Ollama later in{" "}
+      Claude, OpenAI, or Ollama later in{" "}
       <span className="font-bold text-foreground">Settings → AI</span>.
     </div>
   );

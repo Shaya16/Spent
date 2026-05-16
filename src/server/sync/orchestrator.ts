@@ -82,6 +82,9 @@ export function friendlyAIError(err: unknown, modelName: string): string {
   if (/Anthropic|api[_-]?key|401|403/i.test(msg)) {
     return "Claude API request was rejected. Check your API key in settings.";
   }
+  if (/OpenAI|incorrect api key|invalid_api_key/i.test(msg)) {
+    return "OpenAI API request was rejected. Check your API key in settings.";
+  }
   return `AI categorization failed: ${msg}`;
 }
 
@@ -503,7 +506,13 @@ export async function syncWorkspace(
               err
             );
             if (!aiWarning) {
-              aiWarning = friendlyAIError(err, settings.ollamaModel);
+              const modelLabel =
+                settings.aiProvider === "ollama"
+                  ? settings.ollamaModel
+                  : settings.aiProvider === "openai"
+                    ? settings.openaiModel
+                    : "claude";
+              aiWarning = friendlyAIError(err, modelLabel);
             }
           }
         }

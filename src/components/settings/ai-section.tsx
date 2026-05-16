@@ -12,7 +12,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { RECOMMENDED_OLLAMA_MODELS, type AppSettings } from "@/lib/types";
+import {
+  RECOMMENDED_OLLAMA_MODELS,
+  SUGGESTED_OPENAI_MODELS,
+  type AppSettings,
+} from "@/lib/types";
 import { getSettings, saveAIConfig } from "@/lib/api";
 import { OllamaModelStatus } from "./ollama-model-status";
 import { SectionShell, SettingCard } from "./section-shell";
@@ -37,7 +41,10 @@ export function AISection() {
       title="AI & automation"
       description="How Spent organizes new transactions. Switch any time — your existing categorizations stay."
     >
-      <AIForm key={settings.aiProvider} settings={settings} />
+      <AIForm
+        key={`${settings.aiProvider}-${settings.openaiModel}-${settings.ollamaModel}-${settings.ollamaUrl}`}
+        settings={settings}
+      />
     </SectionShell>
   );
 }
@@ -47,7 +54,9 @@ function AIForm({ settings }: { settings: AppSettings }) {
   const [provider, setProvider] = useState<AppSettings["aiProvider"]>(
     settings.aiProvider
   );
-  const [apiKey, setApiKey] = useState("");
+  const [claudeApiKey, setClaudeApiKey] = useState("");
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [openaiModel, setOpenaiModel] = useState(settings.openaiModel);
   const [ollamaUrl, setOllamaUrl] = useState(settings.ollamaUrl);
   const [ollamaModel, setOllamaModel] = useState(settings.ollamaModel);
 
@@ -55,14 +64,21 @@ function AIForm({ settings }: { settings: AppSettings }) {
     mutationFn: () =>
       saveAIConfig({
         provider,
-        apiKey: provider === "claude" && apiKey ? apiKey : undefined,
+        apiKey:
+          provider === "claude" && claudeApiKey
+            ? claudeApiKey
+            : provider === "openai" && openaiApiKey
+              ? openaiApiKey
+              : undefined,
+        openaiModel: provider === "openai" ? openaiModel.trim() : undefined,
         ollamaUrl: provider === "ollama" ? ollamaUrl : undefined,
         ollamaModel: provider === "ollama" ? ollamaModel : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       toast.success("AI settings saved");
-      setApiKey("");
+      setClaudeApiKey("");
+      setOpenaiApiKey("");
     },
   });
 
@@ -72,13 +88,18 @@ function AIForm({ settings }: { settings: AppSettings }) {
         title="Provider"
         description="Switch any time. Your existing categorizations are kept."
       >
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           {(
             [
               {
                 id: "claude",
                 title: "Claude (Anthropic)",
                 desc: "Fast and accurate. Paid API. Bring your own API key.",
+              },
+              {
+                id: "openai",
+                title: "OpenAI",
+                desc: "Chat Completions API. Paid usage. Bring your own API key.",
               },
               {
                 id: "ollama",
@@ -94,6 +115,7 @@ function AIForm({ settings }: { settings: AppSettings }) {
           ).map((opt) => (
             <button
               key={opt.id}
+              type="button"
               onClick={() => setProvider(opt.id)}
               className={`rounded-xl border p-4 text-left transition-colors ${
                 provider === opt.id
@@ -120,13 +142,62 @@ function AIForm({ settings }: { settings: AppSettings }) {
             <Input
               id="claude-key"
               type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              value={claudeApiKey}
+              onChange={(e) => setClaudeApiKey(e.target.value)}
               placeholder="sk-ant-..."
             />
             <p className="text-xs text-muted-foreground">
               Leave blank to keep your existing key.
             </p>
+          </div>
+        </SettingCard>
+      )}
+
+      {provider === "openai" && (
+        <SettingCard
+          title="OpenAI"
+          description="Paste your key from platform.openai.com. It's encrypted at rest with AES-256-GCM."
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="openai-key">API key</Label>
+              <Input
+                id="openai-key"
+                type="password"
+                value={openaiApiKey}
+                onChange={(e) => setOpenaiApiKey(e.target.value)}
+                placeholder="sk-..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave blank to keep your existing key.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="openai-model">Model</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {SUGGESTED_OPENAI_MODELS.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setOpenaiModel(id)}
+                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                      openaiModel === id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background hover:border-primary/40"
+                    }`}
+                  >
+                    {id}
+                  </button>
+                ))}
+              </div>
+              <Input
+                id="openai-model"
+                value={openaiModel}
+                onChange={(e) => setOpenaiModel(e.target.value)}
+                placeholder="e.g. gpt-4o-mini"
+                className="font-mono text-sm"
+              />
+            </div>
           </div>
         </SettingCard>
       )}
@@ -187,6 +258,7 @@ function AIForm({ settings }: { settings: AppSettings }) {
 
       <div className="flex justify-end">
         <Button
+          type="button"
           onClick={() => mutation.mutate()}
           disabled={mutation.isPending}
         >

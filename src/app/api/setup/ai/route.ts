@@ -4,8 +4,9 @@ import { encrypt } from "@/server/lib/encryption";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as {
-    provider: "claude" | "ollama" | "none";
+    provider: "claude" | "openai" | "ollama" | "none";
     apiKey?: string;
+    openaiModel?: string;
     ollamaUrl?: string;
     ollamaModel?: string;
   };
@@ -17,6 +18,18 @@ export async function POST(request: Request) {
     setSetting("ai_api_key_encrypted", encrypted.toString("hex"));
     setSetting("ai_api_key_iv", iv.toString("hex"));
     setSetting("ai_api_key_auth_tag", authTag.toString("hex"));
+  }
+
+  if (body.provider === "openai") {
+    if (body.apiKey) {
+      const { encrypted, iv, authTag } = encrypt(body.apiKey);
+      setSetting("openai_api_key_encrypted", encrypted.toString("hex"));
+      setSetting("openai_api_key_iv", iv.toString("hex"));
+      setSetting("openai_api_key_auth_tag", authTag.toString("hex"));
+    }
+    if (body.openaiModel) {
+      setSetting("ai_openai_model", body.openaiModel);
+    }
   }
 
   if (body.provider === "ollama") {

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AIProvider } from "./types";
 import { ClaudeProvider } from "./providers/claude";
+import { OpenAIProvider } from "./providers/openai";
 import { OllamaProvider } from "./providers/ollama";
 import { getSetting } from "../db/queries/settings";
 import { decrypt } from "../lib/encryption";
@@ -23,6 +24,23 @@ export function createAIProvider(): AIProvider | null {
     });
 
     return new ClaudeProvider(apiKey);
+  }
+
+  if (provider === "openai") {
+    const encryptedKey = getSetting("openai_api_key_encrypted");
+    const iv = getSetting("openai_api_key_iv");
+    const authTag = getSetting("openai_api_key_auth_tag");
+
+    if (!encryptedKey || !iv || !authTag) return null;
+
+    const apiKey = decrypt({
+      encrypted: Buffer.from(encryptedKey, "hex"),
+      iv: Buffer.from(iv, "hex"),
+      authTag: Buffer.from(authTag, "hex"),
+    });
+
+    const model = getSetting("ai_openai_model") ?? "gpt-4o-mini";
+    return new OpenAIProvider(apiKey, model);
   }
 
   if (provider === "ollama") {

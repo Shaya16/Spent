@@ -23,7 +23,7 @@ const SECURITY_HEADERS = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://www.google.com",
-      "connect-src 'self' https://api.anthropic.com http://localhost:11434 ws://127.0.0.1:* ws://localhost:*",
+      "connect-src 'self' https://api.anthropic.com https://api.openai.com http://localhost:11434 ws://127.0.0.1:* ws://localhost:*",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

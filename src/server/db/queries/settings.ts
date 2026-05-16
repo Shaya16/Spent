@@ -4,8 +4,8 @@ import { getDb } from "../index";
 import type { AppSettings } from "@/lib/types";
 
 // Global settings live in the `settings` table and apply to every workspace.
-// Currently: ai_provider, ai_ollama_url, ai_ollama_model, plus the encrypted
-// Claude API key triple (ai_api_key_encrypted/iv/auth_tag).
+// Currently: ai_provider, ai_ollama_url, ai_ollama_model, ai_openai_model,
+// plus encrypted API key triples for Claude and OpenAI.
 export function getGlobalSetting(key: string): string | null {
   const row = getDb()
     .prepare("SELECT value FROM settings WHERE key = ?")
@@ -70,6 +70,7 @@ export function getAppSettings(workspaceId: number): AppSettings {
   return {
     monthsToSync: Number(getWorkspaceSetting(workspaceId, "months_to_sync") ?? "3"),
     aiProvider: (getGlobalSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
+    openaiModel: getGlobalSetting("ai_openai_model") ?? "gpt-4o-mini",
     ollamaUrl: getGlobalSetting("ai_ollama_url") ?? "http://localhost:11434",
     ollamaModel: getGlobalSetting("ai_ollama_model") ?? "llama3.2:3b",
     showBrowser: getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true",
@@ -98,6 +99,9 @@ export function updateAppSettings(
     }
     if (settings.ollamaModel !== undefined) {
       setGlobalSetting("ai_ollama_model", settings.ollamaModel);
+    }
+    if (settings.openaiModel !== undefined) {
+      setGlobalSetting("ai_openai_model", settings.openaiModel);
     }
     if (settings.showBrowser !== undefined) {
       setWorkspaceSetting(

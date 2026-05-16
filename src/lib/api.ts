@@ -113,8 +113,9 @@ export function testBankConnection(provider: string) {
 }
 
 export function saveAIConfig(config: {
-  provider: "claude" | "ollama" | "none";
+  provider: "claude" | "openai" | "ollama" | "none";
   apiKey?: string;
+  openaiModel?: string;
   ollamaUrl?: string;
   ollamaModel?: string;
 }) {
@@ -532,6 +533,181 @@ export function listOllamaModels(url?: string) {
   return fetchJSON<{ models: string[]; error?: string }>(
     `/api/ai/ollama/models${qs}`
   );
+}
+
+// ---------------------------------------------------------------------------
+// Chat assistant
+
+export type ChatBlock =
+  | { type: "text"; text: string }
+  | { type: "tool_use"; id: string; name: string; input: unknown }
+  | {
+      type: "tool_result";
+      toolUseId: string;
+      output: unknown;
+      isError?: boolean;
+    };
+
+export interface ChatPersistedMessage {
+  id: number;
+  threadId: number;
+  role: "user" | "assistant" | "tool";
+  blocks: ChatBlock[];
+  provider: "claude" | "openai" | null;
+  model: string | null;
+  tokensIn: number | null;
+  tokensOut: number | null;
+  createdAt: string;
+}
+
+export interface ChatThreadSummary {
+  id: number;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+}
+
+export interface ChatThread {
+  id: number;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatStatus {
+  available: boolean;
+  provider: "claude" | "openai" | "ollama" | "none";
+  reason: null | "not-configured" | "missing-api-key" | "ollama-not-supported";
+}
+
+export function getChatStatus() {
+  return fetchJSON<ChatStatus>("/api/chat/status");
+}
+
+export function listChatThreads() {
+  return fetchJSON<{ threads: ChatThreadSummary[] }>("/api/chat/threads").then(
+    (r) => r.threads
+  );
+}
+
+export function createChatThread(title?: string) {
+  return fetchJSON<{ thread: ChatThread }>("/api/chat/threads", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  }).then((r) => r.thread);
+}
+
+export function renameChatThread(id: number, title: string) {
+  return fetchJSON<{ thread: ChatThread }>(`/api/chat/threads/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  }).then((r) => r.thread);
+}
+
+export function deleteChatThread(id: number) {
+  return fetchJSON<{ success: boolean }>(`/api/chat/threads/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function getChatMessages(id: number) {
+  return fetchJSON<{ thread: ChatThread; messages: ChatPersistedMessage[] }>(
+    `/api/chat/threads/${id}/messages`
+  );
+}
+
+export type ChatStreamEvent =
+  | { type: "user-message"; data: { message: ChatPersistedMessage } }
+  | { type: "text"; data: { delta: string } }
+  | {
+      type: "tool-start";
+      data: { id: string; name: string; input: unknown };
+    }
+  | {
+      type: "tool-end";
+      data: {
+        id: string;
+        name: string;
+        output: unknown;
+        isError: boolean;
+        truncated: boolean;
+      };
+    }
+  | { type: "assistant-message"; data: { message: ChatPersistedMessage } }
+  | { type: "thread-updated"; data: { thread: ChatThread } }
+  | { type: "error"; data: { message: string } }
+  | { type: "done"; data: Record<string, never> };
+
+export function streamChat(
+  threadId: number,
+  text: string,
+  onEvent: (event: ChatStreamEvent) => void
+): { cancel: () => void } {
+  const controller = new AbortController();
+
+  (async () => {
+    try {
+      const res = await fetch(
+        `/api/chat/threads/${threadId}/messages`,
+        withWorkspaceHeader({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+          signal: controller.signal,
+        })
+      );
+
+      if (!res.ok) {
+        const message = await res.text().catch(() => "Chat request failed");
+        onEvent({ type: "error", data: { message } });
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) return;
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        let currentEvent = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ") && currentEvent) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              onEvent({
+                type: currentEvent as ChatStreamEvent["type"],
+                data,
+              } as ChatStreamEvent);
+            } catch {
+              // skip malformed json
+            }
+            currentEvent = "";
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      onEvent({
+        type: "error",
+        data: { message: "Connection to chat service lost" },
+      });
+    }
+  })();
+
+  return { cancel: () => controller.abort() };
 }
 
 export function pullOllamaModel(
