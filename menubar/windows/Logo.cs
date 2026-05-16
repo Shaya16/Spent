@@ -67,16 +67,24 @@ internal static class Logo
         var rtb = new RenderTargetBitmap(pixelSize, pixelSize, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(visual);
 
-        // H.NotifyIcon.ImageExtensions doesn't know how to convert a
-        // RenderTargetBitmap into a tray icon stream; round-trip through PNG.
+        // H.NotifyIcon's ImageSource->stream helper only handles URI-backed
+        // images, so write the PNG to %TEMP% and load it back via file URI.
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(rtb));
-        using var ms = new System.IO.MemoryStream();
-        encoder.Save(ms);
-        ms.Position = 0;
+        var tempPath = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            $"spent-tray-{pixelSize}-{(uint)color.ToString().GetHashCode():x8}.png");
+        using (var fs = System.IO.File.Create(tempPath))
+        {
+            encoder.Save(fs);
+        }
 
-        var frame = BitmapFrame.Create(ms, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-        frame.Freeze();
-        return frame;
+        var bi = new BitmapImage();
+        bi.BeginInit();
+        bi.UriSource = new Uri(tempPath, UriKind.Absolute);
+        bi.CacheOption = BitmapCacheOption.OnLoad;
+        bi.EndInit();
+        bi.Freeze();
+        return bi;
     }
 }
