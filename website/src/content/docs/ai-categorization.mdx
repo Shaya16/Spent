@@ -1,0 +1,61 @@
+---
+title: Categorize with AI
+description: How Spent uses AI to sort your transactions, and how to pick a provider.
+---
+
+import { Image } from 'astro:assets';
+import aiSettings from '../../assets/screenshots/settings-ai-light.png';
+
+Spent uses a language model to assign each transaction to a category like *Groceries*, *Dining*, *Transport*, *Subscriptions*, and so on. You pick which model to use during setup, and you can switch any time from *Settings → AI*.
+
+<figure class="doc-figure">
+  <Image src={aiSettings} alt="The AI provider settings page in Spent, with Claude, Ollama, and Manual as options" class="doc-shot" />
+  <figcaption>Settings → AI, with all three providers shown.</figcaption>
+</figure>
+
+## Three options
+
+You have three choices, each with its own trade-offs.
+
+### Claude (Anthropic API)
+
+- **Cost** - paid. About **$0.01 - $0.05 per month** for typical personal use (categorizing a few hundred transactions in 50-transaction batches with Claude Haiku 4.5).
+- **Privacy** - your transaction descriptions are sent to Anthropic's API. The merchant name and amount, no personal IDs. Anthropic's commercial API does not train on your data.
+- **Quality** - excellent. Handles Hebrew merchant names and edge cases well.
+
+**Setup:** Go to `console.anthropic.com`, create an API key (under *Settings → API Keys*), paste it into Spent's setup wizard. Your key is encrypted at rest, same as bank credentials.
+
+### Ollama (local LLM)
+
+- **Cost** - free.
+- **Privacy** - nothing leaves your computer. Period.
+- **Quality** - very good with the right model. `llama3.1:8b` or `qwen2.5:3b` give solid results; smaller models can struggle with Hebrew.
+- **Resources** - needs about **6-12 GB of RAM** while running, depending on the model. Slower than the Claude API.
+
+**Setup:**
+
+1. Install Ollama from [ollama.com/download](https://ollama.com/download).
+2. In a terminal: `ollama pull llama3.1:8b` (this is a 4.7 GB download).
+3. In Spent's setup wizard, choose Ollama and pick the model.
+
+Spent talks to Ollama at `http://localhost:11434`, which is its default.
+
+### Manual
+
+- **Cost** - free.
+- **Privacy** - perfect.
+- **Quality** - depends on you.
+
+Skip AI entirely. Each transaction starts in *Uncategorized*. You assign categories by clicking the category badge in the dashboard. Slow but private.
+
+## How batching works
+
+When you sync, Spent groups uncategorized transactions into batches of **50** and sends each batch to the chosen provider in one round-trip. This keeps cost and latency low.
+
+The prompt asks the model to return JSON with one category per transaction. Spent retries up to three times if the model returns malformed output.
+
+## Switching providers
+
+You can switch any time from *Settings → AI*. Previously-categorized transactions stay categorized. Only new transactions (and ones you've explicitly re-categorized) go through the new provider.
+
+If you switch from Claude to Ollama, **revoke the API key** in your Anthropic console. Spent will discard it locally, but for safety you should rotate it too.

@@ -1,0 +1,41 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<section class="cta">
+	<div class="spent-wrap">
+		<div class="card">
+			<p class="spent-section-label">Get started</p>
+			<h2 class="spent-h-section">In about five minutes.</h2>
+			<p class="lede">
+				Pick your operating system. The install guide walks you through every step, with
+				screenshots, including the bits that trip up first-timers.
+			</p>
+			<div class="row">
+				<a class="spent-btn spent-btn-primary" href={`${base}/install/mac`}>↓ Install on Mac</a>
+				<a class="spent-btn spent-btn-ghost" href={`${base}/install/windows`}>↓ Install on Windows</a>
+			</div>
+		</div>
+	</div>
+</section>
+
+<style>
+	.cta { padding: 5rem 0; background: var(--spent-bg-soft); }
+	.card {
+		background: var(--spent-card);
+		border: 1px solid var(--spent-border);
+		border-radius: var(--spent-radius-lg);
+		padding: 3rem 2rem;
+		text-align: center;
+		max-width: 42rem;
+		margin: 0 auto;
+	}
+	.lede {
+		font-family: var(--spent-font-sans);
+		color: var(--spent-fg-muted);
+		max-width: 32rem;
+		margin: 1rem auto 1.5rem;
+		line-height: 1.6;
+	}
+	.row { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
+	@media (min-width: 50rem) { .card { padding: 4rem 3rem; } }
+</style>

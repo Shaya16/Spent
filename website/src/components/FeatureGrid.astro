@@ -1,0 +1,90 @@
+---
+const features = [
+	{
+		num: '01',
+		title: 'Scrapes your banks',
+		body: 'Runs your real bank login in a headless browser on a schedule. 18 Israeli banks and cards supported out of the box.',
+	},
+	{
+		num: '02',
+		title: 'Categorizes with AI',
+		body: 'Each transaction gets sorted into Groceries, Dining, Transport, and so on. Use Claude, or run Ollama locally for full offline.',
+	},
+	{
+		num: '03',
+		title: 'Runs in the menubar',
+		body: 'Native menubar app on macOS and a system tray on Windows. Open the dashboard, sync, or pause the service in two clicks.',
+	},
+	{
+		num: '04',
+		title: 'A dashboard that lifts the mood',
+		body: 'Buttercream cream, sage accents, soft animations. Designed so checking your spending feels like reading a thoughtful letter.',
+	},
+];
+---
+<section class="features">
+	<div class="spent-wrap">
+		<p class="spent-section-label">What it does</p>
+		<h2 class="spent-h-section">Four small jobs, done <u>quietly well</u>.</h2>
+
+		<div class="grid">
+			{features.map((f) => (
+				<article class="card">
+					<div class="num">{f.num}</div>
+					<h3>{f.title}</h3>
+					<p>{f.body}</p>
+				</article>
+			))}
+		</div>
+	</div>
+</section>
+
+<style>
+	.features { padding: 5rem 0; background: var(--spent-bg-soft); }
+	.grid {
+		margin-top: 2rem;
+		display: grid;
+		gap: 1.25rem;
+		grid-template-columns: 1fr;
+	}
+	@media (min-width: 50rem) { .grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; } }
+
+	.card {
+		background: var(--spent-card);
+		border: 1px solid var(--spent-border);
+		border-radius: var(--spent-radius);
+		padding: 1.75rem 1.75rem 1.5rem;
+		font-family: var(--spent-font-sans);
+		transition: transform 160ms ease, box-shadow 160ms ease;
+	}
+	.card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 14px 30px -22px rgba(44, 42, 39, 0.35);
+	}
+
+	.num {
+		font-family: var(--spent-font-serif);
+		font-style: italic;
+		font-weight: 400;
+		font-size: 2.2rem;
+		color: var(--spent-primary);
+		line-height: 1;
+		margin-bottom: 0.75rem;
+	}
+
+	.card h3 {
+		font-family: var(--spent-font-serif);
+		font-style: italic;
+		font-weight: 500;
+		font-size: 1.3rem;
+		margin: 0 0 0.45rem;
+		color: var(--spent-fg);
+	}
+
+	.card p {
+		font-size: 0.95rem;
+		line-height: 1.6;
+		color: var(--spent-fg-muted);
+		margin: 0;
+	}
+</style>

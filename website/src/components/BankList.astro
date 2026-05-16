@@ -1,0 +1,113 @@
+---
+import { BANKS } from '../data/banks.ts';
+const cards = BANKS.filter((b) => b.kind === 'card');
+const banks = BANKS.filter((b) => b.kind === 'bank');
+const other = BANKS.filter((b) => b.kind === 'other');
+---
+<section class="banks">
+	<div class="spent-wrap">
+		<p class="spent-section-label">Supported banks &amp; cards</p>
+		<h2 class="spent-h-section"><u>Eighteen</u> of them, with more on the way.</h2>
+
+		<div class="group">
+			<h3>Credit cards</h3>
+			<div class="grid">
+				{cards.map((b) => (
+					<div class="bank">
+						<span class="swatch" style={`background:${b.color}`}></span>
+						<div>
+							<strong>{b.name}</strong>
+							<p>{b.blurb}</p>
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+
+		<div class="group">
+			<h3>Banks</h3>
+			<div class="grid">
+				{banks.map((b) => (
+					<div class="bank">
+						<span class="swatch" style={`background:${b.color}`}></span>
+						<div>
+							<strong>{b.name}</strong>
+							<p>{b.blurb}</p>
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+
+		{other.length > 0 && (
+			<div class="group">
+				<h3>Other</h3>
+				<div class="grid">
+					{other.map((b) => (
+						<div class="bank">
+							<span class="swatch" style={`background:${b.color}`}></span>
+							<div>
+								<strong>{b.name}</strong>
+								<p>{b.blurb}</p>
+							</div>
+						</div>
+					))}
+				</div>
+			</div>
+		)}
+	</div>
+</section>
+
+<style>
+	.banks { padding: 5rem 0; background: var(--spent-bg); }
+
+	.group { margin-top: 2.5rem; }
+
+	.group h3 {
+		font-family: var(--spent-font-sans);
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--spent-fg-muted);
+		margin: 0 0 1rem;
+	}
+
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+		gap: 0.75rem;
+	}
+
+	.bank {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.85rem;
+		background: var(--spent-card);
+		border: 1px solid var(--spent-border);
+		border-radius: var(--spent-radius-sm);
+		padding: 0.85rem 1rem;
+		font-family: var(--spent-font-sans);
+	}
+
+	.swatch {
+		flex-shrink: 0;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		margin-top: 0.45rem;
+	}
+
+	.bank strong {
+		display: block;
+		font-size: 0.95rem;
+		color: var(--spent-fg);
+		font-weight: 600;
+	}
+
+	.bank p {
+		margin: 0.1rem 0 0;
+		font-size: 0.8rem;
+		color: var(--spent-fg-muted);
+	}
+</style>

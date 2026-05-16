@@ -1,0 +1,29 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "menubar", "menubar", "{6259D98C-762D-27BB-6DE2-96B890C42113}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spent", "menubar\windows\Spent.csproj", "{CBDF4A33-EA45-F131-781C-71B987CEAE1C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CBDF4A33-EA45-F131-781C-71B987CEAE1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBDF4A33-EA45-F131-781C-71B987CEAE1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBDF4A33-EA45-F131-781C-71B987CEAE1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBDF4A33-EA45-F131-781C-71B987CEAE1C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{CBDF4A33-EA45-F131-781C-71B987CEAE1C} = {6259D98C-762D-27BB-6DE2-96B890C42113}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BA14BD89-C500-45F3-9EFF-A8CA0AEDD4A9}
+	EndGlobalSection
+EndGlobal

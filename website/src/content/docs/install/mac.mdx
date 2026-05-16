@@ -1,0 +1,122 @@
+---
+title: Install on macOS
+description: A step-by-step guide to installing Spent on a Mac.
+---
+
+import InstallStepCard from '../../../components/InstallStepCard.astro';
+import { Image } from 'astro:assets';
+import payoff from '../../../assets/screenshots/dashboard-light.png';
+
+You'll be done in about ten minutes. The steps below assume you've never opened Terminal before; if you have, feel free to skim.
+
+## What you'll need
+
+- macOS 12 (Monterey) or newer.
+- About **500 MB** of disk space.
+- Your bank login credentials.
+- A few minutes of patience for the first sync.
+
+<InstallStepCard num="01" title="Install Node.js">
+
+Spent runs on Node.js, a small runtime that you install once. Go to **[nodejs.org](https://nodejs.org)**, download the macOS installer for the **LTS** (long-term support) version, and run it. Click through the installer with the defaults; you don't need to change anything.
+
+If you'd rather use Homebrew:
+
+```sh
+brew install node@20
+```
+
+</InstallStepCard>
+
+<InstallStepCard num="02" title="Download Spent">
+
+Go to the [Spent releases page](https://github.com/Shaya16/Spent/releases) on GitHub and download the latest **source code (zip)**. Unzip it somewhere you'll remember, like `~/Applications/Spent`.
+
+If you're comfortable with Git:
+
+```sh
+git clone https://github.com/Shaya16/Spent.git ~/Applications/Spent
+cd ~/Applications/Spent
+```
+
+</InstallStepCard>
+
+<InstallStepCard num="03" title="Open Terminal in the folder">
+
+Open the **Terminal** app (it's in *Applications → Utilities*). Then type `cd `, drag the Spent folder onto the Terminal window, and press Return. You should see the folder path appear next to `cd`.
+
+Now install Spent's internal dependencies:
+
+```sh
+npm install
+```
+
+This takes 2-3 minutes the first time. You'll see a stream of lines scrolling by. If it finishes without an error message, you're good.
+
+</InstallStepCard>
+
+<InstallStepCard num="04" title="Build the app">
+
+Spent needs a one-time build step to prepare itself for running:
+
+```sh
+npm run build
+```
+
+When this finishes, the prompt comes back without errors.
+
+</InstallStepCard>
+
+<InstallStepCard num="05" title="Install as a background service">
+
+This tells macOS to start Spent automatically when you log in:
+
+```sh
+npm run service:install
+npm run service:start
+```
+
+The first command registers the service with `launchd` (macOS's service manager). The second starts it. Confirm it's running:
+
+```sh
+npm run service:status
+```
+
+</InstallStepCard>
+
+<InstallStepCard num="06" title="Install the menubar app">
+
+The menubar app is a tiny native macOS application that shows a little icon in your menu bar with quick actions:
+
+```sh
+npm run menubar:install
+```
+
+This builds the menubar app and copies `Spent.app` to `~/Applications`. Open it from there once. macOS may show a "Spent.app is from an unidentified developer" warning the first time - **right-click** the app and choose *Open* to bypass that.
+
+To launch it automatically on login: open *System Settings → General → Login Items*, click +, and add `Spent`.
+
+</InstallStepCard>
+
+<InstallStepCard num="07" title="Open the app">
+
+Click the new sage-green icon in your menu bar and choose **Open**. The dashboard opens at `http://localhost:41234`.
+
+If you'd rather skip the menubar app, the dashboard is always there at [http://localhost:41234](http://localhost:41234) once the service is running.
+
+</InstallStepCard>
+
+<figure class="doc-figure">
+  <Image src={payoff} alt="The Spent dashboard, opened in a browser for the first time" class="doc-shot" />
+  <figcaption>If you see this, you're done.</figcaption>
+</figure>
+
+## What's next
+
+Now connect your first bank. The dashboard walks you through a short setup wizard the first time you open it.
+
+- [Connect your bank →](/Spent/connect-bank)
+- [Pick an AI provider →](/Spent/ai-categorization)
+- [Daily usage →](/Spent/sync-and-dashboard)
+
+Something not working? [Troubleshooting](/Spent/troubleshooting) has the common gotchas.

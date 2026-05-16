@@ -1,0 +1,86 @@
+---
+title: Sync & dashboard
+description: Day-to-day usage of Spent - syncing, browsing, and the menubar app.
+---
+
+import { Image } from 'astro:assets';
+import dashboardLight from '../../assets/screenshots/dashboard-light.png';
+import dashboardDark from '../../assets/screenshots/dashboard-dark.png';
+import transactions from '../../assets/screenshots/transactions-light.png';
+import categories from '../../assets/screenshots/settings-categories-light.png';
+
+After install and a first sync, you'll mostly interact with Spent in three places: the menubar app, the dashboard, and the occasional click on a transaction.
+
+## The dashboard
+
+<figure class="doc-figure">
+  <Image src={dashboardLight} alt="The Spent dashboard, with monthly totals at top and recent transactions below" class="doc-shot" />
+  <figcaption>The default view when you open Spent.</figcaption>
+</figure>
+
+The dashboard at `http://localhost:41234` is divided into four areas:
+
+- **Overview** - month-by-month spending totals, status pills (*on track*, *heads-up*, *over*), and the top spending categories.
+- **Transactions** - a chronological list with merchant, amount, category, and date. Click any transaction to edit its category or add a note.
+- **Categories** - a tree view of where your money goes. Click a category to drill down.
+- **Settings** - banks, AI provider, sync schedule, and a few preferences.
+
+## Syncing
+
+By default, Spent syncs **once a day** at 03:00 local time, when the service is least likely to interfere with anything. You can change this in *Settings → Sync schedule*, or trigger a manual sync from the menubar app or the dashboard.
+
+A sync does three things, in order:
+
+1. **Scrape** - log into each connected bank and download new transactions.
+2. **Deduplicate** - compare against existing transactions using a content hash (so you don't get duplicates if a bank shifts an old transaction's identifier).
+3. **Categorize** - send uncategorized transactions to your chosen AI provider, in batches of 50.
+
+If anything fails, Spent shows the error in the dashboard with a hint about what to do.
+
+## The menubar app
+
+The menubar app (macOS) and system tray app (Windows) give you four actions without opening the dashboard:
+
+- **Open** - opens the dashboard in your default browser.
+- **Sync now** - runs an immediate sync.
+- **Start / Stop service** - pause Spent without uninstalling.
+- **Quit** - quits the menubar app (the background service keeps running).
+
+The icon turns to a small dot animation while a sync is running, and goes back to solid when done.
+
+## Categories
+
+Spent ships with a curated set of categories: *Groceries*, *Dining*, *Transport*, *Subscriptions*, *Shopping*, *Housing*, *Utilities*, *Health*, *Personal care*, *Entertainment*, *Travel*, *Education*, *Gifts*, *Transfers*, *Income*, *Other*. Each has a level-1 (parent) and level-2 (child) breakdown.
+
+<figure class="doc-figure">
+  <Image src={categories} alt="The category settings page, showing parent and child categories with colored swatches" class="doc-shot" />
+  <figcaption>Each category gets its own colour, used everywhere in the dashboard.</figcaption>
+</figure>
+
+For now, the category set is fixed. Custom categories are planned for v2.
+
+## Transactions
+
+<figure class="doc-figure">
+  <Image src={transactions} alt="The transactions list, showing merchant names, amounts, and category badges" class="doc-shot" />
+  <figcaption>Filter, search, or click a row to re-categorize.</figcaption>
+</figure>
+
+## Re-categorizing
+
+Click any category badge in the transaction list to change it. Spent remembers the correction and uses it the next time it sees a similar merchant - no need to re-train.
+
+## Dark mode
+
+Spent ships with a built-in dark theme. Toggle it from *Settings → Preferences*, or let it follow your OS.
+
+<figure class="doc-figure">
+  <Image src={dashboardDark} alt="The same dashboard in dark mode - warm dark background, sage accents preserved" class="doc-shot" />
+  <figcaption>Same dashboard, after sundown.</figcaption>
+</figure>
+
+## Backups
+
+Spent stores everything in `data/spent.db` (a SQLite file). To back up, copy that file plus `data/.encryption-key` to a safe place. To restore on a new machine, drop those two files into the new install's `data/` folder before the first sync.
+
+You can also use any SQLite-friendly backup tool that handles WAL-mode databases.

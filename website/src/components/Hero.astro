@@ -1,0 +1,102 @@
+---
+import DisclaimerCallout from './DisclaimerCallout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<section class="hero">
+	<div class="spent-wrap">
+		<div class="hero-inner">
+			<p class="spent-section-label">A finance tracker for Israel</p>
+			<h1 class="spent-h-display">
+				Money, but <u>pleasant</u>.
+			</h1>
+			<p class="hero-sub">
+				Spent lives on your computer, talks directly to your bank, and quietly keeps your
+				finances in order. No accounts, no cloud, no nonsense.
+			</p>
+			<div class="hero-cta">
+				<a class="spent-btn spent-btn-primary" href={`${base}/install/mac`}>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.46 2.27-1.22 3.1-.82.9-2.15 1.6-3.27 1.5-.15-1.1.43-2.27 1.18-3.07.8-.86 2.18-1.5 3.31-1.53zM20.2 17.36c-.55 1.27-.82 1.83-1.52 2.95-.97 1.56-2.36 3.5-4.08 3.51-1.53.01-1.92-1-3.99-.99-2.07.01-2.5 1-4.03.98-1.72-.02-3.04-1.77-4.01-3.33C.07 15.69-.22 10.5 1.41 7.55 2.55 5.5 4.4 4.18 6.45 4.14c1.55-.03 3.01 1.05 3.99 1.05.97 0 2.74-1.3 4.62-1.11.78.03 2.99.31 4.41 2.38-3.88 2.13-3.25 7.71.73 8.9z"/></svg>
+					Get for Mac
+				</a>
+				<a class="spent-btn spent-btn-ghost" href={`${base}/install/windows`}>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 3.5L9.5 2v9.3H0V3.5zm0 8.7h9.5V22L0 20.5v-8.3zM10.5 1.9L24 0v11.3H10.5V1.9zm0 10.3H24V24l-13.5-1.7V12.2z"/></svg>
+					Get for Windows
+				</a>
+				<a class="hero-link" href="https://github.com/Shaya16/Spent">
+					or view on GitHub
+				</a>
+			</div>
+			<DisclaimerCallout />
+		</div>
+	</div>
+
+	<div class="hero-orb hero-orb-a" aria-hidden="true"></div>
+	<div class="hero-orb hero-orb-b" aria-hidden="true"></div>
+</section>
+
+<style>
+	.hero {
+		position: relative;
+		padding: 4rem 0 5rem;
+		background: var(--spent-bg);
+		overflow: hidden;
+	}
+
+	.hero-inner {
+		max-width: 44rem;
+		position: relative;
+		z-index: 1;
+	}
+
+	.hero-sub {
+		font-family: var(--spent-font-sans);
+		font-size: clamp(1rem, 1.4vw, 1.15rem);
+		line-height: 1.6;
+		color: var(--spent-fg-muted);
+		max-width: 36rem;
+		margin: 1.25rem 0 1.75rem;
+	}
+
+	.hero-cta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.7rem;
+	}
+
+	.hero-link {
+		font-family: var(--spent-font-sans);
+		font-size: 0.9rem;
+		color: var(--spent-fg-muted);
+		text-decoration: none;
+		margin-left: 0.5rem;
+	}
+	.hero-link:hover { color: var(--spent-fg); text-decoration: underline; }
+
+	.hero-orb {
+		position: absolute;
+		border-radius: 50%;
+		filter: blur(40px);
+		opacity: 0.4;
+		pointer-events: none;
+	}
+	.hero-orb-a {
+		width: 280px;
+		height: 280px;
+		background: var(--spent-primary-soft);
+		top: -120px;
+		right: -80px;
+	}
+	.hero-orb-b {
+		width: 200px;
+		height: 200px;
+		background: var(--spent-accent);
+		bottom: -90px;
+		left: 30%;
+		opacity: 0.25;
+	}
+
+	@media (min-width: 60rem) {
+		.hero { padding: 5.5rem 0 6.5rem; }
+	}
+</style>

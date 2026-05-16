@@ -1,0 +1,261 @@
+/* Self-hosted variable fonts via Fontsource (no Google Fonts request) */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/fraunces";
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/geist-mono/500.css";
+
+/* ===== Spent design tokens (mirror src/app/globals.css) ===== */
+:root {
+	--spent-bg: #FCF7ED;
+	--spent-bg-soft: #F5EBD8;
+	--spent-fg: #2C2A27;
+	--spent-fg-muted: #6B6660;
+	--spent-card: #ffffff;
+	--spent-border: #ECE3D2;
+	--spent-primary: oklch(0.55 0.10 145);
+	--spent-primary-soft: oklch(0.72 0.10 145);
+	--spent-primary-fg: #FCF7ED;
+	--spent-accent: #E89B7C;
+	--spent-radius: 0.875rem;
+	--spent-radius-sm: 0.5rem;
+	--spent-radius-lg: 1.5rem;
+
+	--spent-font-sans: 'Inter Variable', system-ui, -apple-system, sans-serif;
+	--spent-font-serif: 'Fraunces Variable', Georgia, serif;
+	--spent-font-mono: 'Geist Mono', 'SF Mono', Menlo, monospace;
+}
+
+:root[data-theme='dark'] {
+	--spent-bg: oklch(0.18 0.008 60);
+	--spent-bg-soft: oklch(0.22 0.010 60);
+	--spent-fg: oklch(0.94 0.018 85);
+	--spent-fg-muted: oklch(0.68 0.022 80);
+	--spent-card: oklch(0.22 0.010 60);
+	--spent-border: oklch(1 0 0 / 12%);
+	--spent-primary: oklch(0.72 0.08 145);
+	--spent-primary-soft: oklch(0.62 0.10 145);
+	--spent-primary-fg: oklch(0.18 0.012 60);
+	--spent-accent: #E89B7C;
+}
+
+/* ===== Starlight token overrides ===== */
+:root {
+	--sl-font: var(--spent-font-sans);
+	--sl-font-mono: var(--spent-font-mono);
+
+	/* Light theme - we serve a buttercream background everywhere */
+	--sl-color-bg: var(--spent-bg);
+	--sl-color-bg-nav: var(--spent-bg);
+	--sl-color-bg-sidebar: var(--spent-bg-soft);
+	--sl-color-bg-accent: var(--spent-bg-soft);
+	--sl-color-text: var(--spent-fg);
+	--sl-color-text-accent: var(--spent-primary);
+	--sl-color-white: var(--spent-fg);
+	--sl-color-gray-1: var(--spent-fg);
+	--sl-color-gray-2: var(--spent-fg);
+	--sl-color-gray-3: var(--spent-fg-muted);
+	--sl-color-gray-4: var(--spent-fg-muted);
+	--sl-color-gray-5: var(--spent-border);
+	--sl-color-gray-6: var(--spent-bg-soft);
+	--sl-color-gray-7: var(--spent-bg-soft);
+	--sl-color-black: var(--spent-bg);
+	--sl-color-accent: var(--spent-primary);
+	--sl-color-accent-high: var(--spent-primary);
+	--sl-color-accent-low: var(--spent-bg-soft);
+	--sl-color-hairline: var(--spent-border);
+	--sl-color-hairline-light: var(--spent-border);
+	--sl-color-hairline-shade: var(--spent-border);
+}
+
+:root[data-theme='dark'] {
+	--sl-color-bg: var(--spent-bg);
+	--sl-color-bg-nav: var(--spent-bg);
+	--sl-color-bg-sidebar: var(--spent-bg-soft);
+	--sl-color-text: var(--spent-fg);
+	--sl-color-text-accent: var(--spent-primary);
+	--sl-color-white: var(--spent-fg);
+	--sl-color-gray-1: var(--spent-fg);
+	--sl-color-gray-2: var(--spent-fg);
+	--sl-color-gray-3: var(--spent-fg-muted);
+	--sl-color-gray-4: var(--spent-fg-muted);
+	--sl-color-gray-5: var(--spent-border);
+	--sl-color-gray-6: var(--spent-bg-soft);
+	--sl-color-gray-7: var(--spent-bg-soft);
+	--sl-color-accent: var(--spent-primary);
+	--sl-color-accent-high: var(--spent-primary);
+	--sl-color-accent-low: var(--spent-bg-soft);
+	--sl-color-hairline: var(--spent-border);
+	--sl-color-hairline-light: var(--spent-border);
+	--sl-color-hairline-shade: var(--spent-border);
+}
+
+/* ===== Typography niceties ===== */
+body {
+	font-feature-settings: "ss01", "cv11";
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+:is(h1, h2, h3, .sl-markdown-content h1, .sl-markdown-content h2, .sl-markdown-content h3) {
+	font-family: var(--spent-font-serif);
+	font-weight: 400;
+	font-style: italic;
+	letter-spacing: -0.02em;
+	font-variation-settings: "SOFT" 50, "WONK" 0;
+}
+
+.sl-markdown-content h1 { font-size: clamp(2.2rem, 4vw, 2.8rem); }
+.sl-markdown-content h2 { margin-top: 2.2em; font-size: 1.6rem; }
+.sl-markdown-content h3 { font-size: 1.25rem; }
+
+/* Sage underline accent for callout words wrapped in <u> */
+:is(.sl-markdown-content, .spent-prose) u {
+	text-decoration: underline;
+	text-decoration-color: var(--spent-primary);
+	text-decoration-thickness: 3px;
+	text-underline-offset: 5px;
+	text-decoration-skip-ink: none;
+}
+
+/* Inline code: cozier than the default */
+.sl-markdown-content :not(pre) > code {
+	background: var(--spent-bg-soft);
+	color: var(--spent-fg);
+	padding: 0.1em 0.45em;
+	border-radius: 0.35em;
+	font-size: 0.9em;
+	font-weight: 500;
+	border: 1px solid var(--spent-border);
+}
+
+/* Sidebar */
+.sidebar-content nav > ul > li > details > summary,
+.sidebar-content nav > ul > li > a {
+	font-family: var(--spent-font-serif);
+	font-style: italic;
+	font-weight: 500;
+}
+
+.sidebar-content a[aria-current='page'] {
+	background: var(--spent-primary);
+	color: var(--spent-primary-fg);
+	border-radius: var(--spent-radius-sm);
+}
+
+/* ===== Landing page utilities (used by index.astro components) ===== */
+.spent-wrap {
+	max-width: 72rem;
+	margin: 0 auto;
+	padding: 0 1.5rem;
+}
+
+.spent-prose {
+	font-family: var(--spent-font-sans);
+	color: var(--spent-fg);
+}
+
+.spent-section-label {
+	font-family: var(--spent-font-sans);
+	font-size: 0.75rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--spent-fg-muted);
+	margin-bottom: 0.5rem;
+}
+
+.spent-h-display {
+	font-family: var(--spent-font-serif);
+	font-style: italic;
+	font-weight: 400;
+	font-size: clamp(2.5rem, 6vw, 4rem);
+	line-height: 1.05;
+	letter-spacing: -0.025em;
+	color: var(--spent-fg);
+	margin: 0;
+}
+
+.spent-h-section {
+	font-family: var(--spent-font-serif);
+	font-style: italic;
+	font-weight: 400;
+	font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+	line-height: 1.1;
+	letter-spacing: -0.02em;
+	margin: 0 0 0.5rem;
+}
+
+.spent-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-family: var(--spent-font-sans);
+	font-size: 0.95rem;
+	font-weight: 500;
+	padding: 0.7rem 1.2rem;
+	border-radius: var(--spent-radius-sm);
+	text-decoration: none;
+	transition: transform 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+	border: 1px solid transparent;
+	cursor: pointer;
+}
+
+.spent-btn:hover { transform: translateY(-1px); }
+
+.spent-btn-primary {
+	background: var(--spent-fg);
+	color: var(--spent-bg);
+}
+
+.spent-btn-primary:hover {
+	background: var(--spent-primary);
+	color: var(--spent-primary-fg);
+}
+
+.spent-btn-ghost {
+	background: transparent;
+	color: var(--spent-fg);
+	border-color: var(--spent-fg);
+}
+
+.spent-btn-ghost:hover {
+	background: var(--spent-fg);
+	color: var(--spent-bg);
+}
+
+.spent-card {
+	background: var(--spent-card);
+	border: 1px solid var(--spent-border);
+	border-radius: var(--spent-radius);
+	padding: 1.5rem;
+}
+
+/* Landing page hides Starlight chrome */
+body.landing-shell .sl-flex.header,
+body.landing-shell aside.sidebar { display: none; }
+
+/* Smooth scroll for anchor links */
+html { scroll-behavior: smooth; }
+
+/* ===== Docs-page screenshots ===== */
+.doc-shot {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: var(--spent-radius);
+	border: 1px solid var(--spent-border);
+	box-shadow: 0 14px 40px -24px rgba(44, 42, 39, 0.45);
+	margin: 1.5rem 0;
+}
+
+.sl-markdown-content figure.doc-figure {
+	margin: 1.75rem 0;
+}
+.sl-markdown-content figure.doc-figure img { margin: 0; }
+.sl-markdown-content figure.doc-figure figcaption {
+	font-family: var(--spent-font-serif);
+	font-style: italic;
+	font-size: 0.9rem;
+	color: var(--spent-fg-muted);
+	margin-top: 0.6rem;
+	text-align: center;
+}

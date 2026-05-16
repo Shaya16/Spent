@@ -1,0 +1,38 @@
+---
+title: Getting started
+description: What Spent is, what you'll need, and what to expect during install.
+---
+
+import { Image } from 'astro:assets';
+import dashboardShot from '../../assets/screenshots/dashboard-light.png';
+
+Spent is a personal finance tracker that runs entirely on your own computer. It signs into your Israeli banks for you, pulls down the last few months of transactions, sorts them into spending categories, and shows you a calm dashboard at <code>localhost</code>.
+
+<figure class="doc-figure">
+  <Image src={dashboardShot} alt="The Spent dashboard, showing monthly spending, category totals, and recent transactions" class="doc-shot" />
+  <figcaption>The dashboard you'll wake up to every morning.</figcaption>
+</figure>
+
+It is not a SaaS. There is no account. Your data never leaves your machine.
+
+## What you'll need
+
+- A Mac or Windows PC you don't mind installing a small background service on.
+- About **15 minutes**: 5 to install, 5 to connect a bank, a few more to get used to it.
+- Your **bank login credentials** (the same ones you use on the bank's website or app).
+- Either an **Anthropic API key** (Claude, paid) or **Ollama installed locally** (free). You can also skip AI entirely.
+
+## How install works
+
+Spent runs as a small background process. The browser-facing dashboard is opened in your normal web browser at `http://localhost:41234`. A tiny menubar / system-tray app gives you one-click access to *Open*, *Sync*, and *Start / Stop*.
+
+You don't need to keep a terminal window open after install. The background service starts on login.
+
+## Pick your operating system
+
+- [Install on macOS →](/Spent/install/mac)
+- [Install on Windows →](/Spent/install/windows)
+
+## A note on banks
+
+Spent automates your bank's website on your behalf. **Some banks restrict this kind of automation in their terms of service**, and you're responsible for using Spent within them. The app is read-only and never moves money. Read the full [Disclaimer](/Spent/disclaimer) before installing.

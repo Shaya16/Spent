@@ -1,0 +1,99 @@
+---
+import '../styles/global.css';
+import Hero from '../components/Hero.astro';
+import WhyLocalFirst from '../components/WhyLocalFirst.astro';
+import PeekInside from '../components/PeekInside.astro';
+import FeatureGrid from '../components/FeatureGrid.astro';
+import BankList from '../components/BankList.astro';
+import InstallCTA from '../components/InstallCTA.astro';
+import Footer from '../components/Footer.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<!doctype html>
+<html lang="en" data-theme="light">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
+		<title>Spent - Personal finance for Israeli banks, beautifully local</title>
+		<meta name="description" content="A local-only personal finance tracker for Israeli banks. Beautiful, private, open source." />
+		<meta property="og:title" content="Spent" />
+		<meta property="og:description" content="A finance tracker for Israel that lives on your computer. No cloud, no accounts, no tracking." />
+		<meta property="og:type" content="website" />
+		<meta name="theme-color" content="#FCF7ED" />
+	</head>
+	<body class="landing-shell">
+		<header class="topbar">
+			<div class="spent-wrap row">
+				<a class="brand" href={base || '/'}>
+					<span>Spent</span>
+				</a>
+				<nav class="nav">
+					<a href={`${base}/getting-started`}>Docs</a>
+					<a href={`${base}/install/mac`}>Install</a>
+					<a href="https://github.com/Shaya16/Spent">GitHub</a>
+				</nav>
+			</div>
+		</header>
+
+		<main>
+			<Hero />
+			<WhyLocalFirst />
+			<PeekInside />
+			<FeatureGrid />
+			<BankList />
+			<InstallCTA />
+		</main>
+
+		<Footer />
+	</body>
+</html>
+
+<style>
+	.topbar {
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		background: rgba(252, 247, 237, 0.85);
+		backdrop-filter: saturate(150%) blur(8px);
+		-webkit-backdrop-filter: saturate(150%) blur(8px);
+		border-bottom: 1px solid var(--spent-border);
+	}
+
+	:global(:root[data-theme='dark']) .topbar {
+		background: oklch(0.18 0.008 60 / 0.85);
+	}
+
+	.row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.85rem 1.5rem;
+		max-width: 72rem;
+	}
+
+	.brand {
+		font-family: var(--spent-font-serif);
+		font-style: italic;
+		font-weight: 500;
+		font-size: 1.25rem;
+		color: var(--spent-fg);
+		text-decoration: none;
+	}
+
+	.nav {
+		display: flex;
+		gap: 1.25rem;
+		font-family: var(--spent-font-sans);
+		font-size: 0.9rem;
+	}
+	.nav a {
+		color: var(--spent-fg);
+		text-decoration: none;
+		opacity: 0.75;
+	}
+	.nav a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+
+	main { display: block; }
+</style>

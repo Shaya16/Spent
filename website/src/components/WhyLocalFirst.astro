@@ -1,0 +1,70 @@
+---
+const items = [
+	{
+		title: 'Lives on your computer',
+		body: 'Spent runs as a small background service on your own machine. The dashboard opens at localhost. Nothing is hosted in the cloud.',
+	},
+	{
+		title: 'Your bank password stays put',
+		body: 'Credentials are encrypted with AES-256 in a local SQLite database. The key is generated on first run and never leaves your disk.',
+	},
+	{
+		title: 'You choose the AI',
+		body: 'Categorize with the Claude API, or run a local model with Ollama for full offline operation. Or skip AI entirely and label by hand.',
+	},
+];
+---
+<section class="why">
+	<div class="spent-wrap">
+		<p class="spent-section-label">Why local-first</p>
+		<h2 class="spent-h-section">A finance tracker should know <u>only you</u>.</h2>
+		<div class="grid">
+			{items.map((it) => (
+				<article class="block">
+					<div class="dot" aria-hidden="true"></div>
+					<h3>{it.title}</h3>
+					<p>{it.body}</p>
+				</article>
+			))}
+		</div>
+	</div>
+</section>
+
+<style>
+	.why { padding: 4.5rem 0; background: var(--spent-bg); }
+	.grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 2rem;
+		margin-top: 2rem;
+	}
+	@media (min-width: 50rem) {
+		.grid { grid-template-columns: repeat(3, 1fr); gap: 2.5rem; }
+	}
+
+	.block { font-family: var(--spent-font-sans); }
+
+	.dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--spent-primary);
+		margin-bottom: 1rem;
+	}
+
+	.block h3 {
+		font-family: var(--spent-font-serif);
+		font-style: italic;
+		font-weight: 500;
+		font-size: 1.3rem;
+		margin: 0 0 0.5rem;
+		color: var(--spent-fg);
+	}
+
+	.block p {
+		font-size: 0.95rem;
+		line-height: 1.6;
+		color: var(--spent-fg-muted);
+		margin: 0;
+	}
+</style>

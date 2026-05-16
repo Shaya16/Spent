@@ -1,0 +1,73 @@
+---
+interface Props {
+	num: string;
+	title: string;
+}
+const { num, title } = Astro.props;
+---
+<article class="step">
+	<div class="num" aria-hidden="true">{num}</div>
+	<div class="body">
+		<h3>{title}</h3>
+		<div class="content">
+			<slot />
+		</div>
+	</div>
+</article>
+
+<style>
+	.step {
+		display: flex;
+		gap: 1.25rem;
+		background: var(--spent-card);
+		border: 1px solid var(--spent-border);
+		border-radius: var(--spent-radius);
+		padding: 1.5rem 1.5rem 1.25rem;
+		margin: 1rem 0;
+	}
+
+	.num {
+		font-family: var(--spent-font-serif);
+		font-style: italic;
+		font-weight: 400;
+		font-size: 2.6rem;
+		line-height: 1;
+		color: var(--spent-primary);
+		flex-shrink: 0;
+		min-width: 3rem;
+	}
+
+	.body { flex: 1; min-width: 0; }
+
+	.body h3 {
+		font-family: var(--spent-font-serif);
+		font-style: italic;
+		font-weight: 500;
+		font-size: 1.35rem;
+		margin: 0 0 0.35rem;
+		color: var(--spent-fg);
+	}
+
+	.content { font-family: var(--spent-font-sans); font-size: 0.95rem; line-height: 1.6; color: var(--spent-fg); }
+	.content :global(p) { margin: 0.45rem 0; }
+	.content :global(p:first-child) { margin-top: 0; }
+	.content :global(p:last-child) { margin-bottom: 0; }
+	.content :global(ul) { padding-left: 1.2rem; margin: 0.5rem 0; }
+	.content :global(li) { margin: 0.25rem 0; }
+
+	.content :global(.expressive-code) { margin: 0.75rem 0 0.25rem; }
+
+	.content :global(code:not(pre code)) {
+		background: var(--spent-bg-soft);
+		padding: 0.1em 0.4em;
+		border-radius: 0.3em;
+		font-family: var(--spent-font-mono);
+		font-size: 0.85em;
+		border: 1px solid var(--spent-border);
+	}
+
+	@media (max-width: 40rem) {
+		.step { flex-direction: column; gap: 0.5rem; padding: 1.25rem; }
+		.num { font-size: 2rem; min-width: auto; }
+	}
+</style>

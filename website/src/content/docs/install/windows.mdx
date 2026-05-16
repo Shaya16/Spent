@@ -1,0 +1,124 @@
+---
+title: Install on Windows
+description: A step-by-step guide to installing Spent on Windows.
+---
+
+import InstallStepCard from '../../../components/InstallStepCard.astro';
+import { Image } from 'astro:assets';
+import payoff from '../../../assets/screenshots/dashboard-light.png';
+
+You'll be done in about fifteen minutes. Windows has one extra step (build tools) because one of Spent's internal libraries compiles natively. Once it's done, you'll never think about it again.
+
+## What you'll need
+
+- Windows 10 or 11.
+- About **1 GB** of free disk space (most of it is Visual Studio Build Tools).
+- Your bank login credentials.
+- Administrator privileges for the first install.
+
+<InstallStepCard num="01" title="Install Node.js">
+
+Spent runs on Node.js, a small runtime. Go to **[nodejs.org](https://nodejs.org)**, download the **Windows Installer (.msi)** for the **LTS** version, and run it.
+
+When the installer asks "Automatically install the necessary tools" near the end, **leave that box unchecked** - we'll install the build tools ourselves in the next step (it's faster and cleaner).
+
+</InstallStepCard>
+
+<InstallStepCard num="02" title="Install Visual Studio Build Tools">
+
+Spent uses `better-sqlite3`, a tiny database library that compiles natively against your version of Windows. To compile it, you need Microsoft's free C++ build tools.
+
+Go to **[visualstudio.microsoft.com/downloads](https://visualstudio.microsoft.com/downloads/)** and scroll down to **"Tools for Visual Studio"**. Download **"Build Tools for Visual Studio"** and run the installer.
+
+When it asks what to install, check **"Desktop development with C++"** and click *Install*. This takes 5-10 minutes and uses about 800 MB.
+
+Once it's done, you can close the installer. You won't need to open it again.
+
+</InstallStepCard>
+
+<InstallStepCard num="03" title="Download Spent">
+
+Go to the [Spent releases page](https://github.com/Shaya16/Spent/releases) on GitHub and download the latest **source code (zip)**. Right-click the downloaded file and choose *Extract All*. A good place to put it is `C:\Users\<your-name>\Spent`.
+
+If you're comfortable with Git:
+
+```powershell
+git clone https://github.com/Shaya16/Spent.git $env:USERPROFILE\Spent
+cd $env:USERPROFILE\Spent
+```
+
+</InstallStepCard>
+
+<InstallStepCard num="04" title="Open PowerShell in the folder">
+
+Open **File Explorer** and navigate to the Spent folder. In the empty space at the top (the breadcrumb), type `powershell` and press Enter. A PowerShell window opens with the folder already selected.
+
+Install Spent's internal dependencies:
+
+```powershell
+npm install
+```
+
+This takes 3-5 minutes the first time, and runs a native compile for `better-sqlite3` (this is where the build tools you installed in Step 2 are used). If you see a stream of green text and the prompt comes back without an error, you're good.
+
+</InstallStepCard>
+
+<InstallStepCard num="05" title="Build the app">
+
+```powershell
+npm run build
+```
+
+When this finishes, the prompt comes back without errors.
+
+</InstallStepCard>
+
+<InstallStepCard num="06" title="Install as a Windows service">
+
+This tells Windows to start Spent automatically when you log in:
+
+```powershell
+npm run service:install
+npm run service:start
+```
+
+The first command registers Spent as a Windows service. The second starts it. Confirm it's running:
+
+```powershell
+npm run service:status
+```
+
+</InstallStepCard>
+
+<InstallStepCard num="07" title="Install the system tray app">
+
+The tray app is a tiny native Windows application that puts a little icon in your system tray with quick actions:
+
+```powershell
+npm run menubar:build:windows
+```
+
+This produces a single `Spent.exe` (around 30 MB) inside `menubar\windows\build\`. Double-click it to start the tray app. To launch it automatically on login: press `Win + R`, type `shell:startup`, and drop a shortcut to `Spent.exe` into the folder that opens.
+
+</InstallStepCard>
+
+<InstallStepCard num="08" title="Open the app">
+
+Click the new sage-green icon in your system tray (lower-right of your screen, next to the clock) and choose **Open**. The dashboard opens at `http://localhost:41234`.
+
+You can also reach it directly at [http://localhost:41234](http://localhost:41234) once the service is running.
+
+</InstallStepCard>
+
+<figure class="doc-figure">
+  <Image src={payoff} alt="The Spent dashboard, opened in a browser for the first time" class="doc-shot" />
+  <figcaption>If you see this, you're done.</figcaption>
+</figure>
+
+## What's next
+
+- [Connect your bank →](/Spent/connect-bank)
+- [Pick an AI provider →](/Spent/ai-categorization)
+- [Daily usage →](/Spent/sync-and-dashboard)
+
+Something not working? [Troubleshooting](/Spent/troubleshooting) has the common gotchas, including how to deal with Windows Defender flagging the tray app on first run.

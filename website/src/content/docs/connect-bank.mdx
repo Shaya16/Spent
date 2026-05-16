@@ -1,0 +1,104 @@
+---
+title: Connect your bank
+description: How to connect each supported Israeli bank and credit card to Spent.
+---
+
+import { Image } from 'astro:assets';
+import setupBank from '../../assets/screenshots/setup-bank-light.png';
+import bankSettings from '../../assets/screenshots/settings-bank-light.png';
+
+After you install Spent and open the dashboard for the first time, a short setup wizard walks you through connecting a bank. You can connect multiple banks; just run the wizard again from *Settings → Banks*.
+
+<figure class="doc-figure">
+  <Image src={setupBank} alt="The setup wizard, asking you to pick a bank to connect" class="doc-shot" />
+  <figcaption>Step one of the first-run setup wizard.</figcaption>
+</figure>
+
+## How credentials are stored
+
+Spent stores your bank credentials encrypted with **AES-256-GCM** in a local SQLite database at `data/spent.db`. The encryption key is generated on first run, written to `data/.encryption-key`, and never leaves your computer. Read the full story in [Security & privacy](/Spent/security-and-privacy).
+
+## A note about 2FA
+
+Most Israeli banks do **not** support 2FA in a way that's compatible with automation. If you have 2FA enabled, you'll need to disable it on the bank's side before Spent can log in. **One Zero** is the exception - it supports proper second-factor authentication during sync.
+
+## Per-bank credentials
+
+Each bank asks for slightly different login information. Here's what you'll need for each.
+
+### Credit cards
+
+#### Isracard
+
+- **ID Number** - your 9-digit Israeli national ID (Teudat Zehut).
+- **Last 6 digits of your card** - from the front of the card.
+- **Password** - the same password you use on `digital.isracard.co.il`.
+
+#### Visa Cal
+
+- **Username** and **password** from `cal-online.co.il`.
+
+#### Max
+
+- **Username** and **password** from `max.co.il` (formerly Leumi Card).
+
+#### American Express IL
+
+- **Username** and **password** from your Israeli Amex account.
+
+### Banks
+
+#### Bank Hapoalim
+
+- **User code** and **password**. The user code is *not* your ID number.
+
+#### Bank Leumi
+
+- **Username** and **password**.
+
+#### Mizrahi Tefahot
+
+- **Username** and **password**.
+
+#### Bank Discount, Mercantile Discount
+
+- **ID number**, **password**, and an additional **account number** (sometimes called *num*).
+
+#### First International (FIBI), Otsar Hahayal, Bank Pagi
+
+- **Username** and **password**. All three are FIBI-group banks and share a login pattern.
+
+#### Bank Yahav
+
+- **ID number** and **password**. Note: Yahav only provides about **6 months** of transaction history.
+
+#### Bank Massad, Union Bank
+
+- **Username** and **password**.
+
+#### One Zero
+
+- **Email**, **password**, and an **OTP** delivered to your phone during each sync. Spent will pause and prompt you for the OTP when needed.
+
+### Other
+
+#### Beyahad Bishvilha, Behatsdaa
+
+- **Username** and **password** from the benefit-scheme website.
+
+## Managing connected banks
+
+Once a bank is connected, you can manage it from *Settings → Banks*: pause sync, change credentials, or remove the connection entirely.
+
+<figure class="doc-figure">
+  <Image src={bankSettings} alt="The bank settings page in Spent, showing connected banks with last-sync timestamps" class="doc-shot" />
+  <figcaption>Settings → Banks, with three connections live.</figcaption>
+</figure>
+
+## What happens when you click "Sync"
+
+Spent opens a headless Chromium window, logs into the bank using your credentials, and scrapes the last 6-12 months of transactions (depending on the bank). The first sync can take a few minutes. Subsequent syncs are faster because Spent only processes new transactions.
+
+Sync runs in the background. You don't need to keep the browser open.
+
+If a sync fails, Spent shows the error in the dashboard with a hint about what went wrong. See [Troubleshooting](/Spent/troubleshooting) for the common ones.

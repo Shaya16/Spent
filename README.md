@@ -16,6 +16,7 @@ Encrypted. AI-categorized. Yours.
 [![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?logo=sqlite&logoColor=white&style=flat-square)](https://sqlite.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](#license)
 [![Status: Beta](https://img.shields.io/badge/Status-Beta-blueviolet?style=flat-square)](#features)
+[![Docs](https://img.shields.io/badge/Docs-online-83A47A?style=flat-square)](https://shaya16.github.io/Spent/)
 
 </div>
 
@@ -197,6 +198,8 @@ You can change providers any time from **Settings → AI provider**. Existing ca
 
 ## Install
 
+> Prefer a screenshot-by-screenshot walkthrough? The [step-by-step install guides](https://shaya16.github.io/Spent/getting-started/) on the docs site cover macOS and Windows separately, with build-tool setup and tray-app gotchas spelled out.
+
 ```bash
 git clone https://github.com/Shaya16/Spent.git
 cd spent
@@ -314,12 +317,17 @@ spent/
 │       └── scrapers/         Wrapper around israeli-bank-scrapers
 ├── menubar/                  Tray companions (built locally by `npm run setup`)
 │   ├── mac/                  Swift MenuBarExtra app
-│   └── windows/              C# WPF NotifyIcon app
-├── scripts/service/          LaunchAgent / systemd installer
+│   └── windows/              C# WinForms NotifyIcon app
+├── scripts/service/          LaunchAgent / systemd / Task Scheduler installer
+├── website/                  Astro + Starlight docs site (auto-deploys to GitHub Pages)
+├── .github/workflows/        CI — docs site deploy
+├── Spent.sln                 Visual Studio solution for the Windows menubar project
 └── data/                     SQLite + encryption key (gitignored)
 ```
 
 ## Troubleshooting
+
+> The [Troubleshooting docs](https://shaya16.github.io/Spent/troubleshooting/) cover Defender, Gatekeeper, Cloudflare bot challenges, and bank-specific quirks in more depth.
 
 - **Port 41234 in use** → `lsof -nP -iTCP:41234 -sTCP:LISTEN` (Unix) or `netstat -ano | findstr :41234` (Windows). Kill the offender and re-run install.
 - **Gatekeeper blocks `Spent.app`** → right-click → Open → Open. One-time.

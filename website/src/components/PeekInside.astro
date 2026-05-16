@@ -1,0 +1,96 @@
+---
+import { Image } from 'astro:assets';
+import dashboardLight from '../assets/screenshots/dashboard-light.png';
+import dashboardDark from '../assets/screenshots/dashboard-dark.png';
+import setupBank from '../assets/screenshots/setup-bank-light.png';
+import transactions from '../assets/screenshots/transactions-light.png';
+---
+<section class="peek">
+	<div class="spent-wrap">
+		<p class="spent-section-label">A peek inside</p>
+		<h2 class="spent-h-section">Built to be <u>looked at</u>, day after day.</h2>
+
+		<div class="stage">
+			<div class="frame frame-main">
+				<Image src={dashboardLight} alt="Spent dashboard in light mode" loading="eager" />
+			</div>
+			<div class="frame frame-side frame-a">
+				<Image src={transactions} alt="Transaction list" />
+			</div>
+			<div class="frame frame-side frame-b">
+				<Image src={setupBank} alt="Setup wizard for connecting a bank" />
+			</div>
+		</div>
+
+		<div class="dark-strip">
+			<div class="dark-frame">
+				<Image src={dashboardDark} alt="Spent dashboard in dark mode" />
+			</div>
+			<p class="dark-caption">Dark mode is built in. Sage stays sage.</p>
+		</div>
+	</div>
+</section>
+
+<style>
+	.peek { padding: 5rem 0; background: var(--spent-bg); }
+
+	.stage {
+		position: relative;
+		margin-top: 2rem;
+		display: grid;
+		gap: 1.25rem;
+		grid-template-columns: 1fr;
+	}
+
+	.frame {
+		background: var(--spent-card);
+		border: 1px solid var(--spent-border);
+		border-radius: var(--spent-radius);
+		overflow: hidden;
+		box-shadow: 0 12px 40px -22px rgba(44, 42, 39, 0.4);
+	}
+	.frame :global(img) { display: block; width: 100%; height: auto; }
+
+	@media (min-width: 60rem) {
+		.stage {
+			grid-template-columns: 1.7fr 1fr;
+			grid-template-rows: auto auto;
+			gap: 1.5rem;
+		}
+		.frame-main { grid-row: 1 / 3; }
+	}
+
+	.dark-strip {
+		margin-top: 3.5rem;
+		background: oklch(0.18 0.008 60);
+		border-radius: var(--spent-radius-lg);
+		padding: 2rem;
+		display: grid;
+		gap: 1.5rem;
+		align-items: center;
+	}
+
+	.dark-frame {
+		border-radius: var(--spent-radius);
+		overflow: hidden;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+	}
+	.dark-frame :global(img) { display: block; width: 100%; height: auto; }
+
+	.dark-caption {
+		font-family: var(--spent-font-serif);
+		font-style: italic;
+		font-size: 1.1rem;
+		color: oklch(0.94 0.018 85);
+		margin: 0;
+		text-align: center;
+	}
+
+	@media (min-width: 60rem) {
+		.dark-strip {
+			grid-template-columns: 2fr 1fr;
+			padding: 3rem;
+		}
+		.dark-caption { text-align: left; font-size: 1.4rem; padding-left: 1rem; }
+	}
+</style>

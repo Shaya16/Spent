@@ -33,9 +33,23 @@ function fail(msg) {
 }
 
 function run(cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, { stdio: "inherit", ...opts });
+  // Node v20.12.2+ rejects direct spawning of .cmd/.bat on Windows with EINVAL
+  // (CVE-2024-27980 mitigation). Use shell:true for those; args here are
+  // hardcoded so the usual injection risk does not apply.
+  const needsShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(cmd);
+  const r = spawnSync(cmd, args, {
+    stdio: "inherit",
+    shell: needsShell,
+    ...opts,
+  });
+  if (r.error) {
+    throw new Error(
+      `\`${cmd} ${args.join(" ")}\` failed to launch: ${r.error.message}`,
+    );
+  }
   if (r.status !== 0) {
-    throw new Error(`\`${cmd} ${args.join(" ")}\` exited with status ${r.status}`);
+    const sig = r.signal ? ` (signal: ${r.signal})` : "";
+    throw new Error(`\`${cmd} ${args.join(" ")}\` exited with status ${r.status}${sig}`);
   }
 }
 

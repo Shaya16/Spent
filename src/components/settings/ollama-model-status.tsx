@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   listOllamaModels,
   pullOllamaModel,
@@ -203,6 +204,43 @@ function ModelStatusInner({
     );
   }
 
+  if (reachable === false) {
+    return (
+      <div className="space-y-3 rounded-xl border border-border bg-card/60 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="text-sm font-medium">Don&apos;t have Ollama yet?</div>
+            <p className="text-xs text-muted-foreground">
+              Ollama is a free, local AI that runs on your machine. It takes
+              about a minute to install.
+            </p>
+          </div>
+          <a
+            href="https://ollama.com"
+            target="_blank"
+            rel="noreferrer"
+            className={buttonVariants({ size: "sm" })}
+          >
+            Get Ollama
+            <ExternalLink className="size-3.5" />
+          </a>
+        </div>
+        <ol className="space-y-1 pl-5 text-xs text-muted-foreground list-decimal marker:text-muted-foreground/70">
+          <li>Download and run the installer from ollama.com.</li>
+          <li>Launch Ollama (it runs in the menu bar or system tray).</li>
+          <li>
+            Come back here. Spent auto-starts Ollama and lets you download
+            the model.
+          </li>
+        </ol>
+        <p className="text-xs text-destructive">
+          Couldn&apos;t reach Ollama at this URL. If you&apos;ve already
+          installed it, double-check the URL above.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2 rounded-md border border-dashed bg-muted/20 p-3">
       <div className="flex items-start justify-between gap-3">
@@ -216,17 +254,11 @@ function ModelStatusInner({
             . You only need to do this once.
           </p>
         </div>
-        <Button size="sm" onClick={onPull} disabled={reachable === false}>
+        <Button size="sm" onClick={onPull}>
           Download
         </Button>
       </div>
       {pullError && <p className="text-xs text-destructive">{pullError}</p>}
-      {reachable === false && (
-        <p className="text-xs text-destructive">
-          Couldn&apos;t reach Ollama at this URL. Make sure it&apos;s
-          installed and running, then try again.
-        </p>
-      )}
     </div>
   );
 }

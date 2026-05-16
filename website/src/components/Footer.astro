@@ -1,0 +1,77 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const year = new Date().getFullYear();
+---
+<footer class="footer">
+	<div class="spent-wrap inner">
+		<div class="brand">
+			<span class="mark">Spent</span>
+			<span class="tag">Local-only finance, beautifully.</span>
+		</div>
+		<nav class="links">
+			<a href={`${base}/getting-started`}>Docs</a>
+			<a href={`${base}/disclaimer`}>Disclaimer</a>
+			<a href={`${base}/security-and-privacy`}>Security</a>
+			<a href="https://github.com/Shaya16/Spent">GitHub</a>
+			<a href="https://github.com/Shaya16/Spent/blob/main/LICENSE">License</a>
+		</nav>
+		<div class="meta">
+			<span>© {year} - Open source, MIT.</span>
+			<span class="dot" aria-hidden="true">·</span>
+			<span>Made in Israel.</span>
+		</div>
+	</div>
+</footer>
+
+<style>
+	.footer {
+		background: var(--spent-fg);
+		color: var(--spent-bg);
+		padding: 4rem 0 3rem;
+	}
+	.inner {
+		display: grid;
+		gap: 2rem;
+		font-family: var(--spent-font-sans);
+	}
+	.brand .mark {
+		display: block;
+		font-family: var(--spent-font-serif);
+		font-style: italic;
+		font-weight: 500;
+		font-size: 1.6rem;
+	}
+	.brand .tag {
+		display: block;
+		font-size: 0.9rem;
+		opacity: 0.65;
+		margin-top: 0.25rem;
+	}
+
+	.links { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+	.links a {
+		color: var(--spent-bg);
+		opacity: 0.75;
+		text-decoration: none;
+		font-size: 0.9rem;
+	}
+	.links a:hover { opacity: 1; text-decoration: underline; }
+
+	.meta {
+		font-size: 0.8rem;
+		opacity: 0.55;
+		display: flex;
+		gap: 0.5rem;
+	}
+	.dot { opacity: 0.6; }
+
+	@media (min-width: 50rem) {
+		.inner {
+			grid-template-columns: 1fr auto;
+			align-items: center;
+		}
+		.brand { grid-column: 1; }
+		.links { grid-column: 1 / -1; }
+		.meta { grid-column: 1 / -1; }
+	}
+</style>

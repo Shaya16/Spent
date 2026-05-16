@@ -1,0 +1,48 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<aside class="disclaimer">
+	<div class="label">Heads-up</div>
+	<p>
+		Spent automates your bank's website on your behalf. Some banks restrict this in their terms,
+		and you're responsible for using it within them. The app never moves money.
+		<a href={`${base}/disclaimer`}>Read the full disclaimer →</a>
+	</p>
+</aside>
+
+<style>
+	.disclaimer {
+		background: var(--spent-bg-soft);
+		border-left: 3px solid var(--spent-primary);
+		border-radius: 0 var(--spent-radius-sm) var(--spent-radius-sm) 0;
+		padding: 0.85rem 1.1rem;
+		max-width: 32rem;
+		margin-top: 1.25rem;
+	}
+
+	.label {
+		font-family: var(--spent-font-sans);
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--spent-fg);
+		margin-bottom: 0.25rem;
+	}
+
+	.disclaimer p {
+		margin: 0;
+		font-family: var(--spent-font-sans);
+		font-size: 0.85rem;
+		line-height: 1.55;
+		color: var(--spent-fg);
+	}
+
+	.disclaimer a {
+		color: var(--spent-primary);
+		font-weight: 500;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+	.disclaimer a:hover { color: var(--spent-primary-soft); }
+</style>
