@@ -33,7 +33,7 @@ jobs:
           $name = "${env:RELEASE_TAG}".Replace('/', '_')
           Copy-Item menubar/windows/build/Spent.exe "Spent-$name.exe"
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v4
         with:
           name: windows-exe
           path: Spent-*.exe
@@ -55,7 +55,7 @@ jobs:
           cd menubar/mac/build
           zip -ry "$GITHUB_WORKSPACE/Spent-${name}.app.zip" Spent.app
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v4
         with:
           name: mac-app
           path: Spent-*.app.zip
@@ -67,7 +67,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
