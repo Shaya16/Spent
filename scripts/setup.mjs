@@ -191,24 +191,38 @@ function preflight() {
   }
 
   if (process.platform === "win32") {
-    // Windows has no per-command elevation: editing hosts requires the WHOLE
-    // shell to be elevated. Fail fast so the user doesn't sit through a full
-    // Next.js build only to discover spent.local won't resolve.
+    // Hosts file edit needs Administrator on Windows, but setup itself does
+    // not. If the shell is not elevated, warn (so the user knows why
+    // spent.local won't resolve later) and keep going. The web app at
+    // 127.0.0.1 works regardless.
     const r = spawnSync("net", ["session"], { encoding: "utf-8" });
     if (r.status !== 0) {
-      fail(
-        "Windows setup needs Administrator to edit the hosts file\n" +
-        "(C:\\Windows\\System32\\drivers\\etc\\hosts) so that\n" +
-        "http://spent.local:41234 resolves.\n\n" +
-        "Re-run from an elevated terminal:\n" +
-        "  1. Press Win+X and choose 'Terminal (Admin)' or 'PowerShell (Admin)'.\n" +
-        `  2. cd "${REPO_ROOT}"\n` +
-        "  3. npm run setup\n\n" +
-        "If you can't elevate, http://127.0.0.1:41234 works without the hosts edit;\n" +
-        "the menubar's 'Open dashboard' will only break for the friendly hostname.",
-      );
+      console.log("");
+      console.log("Note: this shell is not Administrator.");
+      console.log("Setup will continue, but the hosts entry for spent.local cannot be added.");
+      console.log("  - http://127.0.0.1:41234 will work normally.");
+      console.log("  - http://spent.local:41234 will not resolve.");
+      console.log("To enable the friendly hostname later, relaunch from an elevated");
+      console.log("PowerShell (Win+X -> 'Terminal (Admin)') and run `npm run service:install`.");
+      console.log("");
     }
   }
+}
+
+function hostsHasSpentLocal() {
+  const hostsPath = process.platform === "win32"
+    ? `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\drivers\\etc\\hosts`
+    : "/etc/hosts";
+  try {
+    const content = fs.readFileSync(hostsPath, "utf-8");
+    return /^[^#\n]*\b127\.0\.0\.1\b[^\n]*\bspent\.local\b/m.test(content);
+  } catch {
+    return false;
+  }
+}
+
+function dashboardUrl() {
+  return hostsHasSpentLocal() ? FRIENDLY_URL : "http://127.0.0.1:41234";
 }
 
 function buildNextApp() {
@@ -250,7 +264,7 @@ async function macSetup() {
   const ok = await ensureMacPrereq();
   if (!ok) {
     step("Skipping menubar");
-    console.log(`   Web app is installed and running at ${FRIENDLY_URL}`);
+    console.log(`   Web app is installed and running at ${dashboardUrl()}`);
     console.log("   Install Xcode Command Line Tools and re-run `npm run setup` to add the menubar.");
     return;
   }
@@ -275,7 +289,7 @@ async function macSetup() {
   spawnSync("open", [target], { stdio: "ignore" });
 
   step("Opening dashboard");
-  spawnSync("open", [FRIENDLY_URL], { stdio: "ignore" });
+  spawnSync("open", [dashboardUrl()], { stdio: "ignore" });
 }
 
 function addLoginItemMac(appPath) {
@@ -310,7 +324,7 @@ async function windowsSetup() {
   const ok = await ensureWindowsPrereq();
   if (!ok) {
     step("Skipping menubar");
-    console.log(`   Web app is installed and running at ${FRIENDLY_URL}`);
+    console.log(`   Web app is installed and running at ${dashboardUrl()}`);
     console.log("   Install .NET 8 SDK and re-run `npm run setup` to add the menubar.");
     return;
   }
@@ -338,7 +352,7 @@ async function windowsSetup() {
   spawnSync("powershell", ["-Command", `Start-Process "${targetExe}"`], { stdio: "ignore" });
 
   step("Opening dashboard");
-  spawnSync("cmd", ["/c", "start", "", FRIENDLY_URL], { stdio: "ignore" });
+  spawnSync("cmd", ["/c", "start", "", dashboardUrl()], { stdio: "ignore" });
 }
 
 function addStartupShortcutWindows(exePath) {
@@ -377,7 +391,7 @@ function linuxSetup() {
   console.log("     npm run service:status / :start / :stop / :reload / :logs");
 
   step("Opening dashboard");
-  spawnSync("xdg-open", [FRIENDLY_URL], { stdio: "ignore" });
+  spawnSync("xdg-open", [dashboardUrl()], { stdio: "ignore" });
 }
 
 async function main() {
@@ -416,9 +430,13 @@ async function main() {
 }
 
 function printCheatSheet() {
+  const url = dashboardUrl();
   console.log("");
   console.log("================================================================");
-  console.log(`  Done. Spent is at ${FRIENDLY_URL}`);
+  console.log(`  Done. Spent is at ${url}`);
+  if (url !== FRIENDLY_URL) {
+    console.log(`  (${FRIENDLY_URL} would also work once the hosts entry is in place.)`);
+  }
   console.log("================================================================");
   console.log("");
   console.log("Useful commands:");
