@@ -191,9 +191,9 @@ You can change providers any time from **Settings → AI provider**. Existing ca
 
 - **Node.js 22+**
 - **macOS 13+**, **Ubuntu 22+** (with systemd), or **Windows 11**
-- **Build tools for the menubar** (only if you want the tray):
-  - macOS: Xcode Command Line Tools: `xcode-select --install`
-  - Windows: .NET 8 SDK: `winget install Microsoft.DotNet.SDK.8`
+- **Build tools for the menubar** (only if you want the tray; `npm run setup` will offer to install these for you if they're missing):
+  - macOS: Xcode Command Line Tools (`xcode-select --install`)
+  - Windows: .NET 8 SDK (`winget install Microsoft.DotNet.SDK.8`)
 - A bank account with **2FA disabled** (most Israeli banks require this for automation — OneZero is the exception)
 
 ## Install
