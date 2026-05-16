@@ -10,9 +10,9 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
 
@@ -26,7 +26,7 @@ jobs:
           $name = "${env:GITHUB_REF_NAME}".Replace('/', '_')
           Copy-Item menubar/windows/build/Spent.exe "Spent-$name.exe"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-exe
           path: Spent-*.exe
@@ -35,7 +35,7 @@ jobs:
   build-mac:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build Spent.app (universal)
         env:
@@ -48,7 +48,7 @@ jobs:
           cd menubar/mac/build
           zip -ry "$GITHUB_WORKSPACE/Spent-${name}.app.zip" Spent.app
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mac-app
           path: Spent-*.app.zip
@@ -61,7 +61,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
