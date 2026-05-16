@@ -64,9 +64,19 @@ internal static class Logo
             dc.DrawGeometry(null, pen, geom);
         }
 
-        var bitmap = new RenderTargetBitmap(pixelSize, pixelSize, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual);
-        bitmap.Freeze();
-        return bitmap;
+        var rtb = new RenderTargetBitmap(pixelSize, pixelSize, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(visual);
+
+        // H.NotifyIcon.ImageExtensions doesn't know how to convert a
+        // RenderTargetBitmap into a tray icon stream; round-trip through PNG.
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(rtb));
+        using var ms = new System.IO.MemoryStream();
+        encoder.Save(ms);
+        ms.Position = 0;
+
+        var frame = BitmapFrame.Create(ms, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+        frame.Freeze();
+        return frame;
     }
 }
