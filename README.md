@@ -332,7 +332,7 @@ spent/
 - **Port 41234 in use** → `lsof -nP -iTCP:41234 -sTCP:LISTEN` (Unix) or `netstat -ano | findstr :41234` (Windows). Kill the offender and re-run install.
 - **Gatekeeper blocks `Spent.app`** → right-click → Open → Open. One-time.
 - **Linux: "systemd user instance not available"** → `loginctl enable-linger $USER`.
-- **Windows: hosts edit fails** → re-run install from an elevated PowerShell.
+- **Windows: hosts edit fails / `spent.local` doesn't resolve** → re-run install from an elevated PowerShell (Win+X → "Terminal (Admin)") so it can edit `C:\Windows\System32\drivers\etc\hosts`. After the edit, the installer flushes the DNS cache automatically; if you edited hosts manually, run `ipconfig /flushdns`. `http://127.0.0.1:41234` always works as a fallback.
 - **Bank scrape fails with "Cloudflare"** → temporarily run with `SPENT_DISABLE_CHROMIUM_SANDBOX=1` to let Puppeteer use a real Chrome profile.
 
 ## Roadmap

@@ -116,6 +116,9 @@ export async function run(cmd, { friendlyUrl, loopbackUrl }) {
       }
       try {
         addManagedBlock();
+        // Windows caches negative DNS lookups, so even a fresh `spent.local`
+        // entry can still resolve as NXDOMAIN until the cache is cleared.
+        spawnSync("ipconfig", ["/flushdns"], { stdio: "ignore" });
       } catch (err) {
         console.error(`Hosts file edit failed: ${err.message}`);
         console.error("Task is still installed. You can bookmark " + loopbackUrl);

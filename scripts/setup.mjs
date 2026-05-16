@@ -189,6 +189,26 @@ function preflight() {
       "Then re-run `npm run setup`.",
     );
   }
+
+  if (process.platform === "win32") {
+    // Windows has no per-command elevation: editing hosts requires the WHOLE
+    // shell to be elevated. Fail fast so the user doesn't sit through a full
+    // Next.js build only to discover spent.local won't resolve.
+    const r = spawnSync("net", ["session"], { encoding: "utf-8" });
+    if (r.status !== 0) {
+      fail(
+        "Windows setup needs Administrator to edit the hosts file\n" +
+        "(C:\\Windows\\System32\\drivers\\etc\\hosts) so that\n" +
+        "http://spent.local:41234 resolves.\n\n" +
+        "Re-run from an elevated terminal:\n" +
+        "  1. Press Win+X and choose 'Terminal (Admin)' or 'PowerShell (Admin)'.\n" +
+        `  2. cd "${REPO_ROOT}"\n` +
+        "  3. npm run setup\n\n" +
+        "If you can't elevate, http://127.0.0.1:41234 works without the hosts edit;\n" +
+        "the menubar's 'Open dashboard' will only break for the friendly hostname.",
+      );
+    }
+  }
 }
 
 function buildNextApp() {
@@ -392,7 +412,26 @@ async function main() {
       fail(`unsupported platform: ${process.platform}`);
   }
 
-  console.log(`\nDone. Spent is at ${FRIENDLY_URL}`);
+  printCheatSheet();
+}
+
+function printCheatSheet() {
+  console.log("");
+  console.log("================================================================");
+  console.log(`  Done. Spent is at ${FRIENDLY_URL}`);
+  console.log("================================================================");
+  console.log("");
+  console.log("Useful commands:");
+  console.log("  npm run service:status         see if the service is running");
+  console.log("  npm run service:start          start the background service");
+  console.log("  npm run service:stop           stop the background service");
+  console.log("  npm run service:reload         rebuild and restart (after code edits)");
+  console.log("  npm run service:logs           tail the server logs");
+  console.log("  npm run service:open           open the dashboard in your browser");
+  console.log("  npm run uninstall              remove the service and menubar");
+  console.log("");
+  console.log("Tip: bookmark the URL above so the daily flow is one click.");
+  console.log("");
 }
 
 main().catch((err) => {
