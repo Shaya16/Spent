@@ -63,7 +63,7 @@ export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
 
   function handleFinish() {
     queryClient.invalidateQueries();
-    router.push("/");
+    router.push("/?sync=1");
   }
 
   return (

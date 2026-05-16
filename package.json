@@ -17,8 +17,9 @@
     "service:status": "node scripts/service/install.mjs status",
     "service:logs": "node scripts/service/install.mjs logs",
     "service:open": "node scripts/service/install.mjs open",
-    "menubar:build": "bash menubar/build.sh",
-    "menubar:install": "bash menubar/build.sh && cp -R menubar/build/Spent.app ~/Applications/"
+    "menubar:build": "bash menubar/mac/build.sh",
+    "menubar:install": "bash menubar/mac/build.sh && cp -R menubar/mac/build/Spent.app ~/Applications/",
+    "menubar:build:windows": "powershell -ExecutionPolicy Bypass -File menubar/windows/build.ps1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.95.2",

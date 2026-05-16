@@ -27,6 +27,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { getCategories, setBudgetModesBulk, updateBudget } from "@/lib/api";
 import type { Category } from "@/lib/types";
 
@@ -193,7 +198,6 @@ function CategoryCell({
 
   return (
     <label
-      title={category.name}
       className="group flex min-w-0 items-center gap-1.5 rounded-lg border bg-card px-1.5 py-1.5 transition-colors"
       style={{
         borderColor: filled ? accent : "var(--border)",
@@ -208,9 +212,18 @@ function CategoryCell({
       >
         <Icon className="h-3.5 w-3.5" style={{ color: accent }} />
       </div>
-      <span className="min-w-0 flex-1 truncate text-[11px] font-medium">
-        {category.name}
-      </span>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <span className="min-w-0 flex-1 cursor-default truncate text-[11px] font-medium">
+              {category.name}
+            </span>
+          }
+        />
+        <TooltipContent side="top" sideOffset={6}>
+          {category.name}
+        </TooltipContent>
+      </Tooltip>
       <div className="flex items-baseline gap-0.5">
         <span className="text-[10px] text-muted-foreground">₪</span>
         <input

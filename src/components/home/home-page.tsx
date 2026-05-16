@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getHome } from "@/lib/api";
 import { PageHeader } from "@/components/layout/app-shell";
@@ -27,6 +28,15 @@ const ROW_2_SIDE = "col-span-12 md:col-span-6 lg:col-span-5";
 
 export function HomePage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [autoStartSync] = useState(() => searchParams.get("sync") === "1");
+
+  useEffect(() => {
+    if (autoStartSync) {
+      router.replace("/", { scroll: false });
+    }
+  }, [autoStartSync, router]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["home"],
@@ -51,7 +61,10 @@ export function HomePage() {
               nextScheduledSync={data?.nextScheduledSync ?? null}
             />
             <CategorizeButton onApplied={handleSyncOrCategorizeComplete} />
-            <SyncButton onComplete={handleSyncOrCategorizeComplete} />
+            <SyncButton
+              onComplete={handleSyncOrCategorizeComplete}
+              autoStart={autoStartSync}
+            />
           </>
         }
       />

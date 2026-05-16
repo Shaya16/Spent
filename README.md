@@ -74,8 +74,8 @@ Polished buttercream-and-sage palette in light mode, warm charcoal in dark. Syst
 </td>
 <td valign="top">
 
-### 🍎 macOS menu bar app
-Optional Swift companion lives in your menu bar — one click to open the dashboard or trigger a sync.
+### 🍎 Menu bar / tray app
+Optional native companion lives in your menu bar (macOS) or notification area (Windows) — one click to open the dashboard or trigger a sync.
 
 </td>
 </tr>
@@ -206,11 +206,20 @@ npm run service:install
 
 Open **`http://spent.local:41234`** and bookmark it.
 
-**macOS bonus** — install the menu bar app:
+**Menu bar / tray app (optional)** — native status icon with one-click open, sync, and start/stop:
 
+macOS:
 ```bash
 npm run menubar:install
 open ~/Applications/Spent.app   # right-click → Open first time for Gatekeeper
+```
+
+Windows (requires .NET 8 SDK — `winget install Microsoft.DotNet.SDK.8`):
+```powershell
+npm run menubar:build:windows
+mkdir $env:LOCALAPPDATA\Programs\Spent
+Copy-Item menubar\windows\build\Spent.exe $env:LOCALAPPDATA\Programs\Spent\
+# Drop a shortcut into shell:startup for auto-launch on login
 ```
 
 ## First-time setup
@@ -232,7 +241,7 @@ In the browser:
 
 Rare cases:
 
-- Changed the Swift menu bar app → `npm run menubar:install` and relaunch `Spent.app`.
+- Changed the menu bar app → macOS: `npm run menubar:install` and relaunch `Spent.app`. Windows: `npm run menubar:build:windows`, replace `Spent.exe` in `%LOCALAPPDATA%\Programs\Spent\`.
 - Changed install scripts or hostname → `npm run service:uninstall && npm run service:install`.
 
 ## Service commands
@@ -288,7 +297,9 @@ spent/
 │       ├── db/               SQLite singleton, migrations, query helpers
 │       ├── lib/              Encryption, dedup, transfer detection, pace
 │       └── scrapers/         Wrapper around israeli-bank-scrapers
-├── menubar/                  Swift macOS menu bar app (optional)
+├── menubar/                  Optional tray companions
+│   ├── mac/                  Swift MenuBarExtra app
+│   └── windows/              C# WPF NotifyIcon app
 ├── scripts/service/          LaunchAgent / systemd installer
 └── data/                     SQLite + encryption key (gitignored)
 ```
@@ -309,7 +320,7 @@ spent/
 - [ ] Custom user-defined categories
 - [ ] Hebrew UI
 - [ ] Mobile companion (Phase 2)
-- [ ] Multiple workspaces in the menu bar app
+- [ ] Multiple workspaces in the menu bar / tray app
 
 ## Contributing
 

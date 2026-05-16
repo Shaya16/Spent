@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,22 +33,40 @@ interface PullState {
 }
 
 const TINTS = {
-  claude: {
-    bg: "#fad6c0",
-    mid: "#e89968",
-    ink: "#7a4222",
-  },
-  ollama: {
-    bg: "#dbedd1",
-    mid: "#a8d18d",
-    ink: "#3e5a2e",
-  },
-  none: {
-    bg: "#e6dfd1",
-    mid: "#a89978",
-    ink: "#5b5240",
-  },
+  claude: { bg: "#fad6c0", mid: "#e89968", ink: "#7a4222" },
+  ollama: { bg: "#dbedd1", mid: "#a8d18d", ink: "#3e5a2e" },
+  none: { bg: "#e6dfd1", mid: "#a89978", ink: "#5b5240" },
 } as const;
+
+interface ProviderMeta {
+  id: AIChoice;
+  title: string;
+  tagline: string;
+  icon: string;
+  recommended?: boolean;
+}
+
+const PROVIDERS: ProviderMeta[] = [
+  {
+    id: "claude",
+    title: "Claude",
+    tagline: "Anthropic API, fast and accurate",
+    icon: "✦",
+    recommended: true,
+  },
+  {
+    id: "ollama",
+    title: "Ollama",
+    tagline: "Runs locally, free and private",
+    icon: "◐",
+  },
+  {
+    id: "none",
+    title: "Manual",
+    tagline: "No AI, categorize transactions yourself",
+    icon: "↷",
+  },
+];
 
 export function AIStep({ onComplete, onBack }: AIStepProps) {
   const [choice, setChoice] = useState<AIChoice>("claude");
@@ -141,282 +160,72 @@ export function AIStep({ onComplete, onBack }: AIStepProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[520px] space-y-6">
       <header className="space-y-2">
-        <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
           Step 2 of 5
         </div>
-        <h1 className="font-serif text-4xl leading-tight">
+        <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
           How should we categorize?
         </h1>
-        <p className="max-w-xl text-sm text-muted-foreground">
-          Spent uses AI to sort transactions into Groceries, Dining,
-          Subscriptions, and so on. Pick a provider — you can change this any
-          time.
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Spent uses AI to group your transactions into categories. You can
+          change this any time in settings.
         </p>
       </header>
 
-      <div className="grid gap-2.5 md:grid-cols-3">
-        {(
-          [
-            {
-              id: "claude" as const,
-              title: "Claude",
-              sub: "Anthropic API",
-              detail: "Fast and accurate · paid API",
-              icon: "✦",
-            },
-            {
-              id: "ollama" as const,
-              title: "Ollama",
-              sub: "Runs locally",
-              detail: "Free, private · needs install",
-              icon: "◐",
-            },
-            {
-              id: "none" as const,
-              title: "Manual",
-              sub: "No AI for now",
-              detail: "Categorize transactions yourself",
-              icon: "↷",
-            },
-          ]
-        ).map((o) => {
-          const tint = TINTS[o.id];
-          const sel = choice === o.id;
-          return (
-            <motion.button
-              key={o.id}
-              onClick={() => setChoice(o.id)}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.99 }}
-              className="flex flex-col gap-2.5 rounded-2xl border p-4 text-left transition-colors"
-              style={{
-                background: sel ? tint.bg : "var(--card)",
-                borderColor: sel ? tint.mid : "var(--border)",
-                borderWidth: 1.5,
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-lg"
-                  style={{
-                    background: sel ? "#fff" : tint.bg,
-                    color: tint.ink,
-                  }}
-                >
-                  {o.icon}
-                </div>
-                {sel && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold text-white"
-                    style={{ background: tint.ink }}
-                  >
-                    ✓
-                  </motion.span>
-                )}
-              </div>
-              <div>
-                <div
-                  className="text-base font-bold tracking-tight"
-                  style={{ color: sel ? tint.ink : "var(--foreground)" }}
-                >
-                  {o.title}
-                </div>
-                <div
-                  className="mt-0.5 text-xs"
-                  style={{
-                    color: sel ? tint.ink : "var(--muted-foreground)",
-                    opacity: sel ? 0.75 : 1,
-                  }}
-                >
-                  {o.sub}
-                </div>
-              </div>
-              <div
-                className="mt-auto text-[11px] leading-snug"
-                style={{
-                  color: sel ? tint.ink : "var(--muted-foreground)",
-                  opacity: sel ? 0.75 : 0.85,
-                }}
-              >
-                {o.detail}
-              </div>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      <AnimatePresence mode="wait">
-        {choice === "claude" && (
-          <motion.div
-            key="claude-config"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-3 rounded-2xl bg-card p-5"
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-base"
-                style={{ background: TINTS.claude.bg, color: TINTS.claude.ink }}
-              >
-                ✦
-              </div>
-              <div className="flex-1 text-sm font-bold tracking-tight">
-                Claude API key
-              </div>
-              <a
-                href="https://console.anthropic.com"
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs font-medium text-primary hover:underline"
-              >
-                Get a key ↗
-              </a>
-            </div>
-            <div className="relative">
-              <Input
-                type={showKey ? "text" : "password"}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-ant-api03-..."
-                className="font-mono pr-14"
-              />
-              <button
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
-              >
-                {showKey ? "hide" : "show"}
-              </button>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Your key is encrypted with AES-256-GCM and stored locally.
-            </p>
-          </motion.div>
-        )}
-
-        {choice === "ollama" && (
-          <motion.div
-            key="ollama-config"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-4 rounded-2xl bg-card p-5"
-          >
-            <div
-              className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-medium"
-              style={{
-                background:
-                  ollamaReachable === false
-                    ? "rgba(232, 153, 104, 0.18)"
-                    : "rgba(168, 209, 141, 0.22)",
-                color:
-                  ollamaReachable === false ? "#9a4a26" : "#3e5a2e",
-              }}
-            >
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{
-                  background:
-                    ollamaReachable === false ? "#c97b5c" : "#6b8c70",
-                }}
-              />
-              {ollamaReachable === false ? (
-                <>
-                  Ollama not detected
-                  <a
-                    href="https://ollama.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ml-auto font-bold underline"
-                  >
-                    Install ↗
-                  </a>
-                </>
-              ) : (
-                <>Ollama running on {ollamaUrl}</>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="ollama-url">Ollama URL</Label>
-              <Input
-                id="ollama-url"
-                value={ollamaUrl}
-                onChange={(e) => setOllamaUrl(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Choose a model</Label>
-              <div className="grid gap-2 md:grid-cols-3">
-                {RECOMMENDED_OLLAMA_MODELS.slice(0, 3).map((m) => (
-                  <button
-                    key={m.name}
-                    onClick={() => setOllamaModel(m.name)}
-                    className={`rounded-xl border p-3 text-left transition-colors ${
-                      ollamaModel === m.name
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/40"
-                    }`}
-                  >
-                    <div className="flex items-baseline justify-between gap-1.5">
-                      <span className="text-xs font-bold tracking-tight">
-                        {m.name}
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {m.sizeGb} GB
-                      </span>
-                    </div>
-                    {m.recommended && (
-                      <span className="mt-1 inline-block rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                        recommended
-                      </span>
-                    )}
-                    <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-                      {m.description}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <OllamaPullCTA
-              model={ollamaModel}
-              installed={modelInstalled}
-              reachable={ollamaReachable}
-              pullState={pullState}
-              pullError={pullError}
-              onPull={handlePull}
-              onCancel={() => {
-                pullCancelRef.current?.();
-                setPullState(null);
-              }}
+      <div className="flex flex-col gap-1.5">
+        {PROVIDERS.map((p) => (
+          <Fragment key={p.id}>
+            <ProviderRow
+              provider={p}
+              selected={choice === p.id}
+              onClick={() => setChoice(p.id)}
             />
-          </motion.div>
-        )}
-
-        {choice === "none" && (
-          <motion.div
-            key="none-config"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2 }}
-            className="rounded-2xl bg-card p-5 text-sm leading-relaxed text-muted-foreground"
-          >
-            That&apos;s fine — Spent will leave transactions uncategorized and
-            you can assign categories from the transactions table any time. You
-            can switch to Claude or Ollama later in{" "}
-            <b className="text-foreground">Settings → AI</b>.
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <AnimatePresence initial={false}>
+              {choice === p.id && (
+                <motion.div
+                  key={`config-${p.id}`}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: [0.2, 0.7, 0.3, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-1.5">
+                    {p.id === "claude" && (
+                      <ClaudeConfig
+                        apiKey={apiKey}
+                        setApiKey={setApiKey}
+                        showKey={showKey}
+                        setShowKey={setShowKey}
+                      />
+                    )}
+                    {p.id === "ollama" && (
+                      <OllamaConfig
+                        url={ollamaUrl}
+                        setUrl={setOllamaUrl}
+                        model={ollamaModel}
+                        setModel={setOllamaModel}
+                        reachable={ollamaReachable}
+                        modelInstalled={modelInstalled}
+                        pullState={pullState}
+                        pullError={pullError}
+                        onPull={handlePull}
+                        onCancel={() => {
+                          pullCancelRef.current?.();
+                          setPullState(null);
+                        }}
+                      />
+                    )}
+                    {p.id === "none" && <ManualNote />}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Fragment>
+        ))}
+      </div>
 
       <footer className="flex items-center justify-between pt-2">
         <Button variant="outline" onClick={onBack}>
@@ -426,6 +235,248 @@ export function AIStep({ onComplete, onBack }: AIStepProps) {
           {saving ? "Saving..." : "Continue →"}
         </Button>
       </footer>
+    </div>
+  );
+}
+
+function ProviderRow({
+  provider,
+  selected,
+  onClick,
+}: {
+  provider: ProviderMeta;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const tint = TINTS[provider.id];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent/40"
+      style={{
+        borderColor: selected ? tint.mid : "var(--border)",
+        background: selected
+          ? `color-mix(in oklch, ${tint.bg} 35%, var(--card))`
+          : undefined,
+        borderWidth: 1.5,
+      }}
+    >
+      <div
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm"
+        style={{ background: tint.bg, color: tint.ink }}
+      >
+        {provider.icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-bold tracking-tight">
+            {provider.title}
+          </span>
+          {provider.recommended && (
+            <span
+              className="rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.06em] text-white"
+              style={{ background: tint.mid }}
+            >
+              Recommended
+            </span>
+          )}
+        </div>
+        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          {provider.tagline}
+        </div>
+      </div>
+      {selected ? (
+        <span
+          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-white"
+          style={{ background: tint.mid }}
+        >
+          <Check className="h-3 w-3" strokeWidth={3} />
+        </span>
+      ) : (
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+      )}
+    </button>
+  );
+}
+
+function ClaudeConfig({
+  apiKey,
+  setApiKey,
+  showKey,
+  setShowKey,
+}: {
+  apiKey: string;
+  setApiKey: (v: string) => void;
+  showKey: boolean;
+  setShowKey: (v: boolean) => void;
+}) {
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-card/60 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor="claude-api-key" className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          API key
+        </Label>
+        <a
+          href="https://console.anthropic.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11px] font-medium text-primary hover:underline"
+        >
+          Get a key ↗
+        </a>
+      </div>
+      <div className="relative">
+        <Input
+          id="claude-api-key"
+          type={showKey ? "text" : "password"}
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder="sk-ant-api03-..."
+          className="font-mono pr-14"
+        />
+        <button
+          type="button"
+          onClick={() => setShowKey(!showKey)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+        >
+          {showKey ? "hide" : "show"}
+        </button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Encrypted with AES-256-GCM and stored locally.
+      </p>
+    </div>
+  );
+}
+
+function OllamaConfig({
+  url,
+  setUrl,
+  model,
+  setModel,
+  reachable,
+  modelInstalled,
+  pullState,
+  pullError,
+  onPull,
+  onCancel,
+}: {
+  url: string;
+  setUrl: (v: string) => void;
+  model: string;
+  setModel: (v: string) => void;
+  reachable: boolean | null;
+  modelInstalled: boolean;
+  pullState: PullState | null;
+  pullError: string | null;
+  onPull: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-card/60 p-4">
+      <div
+        className="flex items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-medium"
+        style={{
+          background:
+            reachable === false
+              ? "rgba(232, 153, 104, 0.18)"
+              : "rgba(168, 209, 141, 0.22)",
+          color: reachable === false ? "#9a4a26" : "#3e5a2e",
+        }}
+      >
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{
+            background: reachable === false ? "#c97b5c" : "#6b8c70",
+          }}
+        />
+        {reachable === false ? (
+          <>
+            Ollama not detected
+            <a
+              href="https://ollama.com"
+              target="_blank"
+              rel="noreferrer"
+              className="ml-auto font-bold underline"
+            >
+              Install ↗
+            </a>
+          </>
+        ) : (
+          <>Ollama running on {url}</>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor="ollama-url" className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          Server URL
+        </Label>
+        <Input
+          id="ollama-url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          className="font-mono text-[12px]"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          Pick a model
+        </Label>
+        <div className="grid grid-cols-3 gap-1.5">
+          {RECOMMENDED_OLLAMA_MODELS.slice(0, 3).map((m) => (
+            <button
+              key={m.name}
+              type="button"
+              onClick={() => setModel(m.name)}
+              className={`relative rounded-lg border bg-background p-2 text-left transition-colors ${
+                model === m.name
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/40"
+              }`}
+            >
+              <div className="flex items-baseline justify-between gap-1">
+                <span className="truncate text-[11px] font-bold tracking-tight">
+                  {m.name}
+                </span>
+                {m.recommended && (
+                  <span className="rounded-full bg-primary/10 px-1 py-0 text-[8px] font-bold uppercase tracking-wider text-primary">
+                    rec
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 font-mono text-[9px] text-muted-foreground">
+                {m.sizeGb} GB
+              </div>
+              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+                {m.description}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <OllamaPullCTA
+        model={model}
+        installed={modelInstalled}
+        reachable={reachable}
+        pullState={pullState}
+        pullError={pullError}
+        onPull={onPull}
+        onCancel={onCancel}
+      />
+    </div>
+  );
+}
+
+function ManualNote() {
+  return (
+    <div className="rounded-xl border border-border bg-card/60 p-4 text-[12px] leading-relaxed text-muted-foreground">
+      Spent will leave transactions <span className="text-foreground">uncategorized</span>;
+      you can assign categories from the transactions table any time. Switch to
+      Claude or Ollama later in{" "}
+      <span className="font-bold text-foreground">Settings → AI</span>.
     </div>
   );
 }
@@ -453,13 +504,9 @@ function OllamaPullCTA({
 
   if (installed) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-3 text-sm font-medium text-primary"
-      >
+      <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-[12px] font-medium text-primary">
         ✓ <span className="font-bold">{model}</span> is installed and ready.
-      </motion.div>
+      </div>
     );
   }
 
@@ -469,21 +516,22 @@ function OllamaPullCTA({
         ? Math.round((pullState.completed / pullState.total) * 100)
         : 0;
     return (
-      <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
-        <div className="flex items-center justify-between text-sm">
+      <div className="space-y-2 rounded-lg border border-border bg-background/50 p-2.5">
+        <div className="flex items-center justify-between text-[12px]">
           <span className="font-medium">
             {pullState.status === "starting"
               ? "Starting download..."
               : pullState.status}
           </span>
           <button
+            type="button"
             onClick={onCancel}
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="text-[11px] text-muted-foreground hover:text-foreground"
           >
             Cancel
           </button>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <motion.div
             className="h-full"
             style={{ background: "#a8d18d" }}
@@ -491,7 +539,7 @@ function OllamaPullCTA({
             transition={{ duration: 0.3 }}
           />
         </div>
-        <div className="flex items-center justify-between text-[11px] tabular-nums text-muted-foreground">
+        <div className="flex items-center justify-between text-[10px] tabular-nums text-muted-foreground">
           <span>
             {formatBytes(pullState.completed)} / {formatBytes(pullState.total)}{" "}
             ({percent}%)
@@ -508,8 +556,9 @@ function OllamaPullCTA({
   }
 
   return (
-    <>
+    <div className="space-y-1">
       <Button
+        type="button"
         onClick={onPull}
         disabled={reachable === false}
         className="w-full"
@@ -517,9 +566,9 @@ function OllamaPullCTA({
         ↓ Download {model} {info ? `(${info.sizeGb} GB)` : ""}
       </Button>
       {pullError && (
-        <p className="mt-1 text-xs text-destructive">{pullError}</p>
+        <p className="text-[11px] text-destructive">{pullError}</p>
       )}
-    </>
+    </div>
   );
 }
 

@@ -12,9 +12,10 @@ import {
 
 interface SyncButtonProps {
   onComplete: () => void;
+  autoStart?: boolean;
 }
 
-export function SyncButton({ onComplete }: SyncButtonProps) {
+export function SyncButton({ onComplete, autoStart = false }: SyncButtonProps) {
   const [syncing, setSyncing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [providers, setProviders] = useState<string[]>([]);
@@ -159,6 +160,15 @@ export function SyncButton({ onComplete }: SyncButtonProps) {
 
     cancelRef.current = cancel;
   };
+
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoStart && !autoStartedRef.current && !syncing) {
+      autoStartedRef.current = true;
+      handleSync();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   return (
     <>
