@@ -1,115 +1,72 @@
-using System.ComponentModel;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Input;
-using System.Windows.Media;
-using H.NotifyIcon;
-using H.NotifyIcon.Core;
+using System.Drawing;
+using System.Reflection;
+using System.Windows.Forms;
 
 namespace Spent;
 
 internal sealed class SpentTray : IDisposable
 {
-    private TaskbarIcon? _icon;
-    private StatusModel? _model;
-    private PopupContent? _popup;
+    private readonly NotifyIcon _notify;
+    private readonly StatusModel _status;
 
-    public void Initialize()
+    public SpentTray()
     {
-        _model = new StatusModel();
-        _popup = new PopupContent { DataContext = _model };
-
-        _icon = new TaskbarIcon
+        _notify = new NotifyIcon
         {
-            ToolTipText = "Spent",
-            TrayPopup = _popup,
-            PopupActivation = PopupActivationMode.LeftClick,
-            ContextMenu = BuildContextMenu(),
-            NoLeftClickDelay = true,
+            Icon = LoadIcon(),
+            Text = "Spent",
+            ContextMenuStrip = BuildMenu(),
+            Visible = true,
         };
 
-        UpdateIcon();
-        _model.PropertyChanged += OnModelChanged;
+        _notify.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                Services.OpenSpent();
+            }
+        };
 
-        PopupContent.DismissRequested = HidePopup;
-
-        InstallShortcuts();
-
-        _model.Start();
+        _status = new StatusModel();
+        _status.PropertyChanged += (_, _) => UpdateTooltip();
+        _status.Start();
+        UpdateTooltip();
     }
 
-    private static ContextMenu BuildContextMenu()
+    private static Icon LoadIcon()
     {
-        var menu = new ContextMenu();
-        var open = new MenuItem { Header = "Open dashboard" };
-        open.Click += (_, _) => Services.OpenSpent();
-        var sync = new MenuItem { Header = "Sync now" };
-        sync.Click += (_, _) => Services.SyncNow();
-        var start = new MenuItem { Header = "Start service" };
-        start.Click += (_, _) => Services.StartService();
-        var stop = new MenuItem { Header = "Stop service" };
-        stop.Click += (_, _) => Services.StopService();
-        var quit = new MenuItem { Header = "Quit menu bar" };
-        quit.Click += (_, _) => Application.Current.Shutdown();
+        var asm = Assembly.GetExecutingAssembly();
+        using var stream = asm.GetManifestResourceStream("Spent.Resources.spent.ico")
+            ?? throw new InvalidOperationException("Embedded resource 'Spent.Resources.spent.ico' not found.");
+        return new Icon(stream);
+    }
 
-        menu.Items.Add(open);
-        menu.Items.Add(sync);
-        menu.Items.Add(new Separator());
-        menu.Items.Add(start);
-        menu.Items.Add(stop);
-        menu.Items.Add(new Separator());
-        menu.Items.Add(quit);
+    private static ContextMenuStrip BuildMenu()
+    {
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("Open dashboard", null, (_, _) => Services.OpenSpent());
+        menu.Items.Add("Sync now", null, (_, _) => Services.SyncNow());
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Start service", null, (_, _) => Services.StartService());
+        menu.Items.Add("Stop service", null, (_, _) => Services.StopService());
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Quit", null, (_, _) => Application.Exit());
         return menu;
     }
 
-    private void InstallShortcuts()
+    private void UpdateTooltip()
     {
-        if (_popup is null) return;
-        _popup.InputBindings.Add(new KeyBinding(
-            new RelayCommand(() => { Services.OpenSpent(); HidePopup(); }),
-            Key.O, ModifierKeys.Control));
-        _popup.InputBindings.Add(new KeyBinding(
-            new RelayCommand(() => { Services.SyncNow(); HidePopup(); }),
-            Key.S, ModifierKeys.Control));
-        _popup.InputBindings.Add(new KeyBinding(
-            new RelayCommand(() => Application.Current.Shutdown()),
-            Key.Q, ModifierKeys.Control));
-    }
-
-    private void HidePopup()
-    {
-        if (_icon?.TrayPopupResolved is Popup p)
-        {
-            p.IsOpen = false;
-        }
-    }
-
-    private void OnModelChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(StatusModel.IsOnline))
-        {
-            UpdateIcon();
-        }
-    }
-
-    private void UpdateIcon()
-    {
-        if (_icon is null || _model is null) return;
-        var online = _model.IsOnline;
-        _icon.IconSource = Logo.RenderTrayIcon(
-            pixelSize: 32,
-            color: Colors.White,
-            opacity: online ? 1.0 : 0.45);
-        _icon.ToolTipText = online
-            ? string.IsNullOrEmpty(_model.Version) ? "Spent — running" : $"Spent — running · v{_model.Version}"
-            : "Spent — stopped";
+        var text = _status.IsOnline
+            ? string.IsNullOrEmpty(_status.Version) ? "Spent: running" : $"Spent: running v{_status.Version}"
+            : "Spent: stopped";
+        if (text.Length > 127) text = text.Substring(0, 127);
+        _notify.Text = text;
     }
 
     public void Dispose()
     {
-        PopupContent.DismissRequested = null;
-        _model?.Dispose();
-        _icon?.Dispose();
+        _notify.Visible = false;
+        _notify.Dispose();
+        _status.Dispose();
     }
 }

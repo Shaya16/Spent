@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Windows;
 
 namespace Spent;
 
@@ -12,11 +11,14 @@ internal sealed class StatusModel : INotifyPropertyChanged, IDisposable
 {
     private readonly HttpClient _http;
     private readonly CancellationTokenSource _cts = new();
+    private readonly SynchronizationContext? _uiContext;
     private bool _isOnline;
     private string _version = string.Empty;
 
     public StatusModel()
     {
+        // Captured on the UI thread (set up by ApplicationConfiguration.Initialize).
+        _uiContext = SynchronizationContext.Current;
         // Restrict to loopback only. Any non-127.0.0.1 URL is short-circuited.
         var handler = new HttpClientHandler
         {
@@ -105,19 +107,18 @@ internal sealed class StatusModel : INotifyPropertyChanged, IDisposable
 
     private void UpdateOnUi(bool online, string version)
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is null || dispatcher.CheckAccess())
+        if (_uiContext is null || SynchronizationContext.Current == _uiContext)
         {
             IsOnline = online;
             Version = version;
         }
         else
         {
-            dispatcher.BeginInvoke(new Action(() =>
+            _uiContext.Post(_ =>
             {
                 IsOnline = online;
                 Version = version;
-            }));
+            }, null);
         }
     }
 
