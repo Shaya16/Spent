@@ -6,13 +6,12 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag to release as (use "dev" to overwrite the smoke-test release)'
+      version:
+        description: 'Release tag, e.g. v0.1.0'
         required: true
-        default: 'dev'
 
 env:
-  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+  RELEASE_TAG: ${{ inputs.version || github.ref_name }}
 
 jobs:
   build-windows:
@@ -73,18 +72,10 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Replace existing dispatch release
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release delete "$RELEASE_TAG" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
-
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           target_commitish: ${{ github.sha }}
-          prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           files: |
             artifacts/Spent-*.exe
             artifacts/Spent-*.app.zip
