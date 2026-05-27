@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
+import { useState } from "react";
 import { toast } from "sonner";
+import { SectionShell, SettingCard } from "@/components/settings/section-shell";
+import { WorkspaceNameCard } from "@/components/settings/workspace-controls";
+import { Button } from "@/components/ui/button";
+import { Input, InputGroup } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -11,15 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Input, InputGroup } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { SectionShell, SettingCard } from "@/components/settings/section-shell";
-import { WorkspaceNameCard } from "@/components/settings/workspace-controls";
+import type { Locale } from "@/i18n/routing";
 import { getSettings, getSummary, updateSettings } from "@/lib/api";
 import { formatCurrency } from "@/lib/formatters";
-import type { Locale } from "@/i18n/routing";
 
 function todayLocalISO(): string {
   const d = new Date();
@@ -58,7 +58,7 @@ export default function GeneralSettingsPage() {
             typicalMonthly={summary?.typicalMonthly ?? null}
           />
           <GeneralForm
-            key={settings.monthsToSync + ":" + settings.paydayDay}
+            key={`${settings.monthsToSync}:${settings.paydayDay}`}
             initialMonths={settings.monthsToSync}
             initialPayday={settings.paydayDay}
           />
@@ -88,9 +88,7 @@ function MonthlyTargetCard({
   const tCommon = useTranslations("common");
   const locale = useLocale() as Locale;
   const queryClient = useQueryClient();
-  const [value, setValue] = useState(
-    initialTarget != null ? String(initialTarget) : ""
-  );
+  const [value, setValue] = useState(initialTarget != null ? String(initialTarget) : "");
 
   const mutation = useMutation({
     mutationFn: updateSettings,
@@ -103,15 +101,11 @@ function MonthlyTargetCard({
 
   const parsed = value.trim() === "" ? null : Number(value);
   const valid = parsed == null || (Number.isFinite(parsed) && parsed >= 0);
-  const dirty =
-    (parsed ?? null) !== (initialTarget ?? null) && valid;
+  const dirty = (parsed ?? null) !== (initialTarget ?? null) && valid;
 
   return (
     <div id="section-monthly-target">
-      <SettingCard
-        title={t("monthlyTargetTitle")}
-        description={t("monthlyTargetDescription")}
-      >
+      <SettingCard title={t("monthlyTargetTitle")} description={t("monthlyTargetDescription")}>
         <div className="space-y-2 max-w-xs">
           <Label htmlFor="monthly-target">{t("monthlyTargetLabel")}</Label>
           <InputGroup prefix="₪">
@@ -134,16 +128,12 @@ function MonthlyTargetCard({
               })}
             </p>
           ) : (
-            <p className="text-[11px] text-muted-foreground">
-              {t("noPriorHistory")}
-            </p>
+            <p className="text-[11px] text-muted-foreground">{t("noPriorHistory")}</p>
           )}
         </div>
         <div className="mt-5 flex justify-end">
           <Button
-            onClick={() =>
-              mutation.mutate({ monthlyTarget: parsed })
-            }
+            onClick={() => mutation.mutate({ monthlyTarget: parsed })}
             disabled={!dirty || mutation.isPending}
           >
             {mutation.isPending ? tCommon("saving") : tCommon("saveChanges")}
@@ -176,19 +166,13 @@ function GeneralForm({
     },
   });
 
-  const dirty =
-    Number(months) !== initialMonths || Number(paydayDay) !== initialPayday;
+  const dirty = Number(months) !== initialMonths || Number(paydayDay) !== initialPayday;
 
   return (
-    <SettingCard
-      title={t("syncWindowTitle")}
-      description={t("syncWindowDescription")}
-    >
+    <SettingCard title={t("syncWindowTitle")} description={t("syncWindowDescription")}>
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
-          <div className="text-xs font-medium text-foreground/80">
-            {t("monthsToSync")}
-          </div>
+          <div className="text-xs font-medium text-foreground/80">{t("monthsToSync")}</div>
           <Select value={months} onValueChange={(v) => v && setMonths(v)}>
             <SelectTrigger>
               <SelectValue />
@@ -201,9 +185,7 @@ function GeneralForm({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[11px] text-muted-foreground">
-            {t("banksLimit")}
-          </p>
+          <p className="text-[11px] text-muted-foreground">{t("banksLimit")}</p>
         </div>
         <div className="space-y-2">
           <div className="text-xs font-medium text-foreground/80">{t("payday")}</div>
@@ -219,9 +201,7 @@ function GeneralForm({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[11px] text-muted-foreground">
-            {t("paydayHint")}
-          </p>
+          <p className="text-[11px] text-muted-foreground">{t("paydayHint")}</p>
         </div>
       </div>
       <div className="mt-5 flex justify-end">
@@ -267,28 +247,18 @@ function AutoSyncCard({
   });
 
   const timeValid = /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
-  const dirty =
-    timeValid && (enabled !== initialEnabled || time !== initialTime);
+  const dirty = timeValid && (enabled !== initialEnabled || time !== initialTime);
 
   return (
-    <SettingCard
-      title={t("autoSyncTitle")}
-      description={t("autoSyncDescription")}
-    >
+    <SettingCard title={t("autoSyncTitle")} description={t("autoSyncDescription")}>
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-1">
           <Label htmlFor="auto-sync-toggle" className="text-sm font-medium">
             {t("dailyAutoSync")}
           </Label>
-          <p className="text-[11px] text-muted-foreground">
-            {t("runsInIsraelTime")}
-          </p>
+          <p className="text-[11px] text-muted-foreground">{t("runsInIsraelTime")}</p>
         </div>
-        <Switch
-          id="auto-sync-toggle"
-          checked={enabled}
-          onCheckedChange={setEnabled}
-        />
+        <Switch id="auto-sync-toggle" checked={enabled} onCheckedChange={setEnabled} />
       </div>
       <div className="mt-5 grid gap-2 sm:max-w-xs">
         <Label htmlFor="auto-sync-time" className="text-xs font-medium text-foreground/80">
@@ -302,15 +272,11 @@ function AutoSyncCard({
           disabled={!enabled}
           className="tabular-nums"
         />
-        <p className="text-[11px] text-muted-foreground">
-          {t("timeOfDayHint")}
-        </p>
+        <p className="text-[11px] text-muted-foreground">{t("timeOfDayHint")}</p>
       </div>
       <div className="mt-5 flex justify-end">
         <Button
-          onClick={() =>
-            mutation.mutate({ autoSyncEnabled: enabled, autoSyncTime: time })
-          }
+          onClick={() => mutation.mutate({ autoSyncEnabled: enabled, autoSyncTime: time })}
           disabled={!dirty || mutation.isPending}
         >
           {mutation.isPending ? tCommon("saving") : tCommon("saveChanges")}

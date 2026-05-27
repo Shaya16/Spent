@@ -1,9 +1,9 @@
 "use client";
 
-import { Switch } from "@/components/ui/switch";
+import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import type { BankProviderInfo } from "@/lib/types";
 
 interface TwoFactorSectionProps {
@@ -40,23 +40,19 @@ export function TwoFactorSection({
 
       {supportsProgrammatic ? (
         <p className="text-xs text-muted-foreground">
-          {info.name} sends a one-time SMS code on first sync. Spent will save a
-          long-term token so future syncs don&apos;t need a fresh code.
+          {info.name} sends a one-time SMS code on first sync. Spent will save a long-term token so
+          future syncs don&apos;t need a fresh code.
           {hasTwoFactorToken && " You already have a saved token."}
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">
-          If you have 2FA enabled on {info.name}, turn this on so Spent opens a
-          browser window when syncing this account. Solve the challenge in the
-          popup and the sync will continue.
+          If you have 2FA enabled on {info.name}, turn this on so Spent opens a browser window when
+          syncing this account. Solve the challenge in the popup and the sync will continue.
         </p>
       )}
 
       <div className="flex items-center justify-between gap-3">
-        <Label
-          htmlFor={`${info.id}-manual-2fa`}
-          className="text-sm font-medium"
-        >
+        <Label htmlFor={`${info.id}-manual-2fa`} className="text-sm font-medium">
           This account requires 2FA
         </Label>
         <Switch
@@ -80,12 +76,7 @@ export function TwoFactorSection({
               Removing it forces a fresh SMS code on the next sync.
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onResetToken}
-            disabled={resetPending}
-          >
+          <Button variant="outline" size="sm" onClick={onResetToken} disabled={resetPending}>
             {resetPending ? "Resetting…" : "Reset 2FA"}
           </Button>
         </div>

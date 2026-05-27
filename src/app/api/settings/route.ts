@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  getAppSettings,
-  updateAppSettings,
-} from "@/server/db/queries/settings";
-import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 import { LOCALE_COOKIE } from "@/i18n/routing";
+import { getAppSettings, updateAppSettings } from "@/server/db/queries/settings";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 export async function GET(request: Request) {
   const workspaceId = getWorkspaceIdFromRequest(request);

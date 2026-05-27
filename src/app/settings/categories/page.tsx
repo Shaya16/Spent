@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
+import { CategoryDetailSheet } from "@/components/settings/category-detail-sheet";
+import { SectionShell } from "@/components/settings/section-shell";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -22,14 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SectionShell } from "@/components/settings/section-shell";
-import { CategoryDetailSheet } from "@/components/settings/category-detail-sheet";
+import { createCategory, getCategories, getSummary } from "@/lib/api";
 import { getMonthRange } from "@/lib/formatters";
-import {
-  createCategory,
-  getCategories,
-  getSummary,
-} from "@/lib/api";
 import type { Category, CategoryKind, CategoryWithData } from "@/lib/types";
 
 export default function CategoriesSettingsPage() {
@@ -58,9 +54,7 @@ export default function CategoriesSettingsPage() {
     return categories
       .filter((c) => c.kind === activeKind)
       .filter((c) =>
-        search.trim().length === 0
-          ? true
-          : c.name.toLowerCase().includes(search.toLowerCase())
+        search.trim().length === 0 ? true : c.name.toLowerCase().includes(search.toLowerCase()),
       );
   }, [categories, activeKind, search]);
 
@@ -80,9 +74,7 @@ export default function CategoriesSettingsPage() {
         childrenByParent.set(c.parentId, list);
       }
     });
-    childrenByParent.forEach((list) =>
-      list.sort((a, b) => a.name.localeCompare(b.name))
-    );
+    childrenByParent.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));
     const orphans = filtered
       .filter((c) => c.parentId == null && !parentIds.has(c.id))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -97,16 +89,10 @@ export default function CategoriesSettingsPage() {
       >
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-full border border-border bg-card p-0.5">
-            <KindTab
-              active={activeKind === "expense"}
-              onClick={() => setActiveKind("expense")}
-            >
+            <KindTab active={activeKind === "expense"} onClick={() => setActiveKind("expense")}>
               Expense
             </KindTab>
-            <KindTab
-              active={activeKind === "income"}
-              onClick={() => setActiveKind("income")}
-            >
+            <KindTab active={activeKind === "income"} onClick={() => setActiveKind("income")}>
               Income
             </KindTab>
           </div>
@@ -194,9 +180,7 @@ function KindTab({
     <button
       onClick={onClick}
       className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-        active
-          ? "bg-foreground text-background"
-          : "text-muted-foreground hover:text-foreground"
+        active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}
@@ -221,10 +205,7 @@ function GroupBlock({
   return (
     <section>
       <div className="mb-2 flex items-center gap-2 px-1">
-        <span
-          className="h-2 w-2 rounded-full"
-          style={{ background: color }}
-        />
+        <span className="h-2 w-2 rounded-full" style={{ background: color }} />
         <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {title}
         </span>
@@ -271,9 +252,7 @@ function CategoryRow({
             <span className="truncate">{category.name}</span>
           </div>
           {description ? (
-            <div className="mt-0.5 truncate text-xs text-muted-foreground">
-              {description}
-            </div>
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">{description}</div>
           ) : null}
         </div>
         <div className="hidden shrink-0 text-end sm:block">
@@ -290,13 +269,7 @@ function CategoryRow({
   );
 }
 
-function BudgetChip({
-  category,
-  data,
-}: {
-  category: Category;
-  data: CategoryWithData | null;
-}) {
+function BudgetChip({ category, data }: { category: Category; data: CategoryWithData | null }) {
   if (category.budgetMode === "tracking") {
     return (
       <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -381,10 +354,7 @@ function NewGroupDialog({ kind }: { kind: CategoryKind }) {
           </div>
           <div className="space-y-1.5">
             <Label>Kind</Label>
-            <Select
-              value={k}
-              onValueChange={(v) => v && setK(v as CategoryKind)}
-            >
+            <Select value={k} onValueChange={(v) => v && setK(v as CategoryKind)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

@@ -1,37 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ShoppingBasket,
-  UtensilsCrossed,
-  TramFront,
-  ShoppingBag,
-  Ticket,
-  HeartPulse,
-  GraduationCap,
-  Receipt,
-  RefreshCw,
-  Plane,
-  Banknote,
   ArrowLeftRight,
-  Shield,
-  Home,
-  Sparkles,
+  Baby,
+  Banknote,
+  Briefcase,
   CircleDot,
   Coffee,
-  PawPrint,
   Gift,
-  Baby,
-  Briefcase,
+  GraduationCap,
+  HeartPulse,
+  Home,
   type LucideIcon,
+  PawPrint,
+  Plane,
+  Receipt,
+  RefreshCw,
+  Shield,
+  ShoppingBag,
+  ShoppingBasket,
+  Sparkles,
+  Ticket,
+  TramFront,
+  UtensilsCrossed,
 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getCategories, setBudgetModesBulk, updateBudget } from "@/lib/api";
 import type { Category } from "@/lib/types";
 
@@ -103,9 +99,7 @@ export function BudgetsStep({ onComplete, onBack }: BudgetsStepProps) {
     try {
       if (commit && budgeted.length > 0) {
         await setBudgetModesBulk(budgeted.map((b) => b.id));
-        await Promise.all(
-          budgeted.map((b) => updateBudget(b.id, b.amount))
-        );
+        await Promise.all(budgeted.map((b) => updateBudget(b.id, b.amount)));
       }
       onComplete();
     } finally {
@@ -130,10 +124,7 @@ export function BudgetsStep({ onComplete, onBack }: BudgetsStepProps) {
       {isLoading ? (
         <div className="grid grid-cols-3 gap-1.5">
           {Array.from({ length: 18 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-9 animate-pulse rounded-lg bg-card/60"
-            />
+            <div key={i} className="h-9 animate-pulse rounded-lg bg-card/60" />
           ))}
         </div>
       ) : (
@@ -201,9 +192,7 @@ function CategoryCell({
       className="group flex min-w-0 items-center gap-1.5 rounded-lg border bg-card px-1.5 py-1.5 transition-colors"
       style={{
         borderColor: filled ? accent : "var(--border)",
-        background: filled
-          ? `color-mix(in oklch, ${category.color} 10%, var(--card))`
-          : undefined,
+        background: filled ? `color-mix(in oklch, ${category.color} 10%, var(--card))` : undefined,
       }}
     >
       <div

@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
 import { Sparkles } from "lucide-react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { getSettings } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -27,20 +27,17 @@ export function AINotConnectedBanner({ className }: AINotConnectedBannerProps) {
       role="status"
       className={cn(
         "flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:gap-4 sm:p-5",
-        className
+        className,
       )}
       style={{
-        background:
-          "color-mix(in oklch, var(--status-heads-up) 14%, var(--card))",
-        borderColor:
-          "color-mix(in oklch, var(--status-heads-up) 35%, var(--border))",
+        background: "color-mix(in oklch, var(--status-heads-up) 14%, var(--card))",
+        borderColor: "color-mix(in oklch, var(--status-heads-up) 35%, var(--border))",
       }}
     >
       <div
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
         style={{
-          background:
-            "color-mix(in oklch, var(--status-heads-up) 28%, var(--card))",
+          background: "color-mix(in oklch, var(--status-heads-up) 28%, var(--card))",
           color: "var(--status-heads-up)",
         }}
       >
@@ -48,9 +45,7 @@ export function AINotConnectedBanner({ className }: AINotConnectedBannerProps) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="font-serif text-base leading-tight tracking-tight">
-          {t("notConnected")}
-        </div>
+        <div className="font-serif text-base leading-tight tracking-tight">{t("notConnected")}</div>
         <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
       </div>
 

@@ -1,9 +1,9 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { PORT, REPO_ROOT, renderTemplate } from "./paths.mjs";
 import { addManagedBlock, removeManagedBlock } from "./hosts.mjs";
+import { PORT, REPO_ROOT, renderTemplate } from "./paths.mjs";
 
 const LABEL = "com.spent.app";
 const PLIST_PATH = path.join(os.homedir(), "Library", "LaunchAgents", `${LABEL}.plist`);
@@ -61,25 +61,17 @@ function kickstart() {
 }
 
 function checkPortBinding() {
-  const r = spawnSync(
-    "lsof",
-    ["-nP", `-iTCP:${PORT}`, "-sTCP:LISTEN"],
-    { encoding: "utf-8" },
-  );
+  const r = spawnSync("lsof", ["-nP", `-iTCP:${PORT}`, "-sTCP:LISTEN"], { encoding: "utf-8" });
   if (r.status !== 0) return { listening: false };
   const lines = r.stdout.split("\n").filter(Boolean);
   const onLoopback = lines.some((l) => l.includes(`127.0.0.1:${PORT}`));
-  const onWildcard = lines.some(
-    (l) => l.includes(`*:${PORT}`) || l.includes(`0.0.0.0:${PORT}`),
-  );
+  const onWildcard = lines.some((l) => l.includes(`*:${PORT}`) || l.includes(`0.0.0.0:${PORT}`));
   return { listening: lines.length > 0, onLoopback, onWildcard };
 }
 
 function preflight() {
   if (!fs.existsSync(path.join(REPO_ROOT, ".next"))) {
-    console.warn(
-      "WARNING: .next/ not found. Run `npm run build` before installing the service.",
-    );
+    console.warn("WARNING: .next/ not found. Run `bun run build` before installing the service.");
   }
 }
 
@@ -109,9 +101,7 @@ export async function run(cmd, { friendlyUrl, loopbackUrl }) {
         if (state.onLoopback) {
           console.log(`Spent is running. Open ${friendlyUrl} or ${loopbackUrl}.`);
         } else {
-          console.log(
-            `Service installed. Check status: npm run service:status`,
-          );
+          console.log(`Service installed. Check status: bun run service:status`);
         }
       }, 1500);
       return;

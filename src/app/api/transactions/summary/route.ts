@@ -9,10 +9,7 @@ export async function GET(request: Request) {
   const to = searchParams.get("to");
 
   if (!from || !to) {
-    return NextResponse.json(
-      { error: "from and to are required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "from and to are required" }, { status: 400 });
   }
 
   const credentialIds = searchParams
@@ -23,6 +20,6 @@ export async function GET(request: Request) {
   return NextResponse.json(
     getTransactionsSummary(workspaceId, from, to, {
       credentialIds: credentialIds.length > 0 ? credentialIds : undefined,
-    })
+    }),
   );
 }

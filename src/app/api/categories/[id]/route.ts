@@ -9,10 +9,7 @@ import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 const MAX_DESCRIPTION_LENGTH = 500;
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const { id } = await params;
   const categoryId = Number(id);
@@ -39,7 +36,7 @@ export async function PATCH(
     if (typed.budgetMode !== "budgeted" && typed.budgetMode !== "tracking") {
       return NextResponse.json(
         { error: "budgetMode must be 'budgeted' or 'tracking'" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const ok = updateCategoryBudgetMode(workspaceId, categoryId, typed.budgetMode);
@@ -51,10 +48,7 @@ export async function PATCH(
 
   if (typed.description !== undefined) {
     if (typed.description !== null && typeof typed.description !== "string") {
-      return NextResponse.json(
-        { error: "description must be a string or null" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "description must be a string or null" }, { status: 400 });
     }
     if (
       typeof typed.description === "string" &&
@@ -62,13 +56,13 @@ export async function PATCH(
     ) {
       return NextResponse.json(
         { error: `description must be ${MAX_DESCRIPTION_LENGTH} chars or fewer` },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const ok = updateCategoryDescription(
       workspaceId,
       categoryId,
-      typed.description as string | null
+      typed.description as string | null,
     );
     if (!ok) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -78,43 +72,25 @@ export async function PATCH(
 
   if (typed.parentId !== undefined) {
     if (typed.parentId !== null && typeof typed.parentId !== "number") {
-      return NextResponse.json(
-        { error: "parentId must be a number or null" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "parentId must be a number or null" }, { status: 400 });
     }
-    const result = setCategoryParent(
-      workspaceId,
-      categoryId,
-      typed.parentId as number | null
-    );
+    const result = setCategoryParent(workspaceId, categoryId, typed.parentId as number | null);
     if (!result.ok) {
       const status =
-        result.reason === "not-found" || result.reason === "target-not-found"
-          ? 404
-          : 400;
-      return NextResponse.json(
-        { error: result.reason },
-        { status }
-      );
+        result.reason === "not-found" || result.reason === "target-not-found" ? 404 : 400;
+      return NextResponse.json({ error: result.reason }, { status });
     }
     applied = true;
   }
 
   if (!applied) {
-    return NextResponse.json(
-      { error: "no recognized fields in body" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "no recognized fields in body" }, { status: 400 });
   }
 
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const { id } = await params;
   const categoryId = Number(id);
@@ -130,11 +106,10 @@ export async function DELETE(
     return NextResponse.json(
       {
         error: "has-children",
-        message:
-          "This category has subcategories. Delete each one before deleting this group.",
+        message: "This category has subcategories. Delete each one before deleting this group.",
         children: result.children ?? [],
       },
-      { status: 409 }
+      { status: 409 },
     );
   }
 

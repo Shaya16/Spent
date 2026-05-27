@@ -1,9 +1,9 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { PORT, REPO_ROOT, renderTemplate } from "./paths.mjs";
 import { addManagedBlock, removeManagedBlock } from "./hosts.mjs";
+import { PORT, REPO_ROOT, renderTemplate } from "./paths.mjs";
 
 const TASK_NAME = "Spent";
 const LAUNCHER_DIR = path.join(os.homedir(), "AppData", "Local", "Spent");
@@ -58,7 +58,7 @@ function writeTaskXml() {
     userId: userId(),
     launcherVbsPath: LAUNCHER_VBS,
   });
-  fs.writeFileSync(xmlPath, "﻿" + content, { encoding: "utf16le" });
+  fs.writeFileSync(xmlPath, `﻿${content}`, { encoding: "utf16le" });
   return xmlPath;
 }
 
@@ -73,17 +73,15 @@ function checkPortBinding() {
   const portStr = `:${PORT}`;
   const matches = lines.filter((l) => l.includes(portStr) && l.includes("LISTENING"));
   const onLoopback = matches.some((l) => l.includes(`127.0.0.1${portStr}`));
-  const onWildcard = matches.some(
-    (l) => l.includes(`0.0.0.0${portStr}`) || /\s\[::\]:/.test(l) ? l.includes(portStr) : false,
+  const onWildcard = matches.some((l) =>
+    l.includes(`0.0.0.0${portStr}`) || /\s\[::\]:/.test(l) ? l.includes(portStr) : false,
   );
   return { listening: matches.length > 0, onLoopback, onWildcard };
 }
 
 function preflight() {
   if (!fs.existsSync(path.join(REPO_ROOT, ".next"))) {
-    console.warn(
-      "WARNING: .next/ not found. Run `npm run build` before installing the service.",
-    );
+    console.warn("WARNING: .next/ not found. Run `bun run build` before installing the service.");
   }
   if (!isAdmin()) {
     console.warn(
@@ -121,14 +119,14 @@ export async function run(cmd, { friendlyUrl, loopbackUrl }) {
         spawnSync("ipconfig", ["/flushdns"], { stdio: "ignore" });
       } catch (err) {
         console.error(`Hosts file edit failed: ${err.message}`);
-        console.error("Task is still installed. You can bookmark " + loopbackUrl);
+        console.error(`Task is still installed. You can bookmark ${loopbackUrl}`);
       }
       setTimeout(() => {
         const state = checkPortBinding();
         if (state.onWildcard && !state.onLoopback) {
           console.error(
             `DANGER: server is bound to wildcard on :${PORT}. ` +
-              `Stop the task immediately: npm run service:stop`,
+              `Stop the task immediately: bun run service:stop`,
           );
           process.exit(1);
         }
@@ -165,22 +163,14 @@ export async function run(cmd, { friendlyUrl, loopbackUrl }) {
       const port = checkPortBinding();
       console.log(
         `Port ${PORT}: ${
-          port.onLoopback
-            ? "127.0.0.1 (ok)"
-            : port.onWildcard
-              ? "WILDCARD (NOT OK)"
-              : "not bound"
+          port.onLoopback ? "127.0.0.1 (ok)" : port.onWildcard ? "WILDCARD (NOT OK)" : "not bound"
         }`,
       );
       return;
     }
     case "logs": {
-      console.log(
-        "Windows Task Scheduler does not capture stdout/stderr by default.",
-      );
-      console.log(
-        "Run the server manually with `npm run start` to see logs interactively.",
-      );
+      console.log("Windows Task Scheduler does not capture stdout/stderr by default.");
+      console.log("Run the server manually with `bun run start` to see logs interactively.");
       return;
     }
     case "open": {

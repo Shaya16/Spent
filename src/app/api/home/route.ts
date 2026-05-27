@@ -1,27 +1,4 @@
 import { NextResponse } from "next/server";
-import {
-  getPeriodTotal,
-  getTopMerchants,
-} from "@/server/db/queries/transactions";
-import {
-  getBankHealth,
-  getCashFlow,
-  getCategorySnapshot,
-  getHistoricalTrend,
-  getNeedsAttentionCounts,
-  getRecentTransactionsForHome,
-} from "@/server/db/queries/home";
-import { getWorkspaceSetting } from "@/server/db/queries/settings";
-import { getNextRunAt } from "@/server/sync/scheduler";
-import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
-import {
-  daysInMonth,
-  dayWithinMonth,
-  daysUntil,
-  nextPayday,
-  pacePhrase,
-} from "@/server/lib/pace";
-import { toLocalISODate } from "@/server/lib/date-utils";
 import type {
   HomeBankHealthItem,
   HomeCashFlow,
@@ -35,17 +12,27 @@ import type {
   HomeThisMonth,
   HomeTopMerchant,
 } from "@/lib/types";
+import {
+  getBankHealth,
+  getCashFlow,
+  getCategorySnapshot,
+  getHistoricalTrend,
+  getNeedsAttentionCounts,
+  getRecentTransactionsForHome,
+} from "@/server/db/queries/home";
+import { getWorkspaceSetting } from "@/server/db/queries/settings";
+import { getPeriodTotal, getTopMerchants } from "@/server/db/queries/transactions";
+import { toLocalISODate } from "@/server/lib/date-utils";
+import { daysInMonth, daysUntil, dayWithinMonth, nextPayday, pacePhrase } from "@/server/lib/pace";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
+import { getNextRunAt } from "@/server/sync/scheduler";
 
 const HISTORICAL_MONTHS = 8;
 const RECENT_TXN_LIMIT = 8;
 const TOP_MERCHANT_LIMIT = 6;
 const CATEGORY_SNAPSHOT_LIMIT = 6;
 
-function safe<T>(
-  section: HomeSection,
-  errors: HomeSectionError[],
-  fn: () => T
-): T | null {
+function safe<T>(section: HomeSection, errors: HomeSectionError[], fn: () => T): T | null {
   try {
     return fn();
   } catch (err) {
@@ -90,20 +77,19 @@ export async function GET(request: Request) {
     const prevMonthStart = new Date(year, month - 1, 1);
     const prevElapsedDay = Math.min(
       elapsedDays,
-      daysInMonth(prevMonthStart.getFullYear(), prevMonthStart.getMonth())
+      daysInMonth(prevMonthStart.getFullYear(), prevMonthStart.getMonth()),
     );
     const prevMonthMtdEnd = new Date(
       prevMonthStart.getFullYear(),
       prevMonthStart.getMonth(),
-      prevElapsedDay
+      prevElapsedDay,
     );
     const prevSpent = getPeriodTotal(
       workspaceId,
       toLocalISODate(prevMonthStart),
-      toLocalISODate(prevMonthMtdEnd)
+      toLocalISODate(prevMonthMtdEnd),
     );
-    const deltaVsLastMonth =
-      prevSpent > 0 ? ((spent - prevSpent) / prevSpent) * 100 : null;
+    const deltaVsLastMonth = prevSpent > 0 ? ((spent - prevSpent) / prevSpent) * 100 : null;
 
     const phrase = pacePhrase(spent, spent, budget, timeElapsedPercent, monthLabel);
 
@@ -118,26 +104,18 @@ export async function GET(request: Request) {
     };
   });
 
-  const cashFlow = safe<HomeCashFlow>("cashFlow", errors, () =>
-    getCashFlow(workspaceId, from, to)
+  const cashFlow = safe<HomeCashFlow>("cashFlow", errors, () => getCashFlow(workspaceId, from, to));
+
+  const categorySnapshot = safe<HomeCategorySnapshotItem[]>("categorySnapshot", errors, () =>
+    getCategorySnapshot(workspaceId, from, to, CATEGORY_SNAPSHOT_LIMIT),
   );
 
-  const categorySnapshot = safe<HomeCategorySnapshotItem[]>(
-    "categorySnapshot",
-    errors,
-    () => getCategorySnapshot(workspaceId, from, to, CATEGORY_SNAPSHOT_LIMIT)
+  const historicalTrend = safe<HomeHistoricalTrendPoint[]>("historicalTrend", errors, () =>
+    getHistoricalTrend(workspaceId, HISTORICAL_MONTHS),
   );
 
-  const historicalTrend = safe<HomeHistoricalTrendPoint[]>(
-    "historicalTrend",
-    errors,
-    () => getHistoricalTrend(workspaceId, HISTORICAL_MONTHS)
-  );
-
-  const recentTransactions = safe<HomeRecentTransaction[]>(
-    "recentTransactions",
-    errors,
-    () => getRecentTransactionsForHome(workspaceId, RECENT_TXN_LIMIT)
+  const recentTransactions = safe<HomeRecentTransaction[]>("recentTransactions", errors, () =>
+    getRecentTransactionsForHome(workspaceId, RECENT_TXN_LIMIT),
   );
 
   const topMerchants = safe<HomeTopMerchant[]>("topMerchants", errors, () => {
@@ -149,14 +127,12 @@ export async function GET(request: Request) {
     }));
   });
 
-  const needsAttention = safe<HomeNeedsAttention>(
-    "needsAttention",
-    errors,
-    () => getNeedsAttentionCounts(workspaceId)
+  const needsAttention = safe<HomeNeedsAttention>("needsAttention", errors, () =>
+    getNeedsAttentionCounts(workspaceId),
   );
 
   const bankHealth = safe<HomeBankHealthItem[]>("bankHealth", errors, () =>
-    getBankHealth(workspaceId)
+    getBankHealth(workspaceId),
   );
 
   const payload: HomePayload = {

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
-import { previewCategorize } from "@/lib/api";
+import { useState } from "react";
 import { toast } from "sonner";
-import { CategorizeReviewDialog } from "./categorize-review-dialog";
+import { Button } from "@/components/ui/button";
 import type { CategorizePreview } from "@/lib/api";
+import { previewCategorize } from "@/lib/api";
+import { CategorizeReviewDialog } from "./categorize-review-dialog";
 
 interface CategorizeButtonProps {
   onApplied?: () => void;
@@ -45,11 +45,7 @@ export function CategorizeButton({ onApplied }: CategorizeButtonProps) {
         className="gap-1.5"
       >
         {mutation.isPending ? (
-          <svg
-            className="h-3.5 w-3.5 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
+          <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle
               className="opacity-25"
               cx="12"

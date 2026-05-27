@@ -13,15 +13,15 @@ export function getWorkspaceIdFromRequest(req: Request): number {
   if (header) {
     const id = Number(header);
     if (Number.isInteger(id) && id > 0) {
-      const row = getDb()
-        .prepare("SELECT id FROM workspaces WHERE id = ?")
-        .get(id) as { id: number } | undefined;
+      const row = getDb().prepare("SELECT id FROM workspaces WHERE id = ?").get(id) as
+        | { id: number }
+        | undefined;
       if (row) return row.id;
     }
   }
-  const row = getDb()
-    .prepare("SELECT id FROM workspaces ORDER BY id LIMIT 1")
-    .get() as { id: number } | undefined;
+  const row = getDb().prepare("SELECT id FROM workspaces ORDER BY id LIMIT 1").get() as
+    | { id: number }
+    | undefined;
   if (!row) {
     throw new Error("No workspace exists. Migration 013_workspaces did not run.");
   }
@@ -29,7 +29,7 @@ export function getWorkspaceIdFromRequest(req: Request): number {
 }
 
 export function listAllWorkspaceIds(): number[] {
-  return (getDb()
-    .prepare("SELECT id FROM workspaces ORDER BY id")
-    .all() as { id: number }[]).map((r) => r.id);
+  return (getDb().prepare("SELECT id FROM workspaces ORDER BY id").all() as { id: number }[]).map(
+    (r) => r.id,
+  );
 }

@@ -1,7 +1,7 @@
 import "server-only";
 
-import { getDb } from "../index";
 import { toLocalISODate } from "../../lib/date-utils";
+import { getDb } from "../index";
 
 export interface BudgetRow {
   categoryId: number;
@@ -13,7 +13,7 @@ export function getAllBudgets(workspaceId: number): BudgetRow[] {
   const rows = getDb()
     .prepare(
       `SELECT category_id as categoryId, monthly_amount as monthlyAmount, is_auto as isAuto
-       FROM budgets WHERE workspace_id = ?`
+       FROM budgets WHERE workspace_id = ?`,
     )
     .all(workspaceId) as {
     categoryId: number;
@@ -27,14 +27,11 @@ export function getAllBudgets(workspaceId: number): BudgetRow[] {
   }));
 }
 
-export function getBudgetForCategory(
-  workspaceId: number,
-  categoryId: number
-): BudgetRow | null {
+export function getBudgetForCategory(workspaceId: number, categoryId: number): BudgetRow | null {
   const row = getDb()
     .prepare(
       `SELECT category_id as categoryId, monthly_amount as monthlyAmount, is_auto as isAuto
-       FROM budgets WHERE workspace_id = ? AND category_id = ?`
+       FROM budgets WHERE workspace_id = ? AND category_id = ?`,
     )
     .get(workspaceId, categoryId) as
     | { categoryId: number; monthlyAmount: number; isAuto: number }
@@ -51,7 +48,7 @@ export function setBudget(
   workspaceId: number,
   categoryId: number,
   amount: number,
-  isAuto = false
+  isAuto = false,
 ): void {
   getDb()
     .prepare(
@@ -60,7 +57,7 @@ export function setBudget(
        ON CONFLICT(workspace_id, category_id) DO UPDATE SET
          monthly_amount = excluded.monthly_amount,
          is_auto = excluded.is_auto,
-         updated_at = excluded.updated_at`
+         updated_at = excluded.updated_at`,
     )
     .run(workspaceId, categoryId, amount, isAuto ? 1 : 0);
 }
@@ -82,10 +79,7 @@ interface AutoSpend {
  * so a fresh DB with one month of history returns that month's spend, not
  * one-third of it.
  */
-export function getAutoBudgetAverage(
-  workspaceId: number,
-  monthsBack: number = 3
-): AutoSpend[] {
+export function getAutoBudgetAverage(workspaceId: number, monthsBack: number = 3): AutoSpend[] {
   const now = new Date();
   const periods: { from: string; to: string }[] = [];
   for (let i = 1; i <= monthsBack; i++) {
@@ -107,7 +101,7 @@ export function getAutoBudgetAverage(
         `SELECT category_id as categoryId, SUM(ABS(charged_amount)) as amount
          FROM transactions
          WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND category_id IS NOT NULL
-         GROUP BY category_id`
+         GROUP BY category_id`,
       )
       .all(workspaceId, from, to) as AutoSpend[];
 

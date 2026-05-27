@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { CardShell, CardAction } from "./card-shell";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { translateCategoryName } from "@/lib/i18n-data";
 import type { HomeRecentTransaction } from "@/lib/types";
+import { CardAction, CardShell } from "./card-shell";
 
 interface Props {
   items: HomeRecentTransaction[];
@@ -41,26 +41,20 @@ export function RecentTransactionsCard({ items }: Props) {
                   {formatDayMonth(txn.date)}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">
-                    {txn.description}
-                  </div>
+                  <div className="truncate text-sm font-medium">{txn.description}</div>
                   {txn.categoryName ? (
                     <CategoryBadge
                       name={translateCategoryName(txn.categoryName, tCat)}
                       color={txn.categoryColor}
                     />
                   ) : (
-                    <span className="text-xs text-muted-foreground">
-                      {t("uncategorized")}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{t("uncategorized")}</span>
                   )}
                 </div>
               </div>
               <span
                 className={`shrink-0 text-sm tabular-nums ${
-                  txn.kind === "income"
-                    ? "text-[var(--status-on-track)]"
-                    : "text-foreground"
+                  txn.kind === "income" ? "text-[var(--status-on-track)]" : "text-foreground"
                 }`}
               >
                 {txn.kind === "income" ? "+" : "−"}
@@ -74,21 +68,10 @@ export function RecentTransactionsCard({ items }: Props) {
   );
 }
 
-function CategoryBadge({
-  name,
-  color,
-}: {
-  name: string;
-  color: string | null;
-}) {
+function CategoryBadge({ name, color }: { name: string; color: string | null }) {
   return (
     <span className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-      {color && (
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: color }}
-        />
-      )}
+      {color && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />}
       <span className="truncate">{name}</span>
     </span>
   );

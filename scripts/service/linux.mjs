@@ -1,9 +1,9 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { PORT, REPO_ROOT, renderTemplate } from "./paths.mjs";
 import { addManagedBlock, removeManagedBlock } from "./hosts.mjs";
+import { PORT, REPO_ROOT, renderTemplate } from "./paths.mjs";
 
 const UNIT_NAME = "spent.service";
 const UNIT_DIR = path.join(
@@ -55,11 +55,7 @@ function systemctl(args, opts = {}) {
 }
 
 function checkPortBinding() {
-  const r = spawnSync(
-    "ss",
-    ["-Hltn", `sport = :${PORT}`],
-    { encoding: "utf-8" },
-  );
+  const r = spawnSync("ss", ["-Hltn", `sport = :${PORT}`], { encoding: "utf-8" });
   if (r.status !== 0) {
     return { listening: false };
   }
@@ -67,9 +63,7 @@ function checkPortBinding() {
   const onLoopback = lines.some(
     (l) => l.includes(`127.0.0.1:${PORT}`) || l.includes(`[::1]:${PORT}`),
   );
-  const onWildcard = lines.some(
-    (l) => l.includes(`0.0.0.0:${PORT}`) || l.includes(`*:${PORT}`),
-  );
+  const onWildcard = lines.some((l) => l.includes(`0.0.0.0:${PORT}`) || l.includes(`*:${PORT}`));
   return { listening: lines.length > 0, onLoopback, onWildcard };
 }
 
@@ -81,16 +75,14 @@ function ensureSystemdAvailable() {
     throw new Error(
       "systemd user instance not available. " +
         "On WSL/some minimal distros, enable lingering: `loginctl enable-linger $USER`. " +
-        "Or run the server manually with `npm run start`.",
+        "Or run the server manually with `bun run start`.",
     );
   }
 }
 
 function preflight() {
   if (!fs.existsSync(path.join(REPO_ROOT, ".next"))) {
-    console.warn(
-      "WARNING: .next/ not found. Run `npm run build` before installing the service.",
-    );
+    console.warn("WARNING: .next/ not found. Run `bun run build` before installing the service.");
   }
 }
 
@@ -114,7 +106,7 @@ export async function run(cmd, { friendlyUrl }) {
         if (state.onWildcard) {
           console.error(
             `DANGER: server is bound to wildcard address on :${PORT}. ` +
-              `Stop the service immediately with: npm run service:stop`,
+              `Stop the service immediately with: bun run service:stop`,
           );
           process.exit(1);
         }
@@ -147,11 +139,7 @@ export async function run(cmd, { friendlyUrl }) {
       const port = checkPortBinding();
       console.log(
         `\nPort ${PORT}: ${
-          port.onLoopback
-            ? "127.0.0.1 (ok)"
-            : port.onWildcard
-              ? "WILDCARD (NOT OK)"
-              : "not bound"
+          port.onLoopback ? "127.0.0.1 (ok)" : port.onWildcard ? "WILDCARD (NOT OK)" : "not bound"
         }`,
       );
       return;

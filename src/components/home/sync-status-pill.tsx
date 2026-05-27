@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
-import { formatLastSync, formatJerusalemTimeOfDay } from "@/lib/formatters";
+import { useEffect, useMemo, useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { formatJerusalemTimeOfDay, formatLastSync } from "@/lib/formatters";
 import { translateProviderName, useFormatterLabels } from "@/lib/i18n-data";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import type { ActivitySnapshot, HomeBankHealthItem } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface Props {
   items: HomeBankHealthItem[] | null;
@@ -84,12 +80,7 @@ function useTick(active: boolean): void {
   }, [active]);
 }
 
-export function SyncStatusPill({
-  items,
-  nextScheduledSync,
-  activity,
-  onOpenChange,
-}: Props) {
+export function SyncStatusPill({ items, nextScheduledSync, activity, onOpenChange }: Props) {
   const tPill = useTranslations("syncPill");
   const tBanks = useTranslations("banks");
   const fmtLabels = useFormatterLabels();
@@ -127,8 +118,7 @@ export function SyncStatusPill({
     const oldestSync = everSynced.reduce<string | null>((oldest, i) => {
       if (!i.lastSyncAt) return oldest;
       if (!oldest) return i.lastSyncAt;
-      return new Date(i.lastSyncAt + "Z").getTime() <
-        new Date(oldest + "Z").getTime()
+      return new Date(`${i.lastSyncAt}Z`).getTime() < new Date(`${oldest}Z`).getTime()
         ? i.lastSyncAt
         : oldest;
     }, null);
@@ -157,9 +147,7 @@ export function SyncStatusPill({
     const elapsed = formatElapsed(activity?.sync.since ?? null, fmtLabels.justNow);
     state = {
       tone: "active",
-      label: elapsed
-        ? tPill("syncingNowElapsed", { elapsed })
-        : tPill("syncingNow"),
+      label: elapsed ? tPill("syncingNowElapsed", { elapsed }) : tPill("syncingNow"),
       detail: null,
     };
   }
@@ -179,14 +167,14 @@ export function SyncStatusPill({
             className={cn(
               "inline-flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-xs ring-1 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               styles.text,
-              styles.ring
+              styles.ring,
             )}
           >
             <span
               className={cn(
                 "h-1.5 w-1.5 shrink-0 rounded-full",
                 styles.dot,
-                styles.pulse && "animate-pulse"
+                styles.pulse && "animate-pulse",
               )}
             />
             <span className="font-medium">{state.label}</span>
@@ -248,22 +236,12 @@ function ActivityPanel({ activity }: { activity: ActivitySnapshot | null }) {
       <Row label={t("syncLabel")} value={syncRow.text} tone={syncRow.tone} />
       <Row label={t("schedulerLabel")} value={schedulerRow.text} tone={schedulerRow.tone} />
       <Row label={t("ollamaLabel")} value={ollamaRow.text} tone={ollamaRow.tone} />
-      <p className="pt-1 text-[11px] leading-snug text-muted-foreground">
-        {t("footerNote")}
-      </p>
+      <p className="pt-1 text-[11px] leading-snug text-muted-foreground">{t("footerNote")}</p>
     </div>
   );
 }
 
-function Row({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: PillTone;
-}) {
+function Row({ label, value, tone }: { label: string; value: string; tone: PillTone }) {
   const styles = TONE_STYLES[tone];
   return (
     <div className="flex items-center justify-between gap-3 text-xs">
@@ -272,7 +250,7 @@ function Row({
           className={cn(
             "h-1.5 w-1.5 shrink-0 rounded-full",
             styles.dot,
-            styles.pulse && "animate-pulse"
+            styles.pulse && "animate-pulse",
           )}
         />
         {label}

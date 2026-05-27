@@ -1,16 +1,18 @@
+import type { UIMessage } from "ai";
 import type {
-  SetupStatus,
+  ActivitySnapshot,
   AppSettings,
-  TransactionWithCategory,
-  DashboardSummary,
-  Category,
-  SyncRun,
   Budget,
   BudgetMode,
-  Integration,
-  Workspace,
+  Category,
+  ChatSession,
+  DashboardSummary,
   HomePayload,
-  ActivitySnapshot,
+  Integration,
+  SetupStatus,
+  SyncRun,
+  TransactionWithCategory,
+  Workspace,
 } from "./types";
 import { getActiveWorkspaceIdSync } from "./workspace-store";
 
@@ -71,7 +73,7 @@ export function saveBankCredentials(
     label?: string;
     credentialId?: number;
     requiresManualTwoFactor?: boolean;
-  }
+  },
 ) {
   return fetchJSON<{ success: boolean; credentialId: number }>("/api/setup/bank", {
     method: "POST",
@@ -80,9 +82,7 @@ export function saveBankCredentials(
       provider,
       credentials,
       ...(options?.label !== undefined ? { label: options.label } : {}),
-      ...(options?.credentialId !== undefined
-        ? { credentialId: options.credentialId }
-        : {}),
+      ...(options?.credentialId !== undefined ? { credentialId: options.credentialId } : {}),
       ...(options?.requiresManualTwoFactor !== undefined
         ? { requiresManualTwoFactor: options.requiresManualTwoFactor }
         : {}),
@@ -92,7 +92,7 @@ export function saveBankCredentials(
 
 export function updateIntegrationSettings(
   credentialId: number,
-  updates: { requiresManualTwoFactor?: boolean; resetTwoFactorToken?: boolean }
+  updates: { requiresManualTwoFactor?: boolean; resetTwoFactorToken?: boolean },
 ) {
   return fetchJSON<{ success: boolean }>(`/api/integrations/${credentialId}`, {
     method: "PATCH",
@@ -111,7 +111,7 @@ export function submitSyncOtp(syncRunId: number, code: string) {
 
 export function testBankConnection(
   provider: string,
-  options?: { credentialId?: number; credentials?: Record<string, string> }
+  options?: { credentialId?: number; credentials?: Record<string, string> },
 ) {
   return fetchJSON<{
     success: boolean;
@@ -122,19 +122,17 @@ export function testBankConnection(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       provider,
-      ...(options?.credentialId !== undefined
-        ? { credentialId: options.credentialId }
-        : {}),
-      ...(options?.credentials !== undefined
-        ? { credentials: options.credentials }
-        : {}),
+      ...(options?.credentialId !== undefined ? { credentialId: options.credentialId } : {}),
+      ...(options?.credentials !== undefined ? { credentials: options.credentials } : {}),
     }),
   });
 }
 
 export function saveAIConfig(config: {
-  provider: "claude" | "ollama" | "none";
-  apiKey?: string;
+  provider: "claude" | "gemini" | "ollama" | "none";
+  claudeApiKey?: string;
+  geminiApiKey?: string;
+  geminiModel?: string;
   ollamaUrl?: string;
   ollamaModel?: string;
 }) {
@@ -147,6 +145,30 @@ export function saveAIConfig(config: {
 
 export function getSettings() {
   return fetchJSON<AppSettings>("/api/settings");
+}
+
+export function listChatSessions() {
+  return fetchJSON<ChatSession[]>("/api/chat/sessions");
+}
+
+export function getChatSession(id: string) {
+  return fetchJSON<{ session: ChatSession; messages: UIMessage[] }>(
+    `/api/chat/sessions/${encodeURIComponent(id)}`,
+  );
+}
+
+export function renameChatSession(id: string, title: string) {
+  return fetchJSON<ChatSession>(`/api/chat/sessions/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+}
+
+export function deleteChatSession(id: string) {
+  return fetchJSON<{ success: boolean }>(`/api/chat/sessions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }
 
 export function updateSettings(settings: Partial<AppSettings>) {
@@ -208,17 +230,14 @@ export function getTransactions(params: {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined) return;
-    if (
-      (key === "categoryIds" || key === "credentialIds") &&
-      Array.isArray(value)
-    ) {
+    if ((key === "categoryIds" || key === "credentialIds") && Array.isArray(value)) {
       for (const id of value) searchParams.append(key, String(id));
       return;
     }
     searchParams.set(key, String(value));
   });
   return fetchJSON<{ transactions: TransactionWithCategory[]; total: number }>(
-    `/api/transactions?${searchParams}`
+    `/api/transactions?${searchParams}`,
   );
 }
 
@@ -238,11 +257,7 @@ export function approveTransactionCategory(id: number) {
   });
 }
 
-export function getSummary(params: {
-  from: string;
-  to: string;
-  months?: number;
-}) {
+export function getSummary(params: { from: string; to: string; months?: number }) {
   const searchParams = new URLSearchParams({
     from: params.from,
     to: params.to,
@@ -316,10 +331,7 @@ export interface CategoryDetail {
   children: CategoryChildBreakdown[] | null;
 }
 
-export function getCategoryDetail(
-  id: number,
-  params: { from: string; to: string }
-) {
+export function getCategoryDetail(id: number, params: { from: string; to: string }) {
   const sp = new URLSearchParams({ from: params.from, to: params.to });
   return fetchJSON<CategoryDetail>(`/api/categories/${id}/detail?${sp}`);
 }
@@ -336,10 +348,7 @@ export function updateBudget(categoryId: number, amount: number | null) {
   });
 }
 
-export function updateCategoryBudgetMode(
-  categoryId: number,
-  mode: BudgetMode
-) {
+export function updateCategoryBudgetMode(categoryId: number, mode: BudgetMode) {
   return fetchJSON<{ success: boolean }>(`/api/categories/${categoryId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -347,10 +356,7 @@ export function updateCategoryBudgetMode(
   });
 }
 
-export function updateCategoryDescription(
-  categoryId: number,
-  description: string | null
-) {
+export function updateCategoryDescription(categoryId: number, description: string | null) {
   return fetchJSON<{ success: boolean }>(`/api/categories/${categoryId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -358,10 +364,7 @@ export function updateCategoryDescription(
   });
 }
 
-export function setCategoryParent(
-  categoryId: number,
-  parentId: number | null
-) {
+export function setCategoryParent(categoryId: number, parentId: number | null) {
   return fetchJSON<{ success: boolean }>(`/api/categories/${categoryId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -500,7 +503,7 @@ export interface SyncProgressEvent {
 
 export function startSync(
   credentialId: number | undefined,
-  onEvent: (event: SyncProgressEvent) => void
+  onEvent: (event: SyncProgressEvent) => void,
 ): { cancel: () => void } {
   const controller = new AbortController();
 
@@ -511,11 +514,9 @@ export function startSync(
         withWorkspaceHeader({
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            credentialId != null ? { credentialId } : {}
-          ),
+          body: JSON.stringify(credentialId != null ? { credentialId } : {}),
           signal: controller.signal,
-        })
+        }),
       );
 
       const reader = res.body?.getReader();
@@ -580,15 +581,13 @@ export interface PullEvent {
 
 export function listOllamaModels(url?: string) {
   const qs = url ? `?url=${encodeURIComponent(url)}` : "";
-  return fetchJSON<{ models: string[]; error?: string }>(
-    `/api/ai/ollama/models${qs}`
-  );
+  return fetchJSON<{ models: string[]; error?: string }>(`/api/ai/ollama/models${qs}`);
 }
 
 export function pullOllamaModel(
   model: string,
   url: string | undefined,
-  onEvent: (event: PullEvent) => void
+  onEvent: (event: PullEvent) => void,
 ): { cancel: () => void } {
   const controller = new AbortController();
 
@@ -601,7 +600,7 @@ export function pullOllamaModel(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model, url }),
           signal: controller.signal,
-        })
+        }),
       );
 
       const reader = res.body?.getReader();

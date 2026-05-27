@@ -1,34 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Check, ExternalLink, Loader2, ShieldCheck, Sparkles, X } from "lucide-react";
 import Link from "next/link";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Check,
-  X,
-  Loader2,
-  Sparkles,
-  ShieldCheck,
-  ExternalLink,
-} from "lucide-react";
-import { BANK_PROVIDERS } from "@/lib/types";
+import { useEffect, useMemo, useState } from "react";
 import { ProviderBadge } from "@/components/setup/provider-badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { BANK_PROVIDERS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type RowStatus =
-  | "idle"
-  | "running"
-  | "awaiting-otp"
-  | "manual-2fa"
-  | "done"
-  | "error";
+type RowStatus = "idle" | "running" | "awaiting-otp" | "manual-2fa" | "done" | "error";
 
 export interface ProviderRow {
   provider: string;
@@ -77,7 +59,7 @@ export function SyncProgressDialog({
           status: "idle",
           added: 0,
           updated: 0,
-        }
+        },
     );
   }, [providers, rows]);
 
@@ -88,10 +70,7 @@ export function SyncProgressDialog({
         if (!o && done) onClose();
       }}
     >
-      <DialogContent
-        className="max-w-md p-0 sm:max-w-md"
-        showCloseButton={done}
-      >
+      <DialogContent className="max-w-md p-0 sm:max-w-md" showCloseButton={done}>
         <div className="px-6 pt-6 pb-2">
           <HeroDots done={done} warning={Boolean(aiWarning)} />
           <DialogTitle className="mt-4 text-center font-serif text-2xl font-normal">
@@ -107,18 +86,14 @@ export function SyncProgressDialog({
                 ? "Connect an AI provider to auto-categorize transactions."
                 : "Pulling fresh data from your banks. You're up to date."
               : stage
-                ? STAGE_LABELS[stage] ?? "Working…"
+                ? (STAGE_LABELS[stage] ?? "Working…")
                 : "Reaching out to your banks…"}
           </DialogDescription>
         </div>
 
         <div className="space-y-2 px-6 pb-2">
           {fullRows.map((row) => (
-            <ProviderRowView
-              key={row.provider}
-              row={row}
-              onSubmitOtp={onSubmitOtp}
-            />
+            <ProviderRowView key={row.provider} row={row} onSubmitOtp={onSubmitOtp} />
           ))}
         </div>
 
@@ -138,17 +113,14 @@ export function SyncProgressDialog({
           <div
             className="mx-6 mb-6 flex flex-col gap-3 rounded-xl border p-4 text-sm sm:flex-row sm:items-center"
             style={{
-              background:
-                "color-mix(in oklch, var(--status-heads-up) 14%, var(--card))",
-              borderColor:
-                "color-mix(in oklch, var(--status-heads-up) 35%, var(--border))",
+              background: "color-mix(in oklch, var(--status-heads-up) 14%, var(--card))",
+              borderColor: "color-mix(in oklch, var(--status-heads-up) 35%, var(--border))",
             }}
           >
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
               style={{
-                background:
-                  "color-mix(in oklch, var(--status-heads-up) 28%, var(--card))",
+                background: "color-mix(in oklch, var(--status-heads-up) 28%, var(--card))",
                 color: "var(--status-heads-up)",
               }}
             >
@@ -187,7 +159,7 @@ function ProviderRowView({
         row.status === "running" &&
           "shadow-[0_0_0_1px_color-mix(in_oklch,var(--ring)_30%,transparent)]",
         isInteractive2fa &&
-          "shadow-[0_0_0_1px_color-mix(in_oklch,var(--status-heads-up)_50%,transparent)]"
+          "shadow-[0_0_0_1px_color-mix(in_oklch,var(--status-heads-up)_50%,transparent)]",
       )}
     >
       <div className="relative flex items-center gap-3">
@@ -201,22 +173,20 @@ function ProviderRowView({
         )}
 
         <div className="relative">
-          <ProviderBadge
-            color={color}
-            name={label}
-            domain={info?.domain}
-            size={36}
-            radius={10}
-          />
+          <ProviderBadge color={color} name={label} domain={info?.domain} size={36} radius={10} />
         </div>
 
         <div className="relative min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{label}</div>
-          <div className="truncate text-[11px] text-muted-foreground">
+          <div
+            className={cn(
+              "text-[11px] text-muted-foreground",
+              row.status === "error" ? "break-words" : "truncate",
+            )}
+          >
             {row.status === "idle" && "Waiting…"}
             {row.status === "running" && "Pulling transactions…"}
-            {row.status === "awaiting-otp" &&
-              "Enter the one-time code we just sent you"}
+            {row.status === "awaiting-otp" && "Enter the one-time code we just sent you"}
             {row.status === "manual-2fa" && (
               <span className="inline-flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" />
@@ -227,8 +197,7 @@ function ProviderRowView({
               (row.added === 0 && row.updated === 0
                 ? "Already up to date"
                 : `+${row.added} new${row.updated ? ` · ${row.updated} updated` : ""}`)}
-            {row.status === "error" &&
-              (row.errorMessage?.slice(0, 60) ?? "Failed")}
+            {row.status === "error" && (row.errorMessage ?? "Failed")}
           </div>
         </div>
 
@@ -238,10 +207,7 @@ function ProviderRowView({
       </div>
 
       {isInteractive2fa && onSubmitOtp && row.syncRunId ? (
-        <OtpInputArea
-          syncRunId={row.syncRunId}
-          onSubmit={onSubmitOtp}
-        />
+        <OtpInputArea syncRunId={row.syncRunId} onSubmit={onSubmitOtp} />
       ) : null}
     </div>
   );
@@ -290,36 +256,17 @@ function OtpInputArea({
         disabled={submitting}
         aria-label="One-time code"
       />
-      <Button
-        type="submit"
-        size="sm"
-        disabled={submitting || code.trim().length < 4}
-      >
+      <Button type="submit" size="sm" disabled={submitting || code.trim().length < 4}>
         {submitting ? "Submitting…" : "Submit"}
       </Button>
-      {error && (
-        <p className="absolute -bottom-5 start-0 text-[11px] text-destructive">
-          {error}
-        </p>
-      )}
+      {error && <p className="absolute -bottom-5 start-0 text-[11px] text-destructive">{error}</p>}
     </form>
   );
 }
 
-function StatusBadge({
-  status,
-  color,
-}: {
-  status: RowStatus;
-  color: string;
-}) {
+function StatusBadge({ status, color }: { status: RowStatus; color: string }) {
   if (status === "running") {
-    return (
-      <Loader2
-        className="h-4 w-4 animate-spin"
-        style={{ color }}
-      />
-    );
+    return <Loader2 className="h-4 w-4 animate-spin" style={{ color }} />;
   }
   if (status === "awaiting-otp") {
     return (
@@ -333,12 +280,7 @@ function StatusBadge({
     );
   }
   if (status === "manual-2fa") {
-    return (
-      <Loader2
-        className="h-4 w-4 animate-spin"
-        style={{ color: "var(--status-heads-up)" }}
-      />
-    );
+    return <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--status-heads-up)" }} />;
   }
   if (status === "done") {
     return (
@@ -369,33 +311,12 @@ function HeroDots({ done, warning }: { done: boolean; warning?: boolean }) {
       <div
         className={cn(
           "relative h-16 w-16",
-          done && "motion-safe:animate-[pop_500ms_cubic-bezier(0.3,1.6,0.4,1)_forwards]"
+          done && "motion-safe:animate-[pop_500ms_cubic-bezier(0.3,1.6,0.4,1)_forwards]",
         )}
       >
-        <Dot
-          x={32}
-          y={42}
-          r={20}
-          color="var(--primary)"
-          delay={0}
-          done={done}
-        />
-        <Dot
-          x={32}
-          y={20}
-          r={9}
-          color="var(--status-heads-up)"
-          delay={150}
-          done={done}
-        />
-        <Dot
-          x={48}
-          y={28}
-          r={7}
-          color="var(--status-plenty-left)"
-          delay={300}
-          done={done}
-        />
+        <Dot x={32} y={42} r={20} color="var(--primary)" delay={0} done={done} />
+        <Dot x={32} y={20} r={9} color="var(--status-heads-up)" delay={150} done={done} />
+        <Dot x={48} y={28} r={7} color="var(--status-plenty-left)" delay={300} done={done} />
         {done && (
           <div
             className="absolute inset-0 flex items-center justify-center motion-safe:animate-[fadeIn_500ms_ease-out_forwards]"
@@ -404,16 +325,11 @@ function HeroDots({ done, warning }: { done: boolean; warning?: boolean }) {
             <div
               className="flex h-9 w-9 items-center justify-center rounded-full"
               style={{
-                background: warning
-                  ? "var(--status-heads-up)"
-                  : "var(--status-on-track)",
+                background: warning ? "var(--status-heads-up)" : "var(--status-on-track)",
               }}
             >
               {warning ? (
-                <Sparkles
-                  className="h-5 w-5 text-background"
-                  strokeWidth={2.5}
-                />
+                <Sparkles className="h-5 w-5 text-background" strokeWidth={2.5} />
               ) : (
                 <Check className="h-5 w-5 text-background" strokeWidth={3} />
               )}
@@ -449,9 +365,7 @@ function Dot({
         width: r * 2,
         height: r * 2,
         background: color,
-        animation: done
-          ? "none"
-          : `dotPulse 1.4s ease-in-out ${delay}ms infinite`,
+        animation: done ? "none" : `dotPulse 1.4s ease-in-out ${delay}ms infinite`,
         opacity: done ? 0.35 : 1,
         transition: "opacity 400ms ease",
       }}
@@ -459,29 +373,19 @@ function Dot({
   );
 }
 
-function SummaryStat({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent?: boolean;
-}) {
+function SummaryStat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div className="flex flex-1 flex-col">
       <span
         className={cn(
           "font-serif text-2xl tabular-nums",
           accent && "text-[var(--status-on-track)]",
-          "motion-safe:animate-[countIn_450ms_cubic-bezier(0.3,1.6,0.4,1)_forwards]"
+          "motion-safe:animate-[countIn_450ms_cubic-bezier(0.3,1.6,0.4,1)_forwards]",
         )}
       >
         {value}
       </span>
-      <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-        {label}
-      </span>
+      <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{label}</span>
     </div>
   );
 }
@@ -490,12 +394,7 @@ function Divider() {
   return <span className="h-8 w-px bg-border" />;
 }
 
-export function useAutoClose(
-  open: boolean,
-  done: boolean,
-  delayMs: number,
-  onClose: () => void
-) {
+export function useAutoClose(open: boolean, done: boolean, delayMs: number, onClose: () => void) {
   useEffect(() => {
     if (!open || !done) return;
     const t = setTimeout(onClose, delayMs);

@@ -1,17 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  listOllamaModels,
-  pullOllamaModel,
-  type PullEvent,
-} from "@/lib/api";
-import {
-  RECOMMENDED_OLLAMA_MODELS,
-  type OllamaModelInfo,
-} from "@/lib/types";
+import { listOllamaModels, type PullEvent, pullOllamaModel } from "@/lib/api";
+import { type OllamaModelInfo, RECOMMENDED_OLLAMA_MODELS } from "@/lib/types";
 
 interface PullState {
   status: string;
@@ -57,7 +50,7 @@ export function OllamaModelStatus({ ollamaUrl, model }: OllamaModelStatusProps) 
     return () => {
       cancelled = true;
     };
-  }, [ollamaUrl, model, pullState?.status]);
+  }, [ollamaUrl]);
 
   const modelInfo = RECOMMENDED_OLLAMA_MODELS.find((m) => m.name === model);
   const modelInstalled = installed?.includes(model) ?? false;
@@ -82,9 +75,7 @@ export function OllamaModelStatus({ ollamaUrl, model }: OllamaModelStatusProps) 
         });
       } else if (event.type === "complete") {
         setPullState(null);
-        setInstalled((prev) =>
-          prev && !prev.includes(model) ? [...prev, model] : prev
-        );
+        setInstalled((prev) => (prev && !prev.includes(model) ? [...prev, model] : prev));
       } else if (event.type === "error") {
         setPullError(event.data.message ?? "Failed to download the model.");
         setPullState(null);
@@ -144,15 +135,10 @@ function ModelStatusInner({
           stroke="currentColor"
           strokeWidth={2.5}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M5 13l4 4L19 7"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
         <span>
-          <span className="font-medium">{modelName}</span> is installed and
-          ready.
+          <span className="font-medium">{modelName}</span> is installed and ready.
         </span>
       </div>
     );
@@ -160,12 +146,10 @@ function ModelStatusInner({
 
   if (pullState) {
     const percent =
-      pullState.total > 0
-        ? Math.round((pullState.completed / pullState.total) * 100)
-        : 0;
+      pullState.total > 0 ? Math.round((pullState.completed / pullState.total) * 100) : 0;
     const downloaded = formatBytes(pullState.completed);
     const total = formatBytes(pullState.total);
-    const speed = pullState.speed > 0 ? formatBytes(pullState.speed) + "/s" : "";
+    const speed = pullState.speed > 0 ? `${formatBytes(pullState.speed)}/s` : "";
     const eta =
       pullState.etaSeconds != null && pullState.etaSeconds > 0
         ? formatDuration(pullState.etaSeconds)
@@ -174,9 +158,7 @@ function ModelStatusInner({
       <div className="space-y-2 rounded-md border bg-muted/30 p-3">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium">
-            {pullState.status === "starting"
-              ? "Starting download..."
-              : pullState.status}
+            {pullState.status === "starting" ? "Starting download..." : pullState.status}
           </span>
           <button
             onClick={onCancel}
@@ -186,10 +168,7 @@ function ModelStatusInner({
           </button>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full bg-primary transition-all"
-            style={{ width: `${percent}%` }}
-          />
+          <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
         </div>
         <div className="flex items-center justify-between text-xs text-muted-foreground tabular-nums">
           <span>
@@ -211,8 +190,8 @@ function ModelStatusInner({
           <div className="space-y-1">
             <div className="text-sm font-medium">Don&apos;t have Ollama yet?</div>
             <p className="text-xs text-muted-foreground">
-              Ollama is a free, local AI that runs on your machine. It takes
-              about a minute to install.
+              Ollama is a free, local AI that runs on your machine. It takes about a minute to
+              install.
             </p>
           </div>
           <a
@@ -228,14 +207,11 @@ function ModelStatusInner({
         <ol className="space-y-1 ps-5 text-xs text-muted-foreground list-decimal marker:text-muted-foreground/70">
           <li>Download and run the installer from ollama.com.</li>
           <li>Launch Ollama (it runs in the menu bar or system tray).</li>
-          <li>
-            Come back here. Spent auto-starts Ollama and lets you download
-            the model.
-          </li>
+          <li>Come back here. Spent auto-starts Ollama and lets you download the model.</li>
         </ol>
         <p className="text-xs text-destructive">
-          Couldn&apos;t reach Ollama at this URL. If you&apos;ve already
-          installed it, double-check the URL above.
+          Couldn&apos;t reach Ollama at this URL. If you&apos;ve already installed it, double-check
+          the URL above.
         </p>
       </div>
     );
@@ -267,7 +243,7 @@ function formatBytes(bytes: number): string {
   if (bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
   const i = Math.min(Math.floor(Math.log10(bytes) / 3), units.length - 1);
-  return `${(bytes / Math.pow(1000, i)).toFixed(i >= 2 ? 2 : 0)} ${units[i]}`;
+  return `${(bytes / 1000 ** i).toFixed(i >= 2 ? 2 : 0)} ${units[i]}`;
 }
 
 function formatDuration(seconds: number): string {

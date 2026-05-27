@@ -1,12 +1,12 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { translateProviderName } from "@/lib/i18n-data";
 import type { HomeBankHealthItem } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface Props {
   items: HomeBankHealthItem[] | null;
@@ -17,7 +17,7 @@ const TWO_FA_RE = /2fa|otp|verification|change[_ ]?password|invalid[_ ]?password
 
 function isToday(iso: string): boolean {
   const now = new Date();
-  const synced = new Date(iso + "Z");
+  const synced = new Date(`${iso}Z`);
   const fmt = (d: Date) =>
     new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Jerusalem",
@@ -30,7 +30,7 @@ function isToday(iso: string): boolean {
 
 function truncate(s: string, max = 120): string {
   if (s.length <= max) return s;
-  return s.slice(0, max - 1).trimEnd() + "…";
+  return `${s.slice(0, max - 1).trimEnd()}…`;
 }
 
 export function SyncFailureBanner({ items, className }: Props) {
@@ -38,44 +38,35 @@ export function SyncFailureBanner({ items, className }: Props) {
   const tBanks = useTranslations("banks");
   if (!items) return null;
   const failures = items.filter(
-    (i) => i.status === "error" && i.lastSyncAt && isToday(i.lastSyncAt)
+    (i) => i.status === "error" && i.lastSyncAt && isToday(i.lastSyncAt),
   );
   if (failures.length === 0) return null;
 
-  const firstName = translateProviderName(
-    failures[0].provider,
-    failures[0].providerName,
-    tBanks,
-  );
+  const firstName = translateProviderName(failures[0].provider, failures[0].providerName, tBanks);
 
   const headline =
     failures.length === 1
       ? t("oneBankTitle", { bank: firstName })
       : t("multiBankTitle", { count: failures.length });
 
-  const showsTwoFAHint = failures.some(
-    (f) => f.errorMessage && TWO_FA_RE.test(f.errorMessage)
-  );
+  const showsTwoFAHint = failures.some((f) => f.errorMessage && TWO_FA_RE.test(f.errorMessage));
 
   return (
     <div
       role="alert"
       className={cn(
         "flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-start sm:gap-4 sm:p-5",
-        className
+        className,
       )}
       style={{
-        background:
-          "color-mix(in oklch, var(--status-over) 12%, var(--card))",
-        borderColor:
-          "color-mix(in oklch, var(--status-over) 40%, var(--border))",
+        background: "color-mix(in oklch, var(--status-over) 12%, var(--card))",
+        borderColor: "color-mix(in oklch, var(--status-over) 40%, var(--border))",
       }}
     >
       <div
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
         style={{
-          background:
-            "color-mix(in oklch, var(--status-over) 24%, var(--card))",
+          background: "color-mix(in oklch, var(--status-over) 24%, var(--card))",
           color: "var(--status-over)",
         }}
       >
@@ -83,9 +74,7 @@ export function SyncFailureBanner({ items, className }: Props) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="font-serif text-base leading-tight tracking-tight">
-          {headline}
-        </div>
+        <div className="font-serif text-base leading-tight tracking-tight">{headline}</div>
         <ul className="mt-1 space-y-0.5 text-sm text-muted-foreground">
           {failures.map((f) => {
             const name = translateProviderName(f.provider, f.providerName, tBanks);
@@ -97,11 +86,7 @@ export function SyncFailureBanner({ items, className }: Props) {
             );
           })}
         </ul>
-        {showsTwoFAHint && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {t("twoFaHelper")}
-          </p>
-        )}
+        {showsTwoFAHint && <p className="mt-2 text-xs text-muted-foreground">{t("twoFaHelper")}</p>}
       </div>
 
       <Button

@@ -1,10 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CategoryCard } from "./category-card";
-import { BudgetDetailSheet } from "./budget-detail-sheet";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -12,19 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type {
-  BudgetStatus,
-  CategoryViewMode,
-  CategoryWithData,
-} from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { BudgetStatus, CategoryViewMode, CategoryWithData } from "@/lib/types";
+import { BudgetDetailSheet } from "./budget-detail-sheet";
+import { CategoryCard } from "./category-card";
 
 type Filter = "all" | "needs-action" | BudgetStatus;
-type Sort =
-  | "budgeted-first"
-  | "most-spent"
-  | "least-spent"
-  | "alphabetical"
-  | "over-pace";
+type Sort = "budgeted-first" | "most-spent" | "least-spent" | "alphabetical" | "over-pace";
 
 interface CategoryGridProps {
   categories: CategoryWithData[];
@@ -85,20 +76,17 @@ export function CategoryGrid({
   ];
 
   const activeCategories = useMemo(
-    () =>
-      categories.filter(
-        (c) => c.spent > 0 || (!c.isAutoBudget && c.budget > 0)
-      ),
-    [categories]
+    () => categories.filter((c) => c.spent > 0 || (!c.isAutoBudget && c.budget > 0)),
+    [categories],
   );
 
   const visible = useMemo(() => {
     if (viewMode === "collapsed") {
       const parentIds = new Set(
-        activeCategories.filter((c) => c.isParent).map((c) => c.categoryId)
+        activeCategories.filter((c) => c.isParent).map((c) => c.categoryId),
       );
       return activeCategories.filter(
-        (c) => c.isParent || c.parentId == null || !parentIds.has(c.parentId)
+        (c) => c.isParent || c.parentId == null || !parentIds.has(c.parentId),
       );
     }
     return activeCategories.filter((c) => !c.isParent);
@@ -166,19 +154,13 @@ export function CategoryGrid({
             </div>
             {hasUncategorized ? (
               <>
-                <h3 className="font-serif text-2xl">
-                  {t("emptyUncategorizedTitle")}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {t("emptyUncategorizedBody")}
-                </p>
+                <h3 className="font-serif text-2xl">{t("emptyUncategorizedTitle")}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{t("emptyUncategorizedBody")}</p>
               </>
             ) : (
               <>
                 <h3 className="font-serif text-2xl">{t("emptyNoSpendTitle")}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {t("emptyNoSpendBody")}
-                </p>
+                <p className="mt-2 text-sm text-muted-foreground">{t("emptyNoSpendBody")}</p>
               </>
             )}
           </div>
@@ -207,9 +189,7 @@ export function CategoryGrid({
                   }`}
                 >
                   {f.label}
-                  <span
-                    className={`tabular-nums ${active ? "opacity-80" : "opacity-60"}`}
-                  >
+                  <span className={`tabular-nums ${active ? "opacity-80" : "opacity-60"}`}>
                     {count}
                   </span>
                 </button>
@@ -241,11 +221,7 @@ export function CategoryGrid({
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c) => (
-            <CategoryCard
-              key={c.categoryId}
-              data={c}
-              onClick={() => setSelectedId(c.categoryId)}
-            />
+            <CategoryCard key={c.categoryId} data={c} onClick={() => setSelectedId(c.categoryId)} />
           ))}
         </div>
       )}

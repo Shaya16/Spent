@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,12 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { applyCategorize, getCategories } from "@/lib/api";
-import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import type { CategorizePreview } from "@/lib/api";
+import { applyCategorize, getCategories } from "@/lib/api";
 
 interface CategorizeReviewDialogProps {
   preview: CategorizePreview;
@@ -34,8 +34,8 @@ export function CategorizeReviewDialog({
   });
 
   // Track per-proposal state: approved (default true), or a fallback name.
-  const [approvedMap, setApprovedMap] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(preview.proposedCategories.map((p) => [p.name, true]))
+  const [approvedMap, setApprovedMap] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(preview.proposedCategories.map((p) => [p.name, true])),
   );
 
   const applyMutation = useMutation({
@@ -56,7 +56,7 @@ export function CategorizeReviewDialog({
         `Applied to ${data.appliedCount} transaction${data.appliedCount === 1 ? "" : "s"}` +
           (data.createdCategoriesCount > 0
             ? ` · Added ${data.createdCategoriesCount} new categor${data.createdCategoriesCount === 1 ? "y" : "ies"}`
-            : "")
+            : ""),
       );
       onApplied();
     },
@@ -67,7 +67,7 @@ export function CategorizeReviewDialog({
 
   const approvedCount = useMemo(
     () => Object.values(approvedMap).filter(Boolean).length,
-    [approvedMap]
+    [approvedMap],
   );
   const totalProposals = preview.proposedCategories.length;
 
@@ -91,11 +91,10 @@ export function CategorizeReviewDialog({
         .map(([name, count]) => ({
           name,
           count,
-          color:
-            existingCategories.find((c) => c.name === name)?.color ?? "#B1AA9C",
+          color: existingCategories.find((c) => c.name === name)?.color ?? "#B1AA9C",
         }))
         .sort((a, b) => b.count - a.count),
-    [preview.existingCategoryUsage, existingCategories]
+    [preview.existingCategoryUsage, existingCategories],
   );
 
   return (
@@ -107,8 +106,8 @@ export function CategorizeReviewDialog({
           </DialogTitle>
           <DialogDescription>
             Suggested categories for {preview.uncategorizedCount} uncategorized{" "}
-            {preview.uncategorizedCount === 1 ? "transaction" : "transactions"}.
-            Approve or reject any new categories before applying.
+            {preview.uncategorizedCount === 1 ? "transaction" : "transactions"}. Approve or reject
+            any new categories before applying.
           </DialogDescription>
         </DialogHeader>
 
@@ -125,10 +124,7 @@ export function CategorizeReviewDialog({
                       key={c.name}
                       className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs"
                     >
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: c.color }}
-                      />
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />
                       <span className="font-medium">{c.name}</span>
                       <span className="text-muted-foreground">{c.count}</span>
                     </span>
@@ -147,12 +143,7 @@ export function CategorizeReviewDialog({
                     <button
                       onClick={() =>
                         setApprovedMap(
-                          Object.fromEntries(
-                            preview.proposedCategories.map((p) => [
-                              p.name,
-                              true,
-                            ])
-                          )
+                          Object.fromEntries(preview.proposedCategories.map((p) => [p.name, true])),
                         )
                       }
                       className="text-xs text-muted-foreground hover:text-foreground"
@@ -164,11 +155,8 @@ export function CategorizeReviewDialog({
                       onClick={() =>
                         setApprovedMap(
                           Object.fromEntries(
-                            preview.proposedCategories.map((p) => [
-                              p.name,
-                              false,
-                            ])
-                          )
+                            preview.proposedCategories.map((p) => [p.name, false]),
+                          ),
                         )
                       }
                       className="text-xs text-muted-foreground hover:text-foreground"
@@ -183,25 +171,23 @@ export function CategorizeReviewDialog({
                       key={p.name}
                       proposal={p}
                       approved={approvedMap[p.name] ?? false}
-                      onToggle={(v) =>
-                        setApprovedMap((prev) => ({ ...prev, [p.name]: v }))
-                      }
+                      onToggle={(v) => setApprovedMap((prev) => ({ ...prev, [p.name]: v }))}
                     />
                   ))}
                 </div>
               </section>
             ) : (
               <p className="text-sm text-muted-foreground">
-                The AI didn&apos;t propose any new categories. Everything fits in
-                your existing list.
+                The AI didn&apos;t propose any new categories. Everything fits in your existing
+                list.
               </p>
             )}
 
             {preview.errors && preview.errors.length > 0 && (
               <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
                 {preview.errors.length} batch
-                {preview.errors.length === 1 ? "" : "es"} failed during AI
-                categorization. Other transactions were still processed.
+                {preview.errors.length === 1 ? "" : "es"} failed during AI categorization. Other
+                transactions were still processed.
               </div>
             )}
           </div>
@@ -210,25 +196,20 @@ export function CategorizeReviewDialog({
         <DialogFooter className="border-t bg-muted/30 px-6 py-4">
           <div className="me-auto flex flex-col gap-0.5 text-xs text-muted-foreground">
             <div>
-              <span className="font-medium text-foreground">
-                {stats.toExisting + stats.toNew}
-              </span>{" "}
+              <span className="font-medium text-foreground">{stats.toExisting + stats.toNew}</span>{" "}
               will be categorized
               {stats.willStay > 0 && (
                 <>
                   {" "}
-                  ·{" "}
-                  <span className="text-foreground">{stats.willStay}</span> will
-                  stay uncategorized
+                  · <span className="text-foreground">{stats.willStay}</span> will stay
+                  uncategorized
                 </>
               )}
             </div>
             {totalProposals > 0 && (
               <div>
-                <span className="font-medium text-foreground">
-                  {approvedCount}
-                </span>{" "}
-                of {totalProposals} new categor
+                <span className="font-medium text-foreground">{approvedCount}</span> of{" "}
+                {totalProposals} new categor
                 {totalProposals === 1 ? "y" : "ies"} will be created
               </div>
             )}
@@ -236,10 +217,7 @@ export function CategorizeReviewDialog({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            onClick={() => applyMutation.mutate()}
-            disabled={applyMutation.isPending}
-          >
+          <Button onClick={() => applyMutation.mutate()} disabled={applyMutation.isPending}>
             {applyMutation.isPending ? "Applying..." : "Apply"}
           </Button>
         </DialogFooter>
@@ -265,9 +243,7 @@ function ProposalRow({
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-bold tracking-tight">
-            {proposal.name}
-          </span>
+          <span className="text-sm font-bold tracking-tight">{proposal.name}</span>
           <span className="text-[11px] text-muted-foreground">
             {proposal.transactionIds.length} transaction
             {proposal.transactionIds.length === 1 ? "" : "s"}

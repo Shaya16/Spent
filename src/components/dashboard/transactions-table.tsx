@@ -1,14 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useLocale, useTranslations } from "next-intl";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  ArrowDownRight,
+  ArrowUpRight,
+  Check,
+  HelpCircle,
+  MoreHorizontal,
+  Tags,
+  Wallet,
+} from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useState } from "react";
+import { ProviderBadge } from "@/components/setup/provider-badge";
+import { SortableTableHead } from "@/components/transactions/sortable-table-head";
+import {
+  MultiFilterOption,
+  TransactionMultiFilter,
+} from "@/components/transactions/transaction-multi-filter";
+import {
+  getAccountDisplayLabel,
+  TransactionSourceCell,
+} from "@/components/transactions/transaction-source-cell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -17,59 +41,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import type { Locale } from "@/i18n/routing";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  MoreHorizontal,
-  HelpCircle,
-  Check,
-  ArrowDownRight,
-  ArrowUpRight,
-  Wallet,
-  Tags,
-} from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { formatCurrency, formatDate } from "@/lib/formatters";
-import {
-  updateTransactionCategory,
-  setTransactionKind,
   approveTransactionCategory,
   getCategories,
+  setTransactionKind,
+  updateTransactionCategory,
 } from "@/lib/api";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { translateCategoryName, translateProviderName } from "@/lib/i18n-data";
-import {
-  getAccountDisplayLabel,
-  TransactionSourceCell,
-} from "@/components/transactions/transaction-source-cell";
-import {
-  TransactionMultiFilter,
-  MultiFilterOption,
-} from "@/components/transactions/transaction-multi-filter";
 import {
   formatMultiFilterDisplay,
   getCategoryDescendantIds,
   isCategoryFilterChecked,
   toggleCategoryFilterSelection,
 } from "@/lib/transaction-filters";
-import { SortableTableHead } from "@/components/transactions/sortable-table-head";
 import type { SortOrder, TransactionSortField } from "@/lib/transaction-sort";
-import { cn } from "@/lib/utils";
-import { ProviderBadge } from "@/components/setup/provider-badge";
-import type {
-  TransactionWithCategory,
-  Category,
-  Integration,
-} from "@/lib/types";
+import type { Category, Integration, TransactionWithCategory } from "@/lib/types";
 import { BANK_PROVIDERS } from "@/lib/types";
-import type { Locale } from "@/i18n/routing";
+import { cn } from "@/lib/utils";
 
 type Kind = "expense" | "income" | "transfer";
 
@@ -195,12 +185,9 @@ export function TransactionsTable({
       const providerName = translateProviderName(
         integration.provider,
         info?.name ?? integration.provider,
-        tBanks
+        tBanks,
       );
-      const { primary } = getAccountDisplayLabel(
-        providerName,
-        integration.label
-      );
+      const { primary } = getAccountDisplayLabel(providerName, integration.label);
       return { integration, info, providerName, primary };
     })
     .sort((a, b) => a.primary.localeCompare(b.primary));
@@ -211,16 +198,11 @@ export function TransactionsTable({
     ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
 
   const accountLabels = accountFilter
-    .map(
-      (id) =>
-        accountOptions.find((o) => o.integration.id === id)?.primary
-    )
+    .map((id) => accountOptions.find((o) => o.integration.id === id)?.primary)
     .filter((name): name is string => name != null);
 
-  const accountDisplayValue = formatMultiFilterDisplay(
-    accountLabels,
-    t("filterAny"),
-    (count) => t("filterSelectedCount", { count })
+  const accountDisplayValue = formatMultiFilterDisplay(accountLabels, t("filterAny"), (count) =>
+    t("filterSelectedCount", { count }),
   );
 
   const categoryLabels = categoryFilter
@@ -228,14 +210,11 @@ export function TransactionsTable({
     .filter((c): c is Category => c != null)
     .map((c) => translateCategoryName(c.name, tCat));
 
-  const categoryDisplayValue = formatMultiFilterDisplay(
-    categoryLabels,
-    t("filterAny"),
-    (count) => t("filterSelectedCount", { count })
+  const categoryDisplayValue = formatMultiFilterDisplay(categoryLabels, t("filterAny"), (count) =>
+    t("filterSelectedCount", { count }),
   );
 
-  const hasActiveFilters =
-    categoryFilter.length > 0 || accountFilter.length > 0;
+  const hasActiveFilters = categoryFilter.length > 0 || accountFilter.length > 0;
 
   const handleClearFilters = () => {
     onCategoryFilterChange([]);
@@ -244,15 +223,13 @@ export function TransactionsTable({
   };
 
   const allCategoryIds = [
-    ...new Set(
-      categories.flatMap((c) => getCategoryDescendantIds(c.id, categories))
-    ),
+    ...new Set(categories.flatMap((c) => getCategoryDescendantIds(c.id, categories))),
   ];
   const allAccountIds = accountOptions.map((o) => o.integration.id);
 
   const renderCategoryFilterOptions = (
     parentId: number | null,
-    depth: number
+    depth: number,
   ): React.ReactNode[] => {
     const items = categories
       .filter((c) => c.parentId === parentId)
@@ -264,36 +241,22 @@ export function TransactionsTable({
       nodes.push(
         <MultiFilterOption
           key={cat.id}
-          selected={isCategoryFilterChecked(
-            cat.id,
-            categoryFilter,
-            categories
-          )}
+          selected={isCategoryFilterChecked(cat.id, categoryFilter, categories)}
           onToggle={() =>
             onCategoryFilterChange(
-              toggleCategoryFilterSelection(
-                categoryFilter,
-                cat.id,
-                categories
-              )
+              toggleCategoryFilterSelection(categoryFilter, cat.id, categories),
             )
           }
           className={depth > 0 ? "ps-2" : undefined}
         >
           <div
-            className={cn(
-              "flex items-center gap-2",
-              hasChildren && "font-semibold"
-            )}
+            className={cn("flex items-center gap-2", hasChildren && "font-semibold")}
             style={{ paddingInlineStart: depth > 0 ? depth * 12 : 0 }}
           >
-            <div
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: cat.color }}
-            />
+            <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
             {name}
           </div>
-        </MultiFilterOption>
+        </MultiFilterOption>,
       );
       nodes.push(...renderCategoryFilterOptions(cat.id, depth + 1));
     }
@@ -304,9 +267,7 @@ export function TransactionsTable({
     <Card className="rounded-2xl border border-border bg-card shadow-none">
       <CardHeader>
         <div className="flex items-center justify-between gap-4">
-          <CardTitle className="font-serif text-2xl font-normal">
-            {t("pageTitle")}
-          </CardTitle>
+          <CardTitle className="font-serif text-2xl font-normal">{t("pageTitle")}</CardTitle>
           <div className="flex items-center gap-2">
             <Input
               placeholder={t("search")}
@@ -333,9 +294,7 @@ export function TransactionsTable({
                     key={integration.id}
                     selected={accountFilter.includes(integration.id)}
                     onToggle={() =>
-                      onAccountFilterChange(
-                        toggleFilterId(accountFilter, integration.id)
-                      )
+                      onAccountFilterChange(toggleFilterId(accountFilter, integration.id))
                     }
                   >
                     <div className="flex min-w-0 items-center gap-2">
@@ -379,17 +338,11 @@ export function TransactionsTable({
           </div>
         </div>
         {hasActiveFilters || search.trim().length > 0 ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {t("filterScopedToList")}
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("filterScopedToList")}</p>
         ) : null}
       </CardHeader>
       <CardContent
-        className={cn(
-          isFetching &&
-            !loading &&
-            "opacity-60 transition-opacity duration-200"
-        )}
+        className={cn(isFetching && !loading && "opacity-60 transition-opacity duration-200")}
       >
         {loading ? (
           <div className="space-y-3">
@@ -465,9 +418,7 @@ export function TransactionsTable({
               <TableBody>
                 {transactions.map((txn) => {
                   const isIncome = txn.chargedAmount > 0;
-                  const directionColor = isIncome
-                    ? "var(--status-on-track)"
-                    : "var(--status-over)";
+                  const directionColor = isIncome ? "var(--status-on-track)" : "var(--status-over)";
                   const categoryKind: Kind = isIncome ? "income" : "expense";
                   const categoryName = txn.categoryName
                     ? translateCategoryName(txn.categoryName, tCat)
@@ -509,17 +460,13 @@ export function TransactionsTable({
                               <HelpCircle className="h-3 w-3" />
                               {t("rowReview")}
                               {txn.aiConfidence != null && (
-                                <span className="ms-0.5 tabular-nums">
-                                  {txn.aiConfidence}/7
-                                </span>
+                                <span className="ms-0.5 tabular-nums">{txn.aiConfidence}/7</span>
                               )}
                             </span>
                           )}
                         </div>
                         {txn.memo && (
-                          <div className="text-xs text-muted-foreground">
-                            {txn.memo}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{txn.memo}</div>
                         )}
                         {txn.type === "installments" &&
                           txn.installmentNumber &&
@@ -545,8 +492,8 @@ export function TransactionsTable({
                                 style={
                                   txn.categoryColor
                                     ? {
-                                        borderColor: txn.categoryColor + "40",
-                                        backgroundColor: txn.categoryColor + "15",
+                                        borderColor: `${txn.categoryColor}40`,
+                                        backgroundColor: `${txn.categoryColor}15`,
                                         color: txn.categoryColor,
                                       }
                                     : undefined
@@ -559,9 +506,7 @@ export function TransactionsTable({
                               {categoriesForKind(categoryKind).map((cat) => (
                                 <DropdownMenuItem
                                   key={cat.id}
-                                  onClick={() =>
-                                    handleCategoryChange(txn.id, cat.id)
-                                  }
+                                  onClick={() => handleCategoryChange(txn.id, cat.id)}
                                 >
                                   <div
                                     className="me-2 h-2 w-2 rounded-full"

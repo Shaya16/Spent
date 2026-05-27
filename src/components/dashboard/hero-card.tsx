@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Locale } from "@/i18n/routing";
 import { formatCurrency } from "@/lib/formatters";
 import { translateCategoryName } from "@/lib/i18n-data";
 import type { DashboardSummary } from "@/lib/types";
-import type { Locale } from "@/i18n/routing";
 
 interface HeroCardProps {
   data: DashboardSummary | undefined;
@@ -14,13 +14,7 @@ interface HeroCardProps {
   monthLabel: string;
 }
 
-type PaceVerdict =
-  | "overBudget"
-  | "headsUp"
-  | "wellUnder"
-  | "ahead"
-  | "onSchedule"
-  | "noBudget";
+type PaceVerdict = "overBudget" | "headsUp" | "wellUnder" | "ahead" | "onSchedule" | "noBudget";
 
 function computeVerdict(
   budgetedSpent: number,
@@ -63,15 +57,12 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
   const hasBudget = totalBudget > 0;
 
   const parentIdsWithRollup = new Set(
-    categoriesWithData.filter((c) => c.isParent).map((c) => c.categoryId)
+    categoriesWithData.filter((c) => c.isParent).map((c) => c.categoryId),
   );
   const sorted = [...categoriesWithData]
     .filter(
       (c) =>
-        c.spent > 0 &&
-        (c.isParent ||
-          c.parentId == null ||
-          !parentIdsWithRollup.has(c.parentId))
+        c.spent > 0 && (c.isParent || c.parentId == null || !parentIdsWithRollup.has(c.parentId)),
     )
     .sort((a, b) => b.spent - a.spent);
   const topFour = sorted.slice(0, 4);
@@ -114,8 +105,7 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
         {" · "}
         {t("youHavePaydayPrefix")}{" "}
         <span className="font-medium text-foreground">
-          {daysUntilPayday}{" "}
-          {daysUntilPayday === 1 ? t("daysOne") : t("daysOther")}
+          {daysUntilPayday} {daysUntilPayday === 1 ? t("daysOne") : t("daysOther")}
         </span>{" "}
         {t("untilPayday")}
       </p>
@@ -135,14 +125,10 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
             {legend.map((seg) => (
               <div key={seg.name} className="flex items-center gap-2">
-                <div
-                  className="h-2.5 w-2.5 rounded-sm"
-                  style={{ backgroundColor: seg.color }}
-                />
+                <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: seg.color }} />
                 <span className="font-medium">{seg.name}</span>
                 <span className="tabular-nums text-muted-foreground">
-                  {formatCurrency(seg.amount, "ILS", locale)} {"·"}{" "}
-                  {Math.round(seg.pct)}%
+                  {formatCurrency(seg.amount, "ILS", locale)} {"·"} {Math.round(seg.pct)}%
                 </span>
               </div>
             ))}
@@ -322,9 +308,7 @@ function PaceGauge({
   const isOver = isOverBudget || delta >= 25;
   const isAhead = delta <= -10;
   const ringColor = isOver ? "var(--status-over)" : "var(--status-on-track)";
-  const verdictClass = isOver
-    ? "text-[var(--status-over)]"
-    : "text-[var(--status-on-track)]";
+  const verdictClass = isOver ? "text-[var(--status-over)]" : "text-[var(--status-on-track)]";
 
   let verdictText: string;
   if (!hasBudget) {
@@ -360,14 +344,7 @@ function PaceGauge({
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={cx}
-          cy={cy}
-          r={radius}
-          fill="none"
-          stroke="var(--muted)"
-          strokeWidth={stroke}
-        />
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="var(--muted)" strokeWidth={stroke} />
         {hasBudget && (
           <circle
             cx={cx}
@@ -402,9 +379,7 @@ function PaceGauge({
             {t("ofBudget", { amount: formatCurrency(totalBudget, "ILS", locale) })}
           </div>
         )}
-        <div
-          className={`mt-1 text-xs ${hasBudget ? verdictClass : "text-muted-foreground"}`}
-        >
+        <div className={`mt-1 text-xs ${hasBudget ? verdictClass : "text-muted-foreground"}`}>
           {verdictText}
         </div>
       </div>
@@ -412,18 +387,11 @@ function PaceGauge({
   );
 }
 
-function StackedBar({
-  legend,
-}: {
-  legend: { name: string; color: string; pct: number }[];
-}) {
+function StackedBar({ legend }: { legend: { name: string; color: string; pct: number }[] }) {
   return (
     <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
       {legend.map((seg, i) => (
-        <div
-          key={i}
-          style={{ width: `${seg.pct}%`, backgroundColor: seg.color }}
-        />
+        <div key={i} style={{ width: `${seg.pct}%`, backgroundColor: seg.color }} />
       ))}
     </div>
   );

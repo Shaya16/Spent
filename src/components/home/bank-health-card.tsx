@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { CardShell, CardAction } from "./card-shell";
 import { formatLastSync } from "@/lib/formatters";
 import { translateProviderName, useFormatterLabels } from "@/lib/i18n-data";
 import type { HomeBankHealthItem } from "@/lib/types";
+import { CardAction, CardShell } from "./card-shell";
 
 interface Props {
   items: HomeBankHealthItem[];

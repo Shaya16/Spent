@@ -1,10 +1,10 @@
 "use client";
 
+import { AlertTriangle, CircleHelp, Flag } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, CircleHelp, Flag } from "lucide-react";
-import { CardShell } from "./card-shell";
 import type { HomeNeedsAttention } from "@/lib/types";
+import { CardShell } from "./card-shell";
 
 interface Props {
   data: HomeNeedsAttention;

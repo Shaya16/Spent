@@ -1,16 +1,9 @@
 "use client";
 
+import { Landmark, Layers, Palette, ShieldAlert, SlidersHorizontal, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import {
-  SlidersHorizontal,
-  Palette,
-  Landmark,
-  Sparkles,
-  Layers,
-  ShieldAlert,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -90,12 +83,8 @@ export function SettingsSidebar() {
   return (
     <aside className="hidden w-56 shrink-0 border-e border-border/40 bg-card/30 md:flex md:flex-col">
       <div className="px-5 pt-6 pb-3">
-        <div className="font-serif text-xl leading-none tracking-tight">
-          {t("title")}
-        </div>
-        <div className="mt-1 text-[11px] text-muted-foreground">
-          {t("subtitle")}
-        </div>
+        <div className="font-serif text-xl leading-none tracking-tight">{t("title")}</div>
+        <div className="mt-1 text-[11px] text-muted-foreground">{t("subtitle")}</div>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 pb-6">
         {GROUPS.map((group) => (
@@ -114,7 +103,7 @@ export function SettingsSidebar() {
                         "flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors",
                         active
                           ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "text-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground"
+                          : "text-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
                       )}
                     >
                       <item.Icon className="h-4 w-4 shrink-0 opacity-80" />
@@ -148,7 +137,7 @@ export function SettingsMobileNav() {
                 "flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
                 active
                   ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border/60 text-foreground/70 hover:border-border hover:text-foreground"
+                  : "border-border/60 text-foreground/70 hover:border-border hover:text-foreground",
               )}
             >
               <item.Icon className="h-3.5 w-3.5" />

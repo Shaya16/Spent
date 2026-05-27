@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 import { AlertTriangle, Trash2 } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,10 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Input, InputGroup } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -31,6 +23,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import {
   deleteCategory,
   getCategories,
@@ -50,11 +50,7 @@ export interface CategoryDetailSheetProps {
   onClose: () => void;
 }
 
-export function CategoryDetailSheet({
-  categoryId,
-  data,
-  onClose,
-}: CategoryDetailSheetProps) {
+export function CategoryDetailSheet({ categoryId, data, onClose }: CategoryDetailSheetProps) {
   const open = categoryId !== null;
   const { data: allCategories } = useQuery({
     queryKey: ["categories"],
@@ -63,7 +59,7 @@ export function CategoryDetailSheet({
   });
   const category = useMemo(
     () => allCategories?.find((c) => c.id === categoryId) ?? null,
-    [allCategories, categoryId]
+    [allCategories, categoryId],
   );
 
   return (
@@ -73,10 +69,7 @@ export function CategoryDetailSheet({
         if (!o) onClose();
       }}
     >
-      <SheetContent
-        side="right"
-        className="w-full p-0 sm:max-w-md! md:max-w-lg!"
-      >
+      <SheetContent side="right" className="w-full p-0 sm:max-w-md! md:max-w-lg!">
         {category ? (
           <Body
             category={category}
@@ -101,9 +94,7 @@ function Body({
   allCategories: Category[];
   onClose: () => void;
 }) {
-  const sameKind = allCategories.filter(
-    (c) => c.kind === category.kind && c.id !== category.id
-  );
+  const sameKind = allCategories.filter((c) => c.kind === category.kind && c.id !== category.id);
   const eligibleParents = sameKind
     .filter((c) => c.parentId == null)
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -112,7 +103,7 @@ function Body({
       allCategories
         .filter((c) => c.parentId === category.id)
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [allCategories, category.id]
+    [allCategories, category.id],
   );
   const isParentGroup = childCategories.length > 0 || data?.isParent === true;
 
@@ -125,13 +116,8 @@ function Body({
         }}
       >
         <div className="flex items-center gap-3">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/70"
-          >
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ background: category.color }}
-            />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/70">
+            <span className="h-3 w-3 rounded-full" style={{ background: category.color }} />
           </div>
           <div className="min-w-0 flex-1">
             <SheetTitle>{category.name}</SheetTitle>
@@ -150,10 +136,7 @@ function Body({
           <BudgetSection category={category} data={data} />
         )}
 
-        <GroupSection
-          category={category}
-          eligibleParents={eligibleParents}
-        />
+        <GroupSection category={category} eligibleParents={eligibleParents} />
 
         <DescriptionSection category={category} />
 
@@ -208,24 +191,17 @@ function DeleteCategorySection({
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(
-        t("deletedToast", { count: result.unassignedTransactionCount })
-      );
+      toast.success(t("deletedToast", { count: result.unassignedTransactionCount }));
       setOpen(false);
       onDeleted();
     },
     onError: (err: Error) => {
       const names =
         parseDeleteCategoryError(err.message) ??
-        (childCategories.length > 0
-          ? childCategories.map((c) => c.name)
-          : null);
+        (childCategories.length > 0 ? childCategories.map((c) => c.name) : null);
       if (names && names.length > 0) {
         toast.error(t("deleteHasChildrenNamed", { names: names.join(", ") }));
-      } else if (
-        err.message.includes("has-children") ||
-        err.message.includes("409")
-      ) {
+      } else if (err.message.includes("has-children") || err.message.includes("409")) {
         toast.error(t("deleteHasChildren"));
       } else {
         toast.error(t("deleteFailed"));
@@ -267,9 +243,7 @@ function DeleteCategorySection({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {t("confirmDeleteTitle", { name: category.name })}
-            </DialogTitle>
+            <DialogTitle>{t("confirmDeleteTitle", { name: category.name })}</DialogTitle>
             <DialogDescription>
               {t("confirmDeleteDescription", { count: transactionCount })}
             </DialogDescription>
@@ -292,19 +266,12 @@ function DeleteCategorySection({
   );
 }
 
-function BudgetSection({
-  category,
-  data,
-}: {
-  category: Category;
-  data: CategoryWithData | null;
-}) {
+function BudgetSection({ category, data }: { category: Category; data: CategoryWithData | null }) {
   const queryClient = useQueryClient();
   const isBudgeted = category.budgetMode === "budgeted";
 
   const modeMutation = useMutation({
-    mutationFn: (next: "budgeted" | "tracking") =>
-      updateCategoryBudgetMode(category.id, next),
+    mutationFn: (next: "budgeted" | "tracking") => updateCategoryBudgetMode(category.id, next),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["summary"] });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
@@ -318,9 +285,7 @@ function BudgetSection({
     },
   });
 
-  const [amount, setAmount] = useState(
-    data ? String(Math.round(data.budget)) : ""
-  );
+  const [amount, setAmount] = useState(data ? String(Math.round(data.budget)) : "");
 
   useEffect(() => {
     if (data) setAmount(String(Math.round(data.budget)));
@@ -342,10 +307,7 @@ function BudgetSection({
       <div className="mt-3 rounded-xl border border-border bg-card p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1 space-y-1">
-            <Label
-              htmlFor={`mode-${category.id}`}
-              className="text-sm font-medium"
-            >
+            <Label htmlFor={`mode-${category.id}`} className="text-sm font-medium">
               {isBudgeted ? "Budgeted" : "Tracking only"}
             </Label>
             <p className="text-xs text-muted-foreground">
@@ -357,9 +319,7 @@ function BudgetSection({
           <Switch
             id={`mode-${category.id}`}
             checked={isBudgeted}
-            onCheckedChange={(next) =>
-              modeMutation.mutate(next ? "budgeted" : "tracking")
-            }
+            onCheckedChange={(next) => modeMutation.mutate(next ? "budgeted" : "tracking")}
           />
         </div>
 
@@ -379,16 +339,9 @@ function BudgetSection({
             </InputGroup>
             {data ? (
               <p className="text-[11px] text-muted-foreground">
-                Spent ₪{Math.round(data.spent).toLocaleString("en-IL")} this
-                month
+                Spent ₪{Math.round(data.spent).toLocaleString("en-IL")} this month
                 {data.vsTypical && data.vsTypical.typical > 0 ? (
-                  <>
-                    {" "}
-                    · typical ≈ ₪
-                    {Math.round(data.vsTypical.typical).toLocaleString(
-                      "en-IL"
-                    )}
-                  </>
+                  <> · typical ≈ ₪{Math.round(data.vsTypical.typical).toLocaleString("en-IL")}</>
                 ) : null}
               </p>
             ) : null}
@@ -408,8 +361,7 @@ function GroupSection({
 }) {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: (parentId: number | null) =>
-      setCategoryParent(category.id, parentId),
+    mutationFn: (parentId: number | null) => setCategoryParent(category.id, parentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
@@ -422,16 +374,13 @@ function GroupSection({
       } else if (reason === "not-leaf-target") {
         toast.error("Parent must be a top-level category.");
       } else if (reason === "child-has-children") {
-        toast.error(
-          "Can't move a category that already has sub-categories under it."
-        );
+        toast.error("Can't move a category that already has sub-categories under it.");
       } else {
         toast.error("Couldn't update parent.");
       }
     },
   });
-  const current =
-    category.parentId == null ? NONE_VALUE : String(category.parentId);
+  const current = category.parentId == null ? NONE_VALUE : String(category.parentId);
 
   return (
     <section>
@@ -453,8 +402,7 @@ function GroupSection({
               {(value: string) =>
                 value === NONE_VALUE
                   ? "(no parent)"
-                  : eligibleParents.find((p) => String(p.id) === value)?.name ??
-                    "(no parent)"
+                  : (eligibleParents.find((p) => String(p.id) === value)?.name ?? "(no parent)")
               }
             </SelectValue>
           </SelectTrigger>
@@ -483,8 +431,7 @@ function DescriptionSection({ category }: { category: Category }) {
   }, [category.description]);
 
   const mutation = useMutation({
-    mutationFn: (next: string | null) =>
-      updateCategoryDescription(category.id, next),
+    mutationFn: (next: string | null) => updateCategoryDescription(category.id, next),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       toast.success("Description saved");
@@ -499,9 +446,7 @@ function DescriptionSection({ category }: { category: Category }) {
     const current = (category.description ?? "").trim();
     if (trimmed === current) return;
     if (trimmed.length > DESCRIPTION_MAX) {
-      toast.error(
-        `Description must be ${DESCRIPTION_MAX} characters or fewer.`
-      );
+      toast.error(`Description must be ${DESCRIPTION_MAX} characters or fewer.`);
       return;
     }
     mutation.mutate(trimmed.length === 0 ? null : trimmed);

@@ -1,8 +1,8 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { HOST, FRIENDLY_HOST } from "./paths.mjs";
+import { FRIENDLY_HOST, HOST } from "./paths.mjs";
 
 const MARKER_START = "# >>> spent (managed) >>>";
 const MARKER_END = "# <<< spent <<<";
@@ -20,7 +20,7 @@ function buildManagedBlock() {
   return [
     MARKER_START,
     `# Added by Spent (scripts/service). Resolves ${FRIENDLY_HOST} to loopback.`,
-    "# Do not edit between markers; `npm run service:uninstall` removes them.",
+    "# Do not edit between markers; `bun run service:uninstall` removes them.",
     MANAGED_LINE,
     MARKER_END,
   ].join(os.EOL);
@@ -63,9 +63,7 @@ function writeUnix(targetPath, newContent) {
     console.log(`Updating ${targetPath} (requires sudo for this step only).`);
     const r = spawnSync("sudo", ["cp", tmp, targetPath], { stdio: "inherit" });
     if (r.status !== 0) {
-      throw new Error(
-        `sudo cp failed (exit ${r.status}). Hosts file not modified.`,
-      );
+      throw new Error(`sudo cp failed (exit ${r.status}). Hosts file not modified.`);
     }
   } finally {
     try {
@@ -82,11 +80,11 @@ function writeWindows(targetPath, newContent) {
     return;
   } catch (err) {
     throw new Error(
-      `Cannot write ${targetPath}: ${(err instanceof Error ? err.message : err)}.\n` +
+      `Cannot write ${targetPath}: ${err instanceof Error ? err.message : err}.\n` +
         "Re-run this command from an Administrator PowerShell:\n" +
         '  Start-Process powershell -Verb RunAs -ArgumentList "-NoExit","-Command","cd \\"' +
         process.cwd() +
-        '\\"; npm run service:install"',
+        '\\"; bun run service:install"',
     );
   }
 }

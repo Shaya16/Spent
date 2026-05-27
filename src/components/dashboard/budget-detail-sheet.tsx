@@ -1,70 +1,56 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Bar,
-  BarChart,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from "recharts";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+  ArrowLeftRight,
+  Banknote,
+  Briefcase,
+  Check,
+  ChevronDown,
+  CircleDot,
+  GraduationCap,
+  HeartPulse,
+  HelpCircle,
+  Home,
+  type LucideIcon,
+  Pencil,
+  Plane,
+  Plus,
+  Receipt,
+  RefreshCw,
+  Shield,
+  ShoppingBag,
+  ShoppingBasket,
+  Sparkles,
+  Ticket,
+  TramFront,
+  UtensilsCrossed,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Plus,
-  HelpCircle,
-  Check,
-  ChevronDown,
-  Pencil,
-  type LucideIcon,
-  CircleDot,
-} from "lucide-react";
-import {
-  ShoppingBasket,
-  UtensilsCrossed,
-  TramFront,
-  ShoppingBag,
-  Ticket,
-  HeartPulse,
-  GraduationCap,
-  Receipt,
-  RefreshCw,
-  Plane,
-  Banknote,
-  ArrowLeftRight,
-  Shield,
-  Home,
-  Sparkles,
-  Briefcase,
-} from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import type { CategoryChildBreakdown } from "@/lib/api";
 import {
   approveTransactionCategory,
+  type CategoryDetail,
   getCategories,
   getCategoryDetail,
   updateBudget,
   updateCategoryBudgetMode,
   updateTransactionCategory,
-  type CategoryDetail,
 } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { Switch } from "@/components/ui/switch";
 import type { Category, TransactionWithCategory } from "@/lib/types";
-import type { CategoryChildBreakdown } from "@/lib/api";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   "shopping-basket": ShoppingBasket,
@@ -93,12 +79,7 @@ interface BudgetDetailSheetProps {
   onClose: () => void;
 }
 
-export function BudgetDetailSheet({
-  categoryId,
-  from,
-  to,
-  onClose,
-}: BudgetDetailSheetProps) {
+export function BudgetDetailSheet({ categoryId, from, to, onClose }: BudgetDetailSheetProps) {
   const open = categoryId !== null;
 
   const detailQuery = useQuery({
@@ -114,10 +95,7 @@ export function BudgetDetailSheet({
         if (!o) onClose();
       }}
     >
-      <SheetContent
-        side="right"
-        className="w-full p-0 sm:max-w-xl! md:max-w-2xl! lg:max-w-[35vw]!"
-      >
+      <SheetContent side="right" className="w-full p-0 sm:max-w-xl! md:max-w-2xl! lg:max-w-[35vw]!">
         {detailQuery.isLoading || !detailQuery.data ? (
           <DetailSkeleton />
         ) : (
@@ -163,10 +141,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
   };
 
   const handleToggleMode = async (checked: boolean) => {
-    await updateCategoryBudgetMode(
-      data.category.id,
-      checked ? "budgeted" : "tracking"
-    );
+    await updateCategoryBudgetMode(data.category.id, checked ? "budgeted" : "tracking");
     invalidate();
   };
 
@@ -187,7 +162,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
         amount: d.amount,
         date: d.date,
       })),
-    [data.dailySpend]
+    [data.dailySpend],
   );
 
   return (
@@ -197,16 +172,12 @@ function DetailContent({ data }: { data: CategoryDetail }) {
         style={{ background: tint(data.category.color, 0.22) }}
       >
         <div className="flex items-center gap-3">
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background/70"
-          >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background/70">
             <Icon className="h-5 w-5" style={{ color: iconColor }} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-              {data.category.kind === "income"
-                ? "Income category"
-                : "Expense category"}
+              {data.category.kind === "income" ? "Income category" : "Expense category"}
             </div>
             <SheetTitle className="truncate font-serif text-2xl font-normal">
               {data.category.name}
@@ -215,11 +186,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
           {data.category.kind !== "income" && (
             <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
               <span>Budget</span>
-              <Switch
-                size="sm"
-                checked={!isTracking}
-                onCheckedChange={handleToggleMode}
-              />
+              <Switch size="sm" checked={!isTracking} onCheckedChange={handleToggleMode} />
             </label>
           )}
         </div>
@@ -250,10 +217,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
                 isAuto={data.isAutoBudget}
                 onSave={handleSaveBudget}
               />
-              <Stat
-                label="Left"
-                value={formatCurrency(Math.max(0, data.budget - data.spent))}
-              />
+              <Stat label="Left" value={formatCurrency(Math.max(0, data.budget - data.spent))} />
             </div>
 
             {data.budget > 0 && (
@@ -331,10 +295,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
           <CardLabel>DAILY SPEND THIS PERIOD</CardLabel>
           <div className="mt-2 h-32">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ top: 8, right: 0, bottom: 4, left: 0 }}
-              >
+              <BarChart data={chartData} margin={{ top: 8, right: 0, bottom: 4, left: 0 }}>
                 <XAxis
                   dataKey="day"
                   tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
@@ -354,9 +315,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
                     };
                     return (
                       <div className="rounded-md border bg-popover px-2 py-1 text-xs shadow-md">
-                        <div className="font-medium">
-                          {formatDate(p.date)}
-                        </div>
+                        <div className="font-medium">{formatDate(p.date)}</div>
                         <div className="tabular-nums text-muted-foreground">
                           {formatCurrency(p.amount)}
                         </div>
@@ -383,9 +342,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
 
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-medium">
-              Transactions · {data.transactionCount}
-            </h3>
+            <h3 className="text-sm font-medium">Transactions · {data.transactionCount}</h3>
             <Button
               size="sm"
               variant="ghost"
@@ -404,14 +361,9 @@ function DetailContent({ data }: { data: CategoryDetail }) {
             ) : (
               <ul className="divide-y">
                 {data.transactions.map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between gap-3 px-4 py-2.5"
-                  >
+                  <li key={t.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <div className="min-w-0 flex-1">
-                      <div className="break-words text-sm font-medium">
-                        {t.description}
-                      </div>
+                      <div className="break-words text-sm font-medium">{t.description}</div>
                       <div className="text-xs text-muted-foreground tabular-nums">
                         {formatDate(t.date)}
                       </div>
@@ -470,14 +422,9 @@ function ChildrenBreakdownSection({
       ? "Budget set on this parent. Children's budgets are tracked individually but don't roll up here."
       : "Budget rolled up from sub-categories. Set a budget on this parent to override.";
   return (
-    <div
-      className="space-y-3 rounded-2xl p-4"
-      style={{ background: tint(color, 0.12) }}
-    >
+    <div className="space-y-3 rounded-2xl p-4" style={{ background: tint(color, 0.12) }}>
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-sm font-medium">
-          Sub-categories · {children.length}
-        </h3>
+        <h3 className="text-sm font-medium">Sub-categories · {children.length}</h3>
         <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
           {budgetSource === "own" ? "Own budget" : "Rolled up"}
         </span>
@@ -543,22 +490,14 @@ function NeedsReviewSection({
   color: string;
 }) {
   return (
-    <div
-      className="space-y-2 rounded-2xl p-4"
-      style={{ background: tint(color, 0.12) }}
-    >
+    <div className="space-y-2 rounded-2xl p-4" style={{ background: tint(color, 0.12) }}>
       <div className="flex items-center gap-2">
-        <HelpCircle
-          className="h-4 w-4"
-          style={{ color: "var(--status-heads-up)" }}
-        />
-        <h3 className="text-sm font-medium">
-          Needs review · {transactions.length}
-        </h3>
+        <HelpCircle className="h-4 w-4" style={{ color: "var(--status-heads-up)" }} />
+        <h3 className="text-sm font-medium">Needs review · {transactions.length}</h3>
       </div>
       <p className="text-xs text-muted-foreground">
-        The AI wasn&apos;t sure about these. Approve to keep, or pick a different
-        category. Either way, the choice is remembered for next time.
+        The AI wasn&apos;t sure about these. Approve to keep, or pick a different category. Either
+        way, the choice is remembered for next time.
       </p>
       <ul className="mt-2 space-y-2">
         {transactions.map((t) => (
@@ -567,18 +506,14 @@ function NeedsReviewSection({
             className="flex items-center justify-between gap-3 rounded-xl bg-background/70 p-3"
           >
             <div className="min-w-0 flex-1">
-              <div className="break-words text-sm font-medium">
-                {t.description}
-              </div>
+              <div className="break-words text-sm font-medium">{t.description}</div>
               <div className="text-xs text-muted-foreground tabular-nums">
                 {formatDate(t.date)} · {formatCurrency(t.chargedAmount)}
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <DropdownMenu>
-                <DropdownMenuTrigger
-                  className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-accent"
-                >
+                <DropdownMenuTrigger className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-accent">
                   <Badge
                     variant="outline"
                     className="border-none p-0"
@@ -592,10 +527,7 @@ function NeedsReviewSection({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {categories.map((cat) => (
-                    <DropdownMenuItem
-                      key={cat.id}
-                      onClick={() => onChange(t.id, cat.id)}
-                    >
+                    <DropdownMenuItem key={cat.id} onClick={() => onChange(t.id, cat.id)}>
                       <div
                         className="me-2 h-2 w-2 rounded-full"
                         style={{ backgroundColor: cat.color }}
@@ -605,11 +537,7 @@ function NeedsReviewSection({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button
-                size="sm"
-                className="h-7 gap-1 px-2 text-xs"
-                onClick={() => onApprove(t.id)}
-              >
+              <Button size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => onApprove(t.id)}>
                 <Check className="h-3.5 w-3.5" />
                 Approve
               </Button>
@@ -621,15 +549,7 @@ function NeedsReviewSection({
   );
 }
 
-function Stat({
-  label,
-  value,
-  sublabel,
-}: {
-  label: string;
-  value: string;
-  sublabel?: string;
-}) {
+function Stat({ label, value, sublabel }: { label: string; value: string; sublabel?: string }) {
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
@@ -637,9 +557,7 @@ function Stat({
       </div>
       <div className="mt-0.5 font-serif text-xl tabular-nums">{value}</div>
       {sublabel && (
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          {sublabel}
-        </div>
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{sublabel}</div>
       )}
     </div>
   );
@@ -741,9 +659,7 @@ function BudgetStat({
         </button>
       )}
       {!editing && isAuto && amount > 0 && (
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          auto
-        </div>
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">auto</div>
       )}
     </div>
   );
@@ -780,4 +696,3 @@ function parseHex(hex: string): { r: number; g: number; b: number } {
     b: parseInt(clean.slice(4, 6), 16),
   };
 }
-

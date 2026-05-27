@@ -1,12 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { useIsHydrated } from "@/hooks/use-is-hydrated";
 import { SectionShell, SettingCard } from "@/components/settings/section-shell";
+import { useIsHydrated } from "@/hooks/use-is-hydrated";
 import { getSettings, updateSettings } from "@/lib/api";
 import type { AppSettings } from "@/lib/types";
 
@@ -30,8 +30,7 @@ export default function AppearanceSettingsPage() {
   const storedLang: Lang = settings?.language ?? locale;
 
   const mutation = useMutation({
-    mutationFn: (next: Lang) =>
-      updateSettings({ language: next } as Partial<AppSettings>),
+    mutationFn: (next: Lang) => updateSettings({ language: next } as Partial<AppSettings>),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       toast.success(tCommon("saved"));
@@ -64,15 +63,11 @@ export default function AppearanceSettingsPage() {
                 key={o.value}
                 onClick={() => setTheme(o.value)}
                 className={`rounded-xl border p-4 text-start transition-colors ${
-                  isActive
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
+                  isActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
                 }`}
               >
                 <div className="font-medium">{o.label}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {o.description}
-                </div>
+                <div className="mt-1 text-xs text-muted-foreground">{o.description}</div>
               </button>
             );
           })}
@@ -93,15 +88,10 @@ export default function AppearanceSettingsPage() {
                 }}
                 disabled={mutation.isPending}
                 className={`rounded-xl border p-4 text-start transition-colors ${
-                  isActive
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
+                  isActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
                 } disabled:opacity-60`}
               >
-                <div
-                  className="font-medium"
-                  dir={o.value === "he" ? "rtl" : "ltr"}
-                >
+                <div className="font-medium" dir={o.value === "he" ? "rtl" : "ltr"}>
                   {o.label}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">

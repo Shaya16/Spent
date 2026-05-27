@@ -1,10 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { CardShell, CardAction } from "./card-shell";
 import { formatCurrency } from "@/lib/formatters";
 import { translateCategoryName } from "@/lib/i18n-data";
 import type { HomeCategorySnapshotItem } from "@/lib/types";
+import { CardAction, CardShell } from "./card-shell";
 
 interface Props {
   items: HomeCategorySnapshotItem[];
@@ -50,10 +50,7 @@ function Row({ item }: { item: HomeCategorySnapshotItem }) {
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-sm"
-            style={{ backgroundColor: color }}
-          />
+          <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: color }} />
           <span className="truncate text-sm font-medium">{name}</span>
         </div>
         <div className="shrink-0 text-end">

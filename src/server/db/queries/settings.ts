@@ -1,15 +1,15 @@
 import "server-only";
 
+import { type AppSettings, RECOMMENDED_GEMINI_MODELS } from "@/lib/types";
 import { getDb } from "../index";
-import type { AppSettings } from "@/lib/types";
 
 // Global settings live in the `settings` table and apply to every workspace.
-// Currently: ai_provider, ai_ollama_url, ai_ollama_model, plus the encrypted
-// Claude API key triple (ai_api_key_encrypted/iv/auth_tag).
+// Currently: ai_provider, ai_ollama_url, ai_ollama_model, ai_gemini_model,
+// plus encrypted Claude/Gemini API key triples.
 export function getGlobalSetting(key: string): string | null {
-  const row = getDb()
-    .prepare("SELECT value FROM settings WHERE key = ?")
-    .get(key) as { value: string } | undefined;
+  const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
+    | { value: string }
+    | undefined;
   return row?.value ?? null;
 }
 
@@ -17,7 +17,7 @@ export function setGlobalSetting(key: string, value: string): void {
   getDb()
     .prepare(
       `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
     )
     .run(key, value);
 }
@@ -28,30 +28,21 @@ export function deleteGlobalSetting(key: string): void {
 
 // Per-workspace settings live in `workspace_settings`.
 // Currently: months_to_sync, payday_day, scraper_show_browser.
-export function getWorkspaceSetting(
-  workspaceId: number,
-  key: string
-): string | null {
+export function getWorkspaceSetting(workspaceId: number, key: string): string | null {
   const row = getDb()
-    .prepare(
-      "SELECT value FROM workspace_settings WHERE workspace_id = ? AND key = ?"
-    )
+    .prepare("SELECT value FROM workspace_settings WHERE workspace_id = ? AND key = ?")
     .get(workspaceId, key) as { value: string } | undefined;
   return row?.value ?? null;
 }
 
-export function setWorkspaceSetting(
-  workspaceId: number,
-  key: string,
-  value: string
-): void {
+export function setWorkspaceSetting(workspaceId: number, key: string, value: string): void {
   getDb()
     .prepare(
       `INSERT INTO workspace_settings (workspace_id, key, value, updated_at)
        VALUES (?, ?, ?, datetime('now'))
        ON CONFLICT(workspace_id, key) DO UPDATE SET
          value = excluded.value,
-         updated_at = excluded.updated_at`
+         updated_at = excluded.updated_at`,
     )
     .run(workspaceId, key, value);
 }
@@ -62,6 +53,7 @@ export const getSetting = getGlobalSetting;
 export const setSetting = setGlobalSetting;
 
 const AUTO_SYNC_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DEFAULT_GEMINI_MODEL = RECOMMENDED_GEMINI_MODELS[0].name;
 
 export function getAppSettings(workspaceId: number): AppSettings {
   const targetRaw = getWorkspaceSetting(workspaceId, "monthly_target");
@@ -71,21 +63,21 @@ export function getAppSettings(workspaceId: number): AppSettings {
   return {
     monthsToSync: Number(getWorkspaceSetting(workspaceId, "months_to_sync") ?? "3"),
     aiProvider: (getGlobalSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
+    geminiModel: getGlobalSetting("ai_gemini_model") ?? DEFAULT_GEMINI_MODEL,
     ollamaUrl: getGlobalSetting("ai_ollama_url") ?? "http://localhost:11434",
     ollamaModel: getGlobalSetting("ai_ollama_model") ?? "llama3.2:3b",
     showBrowser: getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true",
     paydayDay: Number(getWorkspaceSetting(workspaceId, "payday_day") ?? "1"),
     monthlyTarget: Number.isFinite(target) && target > 0 ? target : null,
     autoSyncEnabled: getGlobalSetting("auto_sync_enabled") === "true",
-    autoSyncTime:
-      storedTime && AUTO_SYNC_TIME_RE.test(storedTime) ? storedTime : "06:00",
+    autoSyncTime: storedTime && AUTO_SYNC_TIME_RE.test(storedTime) ? storedTime : "06:00",
     language: storedLang === "he" ? "he" : "en",
   };
 }
 
 export function updateAppSettings(
   workspaceId: number,
-  settings: Partial<AppSettings>
+  settings: Partial<AppSettings>,
 ): AppSettings {
   const db = getDb();
   const update = db.transaction(() => {
@@ -101,11 +93,14 @@ export function updateAppSettings(
     if (settings.ollamaModel !== undefined) {
       setGlobalSetting("ai_ollama_model", settings.ollamaModel);
     }
+    if (settings.geminiModel !== undefined) {
+      setGlobalSetting("ai_gemini_model", settings.geminiModel);
+    }
     if (settings.showBrowser !== undefined) {
       setWorkspaceSetting(
         workspaceId,
         "scraper_show_browser",
-        settings.showBrowser ? "true" : "false"
+        settings.showBrowser ? "true" : "false",
       );
     }
     if (settings.paydayDay !== undefined) {
@@ -116,19 +111,14 @@ export function updateAppSettings(
       const t = settings.monthlyTarget;
       if (t == null || !Number.isFinite(t) || t <= 0) {
         getDb()
-          .prepare(
-            "DELETE FROM workspace_settings WHERE workspace_id = ? AND key = ?"
-          )
+          .prepare("DELETE FROM workspace_settings WHERE workspace_id = ? AND key = ?")
           .run(workspaceId, "monthly_target");
       } else {
         setWorkspaceSetting(workspaceId, "monthly_target", String(Math.round(t)));
       }
     }
     if (settings.autoSyncEnabled !== undefined) {
-      setGlobalSetting(
-        "auto_sync_enabled",
-        settings.autoSyncEnabled ? "true" : "false"
-      );
+      setGlobalSetting("auto_sync_enabled", settings.autoSyncEnabled ? "true" : "false");
     }
     if (settings.autoSyncTime !== undefined) {
       if (!AUTO_SYNC_TIME_RE.test(settings.autoSyncTime)) {

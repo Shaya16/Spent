@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Mirror of setup.mjs: tear down everything `npm run setup` installed.
+// Mirror of setup.mjs: tear down everything `bun run setup` installed.
 // The data/ directory and the repo itself are deliberately NOT touched:
 // uninstall is about removing the always-on service and the menubar, not
 // the user's transactions and encryption key.
@@ -57,10 +57,7 @@ async function macUninstall() {
   step("Removing Login Item");
   const r = spawnSync(
     "osascript",
-    [
-      "-e",
-      'tell application "System Events" to delete (every login item whose name is "Spent")',
-    ],
+    ["-e", 'tell application "System Events" to delete (every login item whose name is "Spent")'],
     { encoding: "utf-8" },
   );
   if (r.status === 0) {

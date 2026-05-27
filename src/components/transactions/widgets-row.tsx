@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocale, useTranslations } from "next-intl";
 import { ArrowDownRight, ArrowUpRight, HelpCircle } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useState } from "react";
 import { toast } from "sonner";
-import { previewCategorize } from "@/lib/api";
-import type { CategorizePreview, TransactionsSummary } from "@/lib/api";
-import { formatCurrency } from "@/lib/formatters";
 import { CategorizeReviewDialog } from "@/components/dashboard/categorize-review-dialog";
 import type { Locale } from "@/i18n/routing";
+import type { CategorizePreview, TransactionsSummary } from "@/lib/api";
+import { previewCategorize } from "@/lib/api";
+import { formatCurrency } from "@/lib/formatters";
 
 interface WidgetsRowProps {
   summary?: TransactionsSummary;
@@ -29,11 +29,7 @@ export function WidgetsRow({ summary, loading }: WidgetsRowProps) {
       </div>
       <div className="flex flex-col gap-4">
         <PendingReview count={pendingReviewCount} loading={loading} />
-        <Outliers
-          largestIncome={largestIncome}
-          largestExpense={largestExpense}
-          loading={loading}
-        />
+        <Outliers largestIncome={largestIncome} largestExpense={largestExpense} loading={loading} />
       </div>
     </div>
   );
@@ -59,17 +55,12 @@ function TopMerchants({ merchants, loading }: TopMerchantsProps) {
           <div className="text-sm text-muted-foreground">{t("noMerchantsYet")}</div>
         ) : (
           merchants.map((m, idx) => (
-            <div
-              key={m.description}
-              className="flex items-center justify-between gap-3 py-1"
-            >
+            <div key={m.description} className="flex items-center justify-between gap-3 py-1">
               <div className="flex min-w-0 items-center gap-3">
                 <span className="w-4 text-end text-xs tabular-nums text-muted-foreground">
                   {idx + 1}
                 </span>
-                <div className="min-w-0 flex-1 truncate text-sm font-medium">
-                  {m.description}
-                </div>
+                <div className="min-w-0 flex-1 truncate text-sm font-medium">{m.description}</div>
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span className="text-xs text-muted-foreground">
@@ -108,9 +99,7 @@ function PendingReview({ count, loading }: PendingReviewProps) {
       setPreview(data);
     },
     onError: (err) => {
-      toast.error(
-        err instanceof Error ? err.message : tDash("categorizationFailed")
-      );
+      toast.error(err instanceof Error ? err.message : tDash("categorizationFailed"));
     },
   });
 
@@ -120,9 +109,7 @@ function PendingReview({ count, loading }: PendingReviewProps) {
         <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
           {t("pendingReview")}
         </div>
-        <div className="mt-2 text-sm text-muted-foreground">
-          {t("nothingFlagged")}
-        </div>
+        <div className="mt-2 text-sm text-muted-foreground">{t("nothingFlagged")}</div>
       </div>
     );
   }
@@ -137,8 +124,7 @@ function PendingReview({ count, loading }: PendingReviewProps) {
           <div
             className="flex h-7 w-7 items-center justify-center rounded-full"
             style={{
-              backgroundColor:
-                "color-mix(in oklch, var(--status-heads-up) 18%, transparent)",
+              backgroundColor: "color-mix(in oklch, var(--status-heads-up) 18%, transparent)",
               color: "var(--status-heads-up)",
             }}
           >
@@ -239,13 +225,8 @@ function OutlierRow({
         <div className="mt-0.5 text-sm text-muted-foreground">—</div>
       ) : (
         <div className="mt-0.5 flex items-baseline justify-between gap-3">
-          <div className="min-w-0 truncate text-sm font-medium">
-            {txn.description}
-          </div>
-          <div
-            className="shrink-0 font-serif text-base tabular-nums"
-            style={{ color }}
-          >
+          <div className="min-w-0 truncate text-sm font-medium">{txn.description}</div>
+          <div className="shrink-0 font-serif text-base tabular-nums" style={{ color }}>
             {formatCurrency(txn.chargedAmount, "ILS", locale)}
           </div>
         </div>

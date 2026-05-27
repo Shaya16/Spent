@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Fraunces, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist_Mono, Inter } from "next/font/google";
 import { getLocale, getMessages } from "next-intl/server";
-import { I18nProvider } from "@/i18n/client-provider";
-import { ThemeProvider } from "@/components/theme-provider";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/query-provider";
-import { dirFor, isLocale, defaultLocale } from "@/i18n/routing";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { I18nProvider } from "@/i18n/client-provider";
+import { defaultLocale, dirFor, isLocale } from "@/i18n/routing";
 import "./globals.css";
 
 const inter = Inter({

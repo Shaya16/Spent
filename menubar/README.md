@@ -33,6 +33,6 @@ Requires .NET 8 SDK (`winget install Microsoft.DotNet.SDK.8`). Builds a self-con
 
 ## What both apps assume
 
-- The Spent server is already installed as a background service via `npm run service:install` (LaunchAgent on Mac, scheduled task on Windows).
+- The Spent server is already installed as a background service via `bun run service:install` (LaunchAgent on Mac, scheduled task on Windows).
 - The service binds to `127.0.0.1:41234`. The tray apps will not connect to any other host.
 - Start/Stop calls go to `launchctl bootstrap|bootout com.spent.app` (Mac) or `schtasks /Run|/End /TN Spent` (Windows).

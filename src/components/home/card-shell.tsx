@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface CardShellProps {
   label?: string;
@@ -18,7 +18,7 @@ export function CardShell({ label, action, children, className }: CardShellProps
     <div
       className={cn(
         "flex h-full flex-col rounded-3xl border border-border bg-card p-5 md:p-6",
-        className
+        className,
       )}
     >
       {(label || action) && (
@@ -28,9 +28,7 @@ export function CardShell({ label, action, children, className }: CardShellProps
               {label}
             </h3>
           )}
-          {action && (
-            <div className="text-xs text-muted-foreground">{action}</div>
-          )}
+          {action && <div className="text-xs text-muted-foreground">{action}</div>}
         </div>
       )}
       {children}
@@ -40,10 +38,7 @@ export function CardShell({ label, action, children, className }: CardShellProps
 
 export function CardAction({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="underline-offset-4 hover:text-foreground hover:underline"
-    >
+    <Link href={href} className="underline-offset-4 hover:text-foreground hover:underline">
       {children}
     </Link>
   );

@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { startSync, type SyncProgressEvent } from "@/lib/api";
+import { type SyncProgressEvent, startSync } from "@/lib/api";
 
 export interface SyncState {
   syncing: boolean;
@@ -67,7 +67,7 @@ export function useBankSync() {
             categorized: number;
           };
           toast.success(
-            `Sync complete: ${data.added} new, ${data.updated} updated, ${data.categorized} categorized`
+            `Sync complete: ${data.added} new, ${data.updated} updated, ${data.categorized} categorized`,
           );
           queryClient.invalidateQueries({ queryKey: ["integrations"] });
           queryClient.invalidateQueries({ queryKey: ["summary"] });
@@ -84,7 +84,7 @@ export function useBankSync() {
         }
       });
     },
-    [queryClient]
+    [queryClient],
   );
 
   const stateFor = (credentialId: number): SyncState =>

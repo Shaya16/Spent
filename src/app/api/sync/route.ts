@@ -1,19 +1,9 @@
-import {
-  runAllWorkspaces,
-  syncWorkspace,
-  type WorkspaceSummary,
-} from "@/server/sync/orchestrator";
-import {
-  getWorkspaceIdFromRequest,
-  hasWorkspaceHeader,
-} from "@/server/lib/workspace-context";
-import { cancelOtpRequest } from "@/server/sync/otp-bridge";
+import { getWorkspaceIdFromRequest, hasWorkspaceHeader } from "@/server/lib/workspace-context";
 import { markSyncEnd, markSyncStart } from "@/server/sync/activity";
+import { runAllWorkspaces, syncWorkspace, type WorkspaceSummary } from "@/server/sync/orchestrator";
+import { cancelOtpRequest } from "@/server/sync/otp-bridge";
 
-function sseEvent(
-  event: string,
-  data: Record<string, unknown>
-): string {
+function sseEvent(event: string, data: Record<string, unknown>): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
@@ -22,9 +12,7 @@ export async function POST(request: Request) {
     credentialId?: number;
   };
   const filterCredentialId =
-    body.credentialId != null && Number.isFinite(body.credentialId)
-      ? body.credentialId
-      : undefined;
+    body.credentialId != null && Number.isFinite(body.credentialId) ? body.credentialId : undefined;
 
   // When the request includes X-Workspace-ID we sync only that workspace
   // (the in-app "Sync now" button). When it's absent we treat it as a
@@ -60,19 +48,14 @@ export async function POST(request: Request) {
         const summaries: WorkspaceSummary[] = [];
         if (headerPresent) {
           const workspaceId = getWorkspaceIdFromRequest(request);
-          summaries.push(
-            await syncWorkspace(workspaceId, filterCredentialId, send)
-          );
+          summaries.push(await syncWorkspace(workspaceId, filterCredentialId, send));
         } else {
           summaries.push(...(await runAllWorkspaces(filterCredentialId, send)));
         }
 
         const totalAdded = summaries.reduce((s, w) => s + w.added, 0);
         const totalUpdated = summaries.reduce((s, w) => s + w.updated, 0);
-        const totalCategorized = summaries.reduce(
-          (s, w) => s + w.categorized,
-          0
-        );
+        const totalCategorized = summaries.reduce((s, w) => s + w.categorized, 0);
         const firstWarning = summaries.find((w) => w.aiWarning)?.aiWarning ?? null;
 
         if (headerPresent && summaries.length === 1) {

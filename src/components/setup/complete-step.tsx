@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { listIntegrations, getSettings } from "@/lib/api";
+import { getSettings, listIntegrations } from "@/lib/api";
 import { BANK_PROVIDERS } from "@/lib/types";
 import { ProviderBadge } from "./provider-badge";
 
@@ -33,9 +33,11 @@ export function CompleteStep({ onFinish }: CompleteStepProps) {
   const aiLabel =
     settings?.aiProvider === "claude"
       ? "Claude (Anthropic)"
-      : settings?.aiProvider === "ollama"
-        ? `Ollama · ${settings?.ollamaModel ?? "local"}`
-        : "Manual categorization";
+      : settings?.aiProvider === "gemini"
+        ? `Gemini · ${settings?.geminiModel ?? "stable"}`
+        : settings?.aiProvider === "ollama"
+          ? `Ollama · ${settings?.ollamaModel ?? "local"}`
+          : "Manual categorization";
 
   return (
     <div className="mx-auto w-full max-w-[520px] space-y-7 text-center">
@@ -50,16 +52,8 @@ export function CompleteStep({ onFinish }: CompleteStepProps) {
         }}
         className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/15"
       >
-        <img
-          src="/logo_lightmode.svg"
-          alt="Spent"
-          className="h-12 w-auto dark:hidden"
-        />
-        <img
-          src="/logo_darkmode.svg"
-          alt="Spent"
-          className="hidden h-12 w-auto dark:block"
-        />
+        <img src="/logo_lightmode.svg" alt="Spent" className="h-12 w-auto dark:hidden" />
+        <img src="/logo_darkmode.svg" alt="Spent" className="hidden h-12 w-auto dark:block" />
       </motion.div>
 
       <div>
@@ -80,8 +74,8 @@ export function CompleteStep({ onFinish }: CompleteStepProps) {
           transition={{ delay: 0.22 }}
           className="mx-auto mt-2 max-w-md text-sm text-muted-foreground"
         >
-          When you click below, Spent will pull your transactions and bucket
-          them up. You can re-sync any time from the dashboard or settings.
+          When you click below, Spent will pull your transactions and bucket them up. You can
+          re-sync any time from the dashboard or settings.
         </motion.p>
       </div>
 
@@ -167,7 +161,7 @@ function ImportProgress() {
           if (idx < i) return { ...s, state: "done" };
           if (idx === i) return { ...s, state: "active" };
           return { ...s, state: "todo" };
-        })
+        }),
       );
       if (i >= 4) clearInterval(id);
     }, 850);
@@ -184,20 +178,12 @@ function ImportProgress() {
       {steps.map((s, i) => (
         <div
           key={s.id}
-          className={`flex items-center gap-3 py-2 ${
-            i > 0 ? "border-t border-border/40" : ""
-          }`}
+          className={`flex items-center gap-3 py-2 ${i > 0 ? "border-t border-border/40" : ""}`}
         >
           <motion.div
-            animate={
-              s.state === "active"
-                ? { scale: [1, 1.06, 1] }
-                : { scale: 1 }
-            }
+            animate={s.state === "active" ? { scale: [1, 1.06, 1] } : { scale: 1 }}
             transition={
-              s.state === "active"
-                ? { duration: 1.2, repeat: Infinity }
-                : { duration: 0.2 }
+              s.state === "active" ? { duration: 1.2, repeat: Infinity } : { duration: 0.2 }
             }
             className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
             style={{
@@ -244,9 +230,7 @@ function ImportProgress() {
             {s.label}
           </span>
           {s.state === "active" && (
-            <span className="ms-auto font-mono text-[11px] text-muted-foreground">
-              working...
-            </span>
+            <span className="ms-auto font-mono text-[11px] text-muted-foreground">working...</span>
           )}
         </div>
       ))}

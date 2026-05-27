@@ -4,10 +4,7 @@ import type { BankProvider } from "@/lib/types";
 
 export type TransactionKind = "expense" | "income" | "transfer";
 
-const BANK_PROVIDERS_SET: ReadonlySet<BankProvider> = new Set<BankProvider>([
-  "hapoalim",
-  "leumi",
-]);
+const BANK_PROVIDERS_SET: ReadonlySet<BankProvider> = new Set<BankProvider>(["hapoalim", "leumi"]);
 
 export const CREDIT_CARD_PAYMENT_PATTERNS: readonly RegExp[] = [
   /ויזה/i,
@@ -44,7 +41,7 @@ function matchesTransferPattern(description: string): boolean {
 export function detectKind(
   description: string,
   provider: string,
-  chargedAmount: number
+  chargedAmount: number,
 ): TransactionKind {
   if (isBankProvider(provider) && matchesTransferPattern(description)) {
     return "transfer";

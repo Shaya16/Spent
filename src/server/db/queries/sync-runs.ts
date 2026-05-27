@@ -1,34 +1,30 @@
 import "server-only";
 
-import { getDb } from "../index";
 import type { SyncRun } from "@/lib/types";
+import { getDb } from "../index";
 
 export function createSyncRun(
   workspaceId: number,
   provider: string,
   credentialId: number,
-  scrapeFromDate: string
+  scrapeFromDate: string,
 ): number {
   const result = getDb()
     .prepare(
       `INSERT INTO sync_runs (workspace_id, provider, credential_id, started_at, status, scrape_from_date)
-       VALUES (?, ?, ?, datetime('now'), 'running', ?)`
+       VALUES (?, ?, ?, datetime('now'), 'running', ?)`,
     )
     .run(workspaceId, provider, credentialId, scrapeFromDate);
   return Number(result.lastInsertRowid);
 }
 
-export function completeSyncRun(
-  id: number,
-  added: number,
-  updated: number
-): void {
+export function completeSyncRun(id: number, added: number, updated: number): void {
   getDb()
     .prepare(
       `UPDATE sync_runs
        SET status = 'completed', completed_at = datetime('now'),
            transactions_added = ?, transactions_updated = ?
-       WHERE id = ?`
+       WHERE id = ?`,
     )
     .run(added, updated, id);
 }
@@ -38,7 +34,7 @@ export function failSyncRun(id: number, errorMessage: string): void {
     .prepare(
       `UPDATE sync_runs
        SET status = 'failed', completed_at = datetime('now'), error_message = ?
-       WHERE id = ?`
+       WHERE id = ?`,
     )
     .run(errorMessage, id);
 }
@@ -53,22 +49,20 @@ interface ProviderStats {
 export function getCredentialStats(
   workspaceId: number,
   credentialId: number,
-  provider: string
+  provider: string,
 ): ProviderStats {
   const db = getDb();
   const lastRun = db
     .prepare(
       `SELECT completed_at, status FROM sync_runs
        WHERE workspace_id = ? AND credential_id = ? AND status = 'completed'
-       ORDER BY started_at DESC LIMIT 1`
+       ORDER BY started_at DESC LIMIT 1`,
     )
-    .get(workspaceId, credentialId) as
-    | { completed_at: string; status: string }
-    | undefined;
+    .get(workspaceId, credentialId) as { completed_at: string; status: string } | undefined;
   const txnCount = db
     .prepare(
       `SELECT COUNT(*) as count FROM transactions
-       WHERE workspace_id = ? AND credential_id = ?`
+       WHERE workspace_id = ? AND credential_id = ?`,
     )
     .get(workspaceId, credentialId) as { count: number };
   return {
@@ -79,21 +73,16 @@ export function getCredentialStats(
   };
 }
 
-export function getLastSyncRun(
-  workspaceId: number,
-  provider?: string
-): SyncRun | null {
+export function getLastSyncRun(workspaceId: number, provider?: string): SyncRun | null {
   const db = getDb();
   const row = provider
     ? db
         .prepare(
-          `SELECT * FROM sync_runs WHERE workspace_id = ? AND provider = ? ORDER BY started_at DESC LIMIT 1`
+          `SELECT * FROM sync_runs WHERE workspace_id = ? AND provider = ? ORDER BY started_at DESC LIMIT 1`,
         )
         .get(workspaceId, provider)
     : db
-        .prepare(
-          `SELECT * FROM sync_runs WHERE workspace_id = ? ORDER BY started_at DESC LIMIT 1`
-        )
+        .prepare(`SELECT * FROM sync_runs WHERE workspace_id = ? ORDER BY started_at DESC LIMIT 1`)
         .get(workspaceId);
 
   if (!row) return null;

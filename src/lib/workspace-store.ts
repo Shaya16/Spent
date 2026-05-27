@@ -55,6 +55,6 @@ export function useActiveWorkspaceId(): number | null {
   return useSyncExternalStore(
     subscribe,
     () => memValue,
-    () => null
+    () => null,
   );
 }

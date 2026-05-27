@@ -13,11 +13,7 @@ export function daysInMonth(year: number, monthZeroBased: number): number {
  * Day number (1-based) within the given month "today" maps to.
  * Clamps to [1, daysInMonth] if today is outside that month.
  */
-export function dayWithinMonth(
-  today: Date,
-  year: number,
-  monthZeroBased: number
-): number {
+export function dayWithinMonth(today: Date, year: number, monthZeroBased: number): number {
   const total = daysInMonth(year, monthZeroBased);
   if (today.getFullYear() !== year || today.getMonth() !== monthZeroBased) {
     if (
@@ -61,7 +57,7 @@ export function daysUntil(date: Date, from: Date = new Date()): number {
 export function computeStatus(
   spent: number,
   budget: number,
-  timeElapsedPercent: number
+  timeElapsedPercent: number,
 ): BudgetStatus {
   if (budget <= 0) return "on-track";
   const pctSpent = (spent / budget) * 100;
@@ -85,7 +81,7 @@ export function pacePhrase(
   budgetedSpent: number,
   totalBudget: number,
   timeElapsedPercent: number,
-  monthLabel: string
+  monthLabel: string,
 ): string {
   if (totalBudget <= 0) {
     return `You've spent ${formatILS(displaySpent)} this ${monthLabel}.`;

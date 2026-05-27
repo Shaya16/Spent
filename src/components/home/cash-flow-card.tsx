@@ -1,10 +1,10 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { CardShell } from "./card-shell";
+import { useTranslations } from "next-intl";
 import { formatCurrency } from "@/lib/formatters";
 import type { HomeCashFlow } from "@/lib/types";
+import { CardShell } from "./card-shell";
 
 interface Props {
   data: HomeCashFlow;
@@ -40,9 +40,7 @@ export function CashFlowCard({ data }: Props) {
             </span>
             <span
               className={`font-serif text-2xl tabular-nums ${
-                netPositive
-                  ? "text-[var(--status-on-track)]"
-                  : "text-[var(--status-over)]"
+                netPositive ? "text-[var(--status-on-track)]" : "text-[var(--status-over)]"
               }`}
             >
               {netPositive ? "+" : "−"}

@@ -1,23 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  BANK_PROVIDERS,
-  type BankKind,
-  type BankProviderInfo,
-} from "@/lib/types";
-import {
+  deleteIntegration,
+  getIntegrationCredentials,
   listIntegrations,
   saveBankCredentials,
   testBankConnection,
-  getIntegrationCredentials,
-  deleteIntegration,
 } from "@/lib/api";
+import { BANK_PROVIDERS, type BankKind, type BankProviderInfo } from "@/lib/types";
 import { ProviderBadge } from "./provider-badge";
 import { TwoFactorSection } from "./two-factor-section";
 
@@ -44,12 +40,14 @@ export function BankStep({ onComplete }: BankStepProps) {
   const [filter, setFilter] = useState<"all" | BankKind>("all");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingCredentialId, setEditingCredentialId] = useState<number | null>(
-    null
-  );
+  const [editingCredentialId, setEditingCredentialId] = useState<number | null>(null);
   const [sub, setSub] = useState<Sub | null>(null);
 
-  const { data: integrations = [], isPending, refetch } = useQuery({
+  const {
+    data: integrations = [],
+    isPending,
+    refetch,
+  } = useQuery({
     queryKey: ["integrations"],
     queryFn: listIntegrations,
   });
@@ -61,9 +59,7 @@ export function BankStep({ onComplete }: BankStepProps) {
   }, [isPending, integrations.length, sub]);
 
   const connectedIds = new Set(integrations.map((i) => i.provider));
-  const selected = selectedId
-    ? (BANK_PROVIDERS.find((p) => p.id === selectedId) ?? null)
-    : null;
+  const selected = selectedId ? (BANK_PROVIDERS.find((p) => p.id === selectedId) ?? null) : null;
 
   const filteredProviders = BANK_PROVIDERS.filter((p) => {
     if (filter !== "all" && p.kind !== filter) return false;
@@ -106,7 +102,7 @@ export function BankStep({ onComplete }: BankStepProps) {
 
   const editingIntegration =
     editingCredentialId != null
-      ? integrations.find((i) => i.id === editingCredentialId) ?? null
+      ? (integrations.find((i) => i.id === editingCredentialId) ?? null)
       : null;
 
   function handleRemoved() {
@@ -127,184 +123,156 @@ export function BankStep({ onComplete }: BankStepProps) {
   return (
     <div className="mx-auto flex w-full max-w-[520px] flex-col gap-6">
       {sub === "pick" && (
-          <div
-            key="pick"
-            className="flex w-full flex-col gap-4"
-          >
-            {integrations.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSub("ready")}
-                className="self-start text-xs font-medium text-muted-foreground hover:text-foreground"
-              >
-                ← back to connected accounts
-              </button>
-            )}
-            <header className="space-y-2">
-              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Step 1 of 5 · Accounts
-              </div>
-              <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
-                Which accounts should Spent watch?
-              </h1>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Add every bank and card you want to track. Credentials are
-                encrypted with AES-256 and stored on this machine only, never
-                leaving your computer.
-              </p>
-            </header>
-
-            <PickerCard
-              providers={filteredProviders}
-              total={BANK_PROVIDERS.length}
-              connectedIds={connectedIds}
-              filter={filter}
-              onFilter={setFilter}
-              search={search}
-              onSearch={setSearch}
-              onPick={handlePick}
-            />
-
-            <p className="text-xs italic text-muted-foreground">
-              Don&apos;t see your bank?{" "}
-              <a
-                href="https://github.com/Shaya16/Spent/issues"
-                target="_blank"
-                rel="noreferrer"
-                className="text-foreground underline decoration-primary underline-offset-2"
-              >
-                Open an issue
-              </a>{" "}
-              and we&apos;ll add a scraper.
-            </p>
-          </div>
-        )}
-
-        {sub === "form" && selected && (
-          <div
-            key={`form-${selected.id}`}
-            className="flex w-full flex-col gap-4"
-          >
+        <div key="pick" className="flex w-full flex-col gap-4">
+          {integrations.length > 0 && (
             <button
               type="button"
-              onClick={handleCloseForm}
+              onClick={() => setSub("ready")}
               className="self-start text-xs font-medium text-muted-foreground hover:text-foreground"
             >
-              ← back to providers
+              ← back to connected accounts
             </button>
-            <header className="space-y-2">
-              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Step 1 of 5 · Connecting {selected.name}
-              </div>
-              <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
-                Sign in to {selected.name}
-              </h1>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Same credentials you use at{" "}
-                <span className="text-foreground">{selected.domain}</span>.
-                They&apos;re encrypted locally, nothing leaves this machine.
-              </p>
-            </header>
-
-            <CredentialForm
-              key={`${selected.id}-${editingCredentialId ?? "new"}`}
-              info={selected}
-              credentialId={editingCredentialId}
-              initialLabel={editingIntegration?.label ?? ""}
-              isEdit={editingCredentialId != null}
-              onClose={handleCloseForm}
-              onSaved={handleSaved}
-            />
-          </div>
-        )}
-
-        {sub === "ready" && integrations.length > 0 && (
-          <div
-            key="ready"
-            className="flex w-full flex-col gap-4"
-          >
-            <header className="space-y-2">
-              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Step 1 of 5 · Accounts
-              </div>
-              <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
-                {readyCountLabel}
-              </h1>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                You can always come back from Settings to add or remove accounts.
-              </p>
-            </header>
-
-            <div className="w-full space-y-2 text-start">
-              <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                Connected · {integrations.length}
-              </div>
-              <AnimatePresence initial={false}>
-                {integrations.map((integ) => {
-                  const info = BANK_PROVIDERS.find(
-                    (p) => p.id === integ.provider
-                  );
-                  if (!info) return null;
-                  return (
-                    <motion.div
-                      key={integ.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -16, height: 0 }}
-                      transition={{ duration: 0.22 }}
-                      className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
-                    >
-                      <ProviderBadge
-                        color={info.color}
-                        name={info.name}
-                        domain={info.domain}
-                        size={36}
-                        radius={9}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-bold tracking-tight">
-                          {integ.label}
-                        </div>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">
-                          {info.name}
-                        </div>
-                      </div>
-                      <span className="rounded-full bg-primary/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-primary">
-                        ✓ Ready
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleEditCredential(integ.id)}
-                        className="rounded-md px-2 py-1 text-xs font-medium hover:bg-accent"
-                      >
-                        Edit
-                      </button>
-                      <RemoveButton
-                        credentialId={integ.id}
-                        onRemoved={handleRemoved}
-                      />
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+          )}
+          <header className="space-y-2">
+            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              Step 1 of 5 · Accounts
             </div>
+            <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
+              Which accounts should Spent watch?
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Add every bank and card you want to track. Credentials are encrypted with AES-256 and
+              stored on this machine only, never leaving your computer.
+            </p>
+          </header>
 
-            <footer className="mt-2 flex items-center justify-between pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setSub("pick")}
-              >
-                + Add another account
-              </Button>
-              <Button
-                onClick={onComplete}
-                disabled={integrations.length === 0}
-              >
-                Continue to AI →
-              </Button>
-            </footer>
+          <PickerCard
+            providers={filteredProviders}
+            total={BANK_PROVIDERS.length}
+            connectedIds={connectedIds}
+            filter={filter}
+            onFilter={setFilter}
+            search={search}
+            onSearch={setSearch}
+            onPick={handlePick}
+          />
+
+          <p className="text-xs italic text-muted-foreground">
+            Don&apos;t see your bank?{" "}
+            <a
+              href="https://github.com/Shaya16/Spent/issues"
+              target="_blank"
+              rel="noreferrer"
+              className="text-foreground underline decoration-primary underline-offset-2"
+            >
+              Open an issue
+            </a>{" "}
+            and we&apos;ll add a scraper.
+          </p>
+        </div>
+      )}
+
+      {sub === "form" && selected && (
+        <div key={`form-${selected.id}`} className="flex w-full flex-col gap-4">
+          <button
+            type="button"
+            onClick={handleCloseForm}
+            className="self-start text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            ← back to providers
+          </button>
+          <header className="space-y-2">
+            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              Step 1 of 5 · Connecting {selected.name}
+            </div>
+            <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
+              Sign in to {selected.name}
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Same credentials you use at <span className="text-foreground">{selected.domain}</span>
+              . They&apos;re encrypted locally, nothing leaves this machine.
+            </p>
+          </header>
+
+          <CredentialForm
+            key={`${selected.id}-${editingCredentialId ?? "new"}`}
+            info={selected}
+            credentialId={editingCredentialId}
+            initialLabel={editingIntegration?.label ?? ""}
+            isEdit={editingCredentialId != null}
+            onClose={handleCloseForm}
+            onSaved={handleSaved}
+          />
+        </div>
+      )}
+
+      {sub === "ready" && integrations.length > 0 && (
+        <div key="ready" className="flex w-full flex-col gap-4">
+          <header className="space-y-2">
+            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              Step 1 of 5 · Accounts
+            </div>
+            <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">{readyCountLabel}</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              You can always come back from Settings to add or remove accounts.
+            </p>
+          </header>
+
+          <div className="w-full space-y-2 text-start">
+            <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Connected · {integrations.length}
+            </div>
+            <AnimatePresence initial={false}>
+              {integrations.map((integ) => {
+                const info = BANK_PROVIDERS.find((p) => p.id === integ.provider);
+                if (!info) return null;
+                return (
+                  <motion.div
+                    key={integ.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -16, height: 0 }}
+                    transition={{ duration: 0.22 }}
+                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
+                  >
+                    <ProviderBadge
+                      color={info.color}
+                      name={info.name}
+                      domain={info.domain}
+                      size={36}
+                      radius={9}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-bold tracking-tight">{integ.label}</div>
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">{info.name}</div>
+                    </div>
+                    <span className="rounded-full bg-primary/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-primary">
+                      ✓ Ready
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleEditCredential(integ.id)}
+                      className="rounded-md px-2 py-1 text-xs font-medium hover:bg-accent"
+                    >
+                      Edit
+                    </button>
+                    <RemoveButton credentialId={integ.id} onRemoved={handleRemoved} />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
-        )}
+
+          <footer className="mt-2 flex items-center justify-between pt-2">
+            <Button variant="outline" onClick={() => setSub("pick")}>
+              + Add another account
+            </Button>
+            <Button onClick={onComplete} disabled={integrations.length === 0}>
+              Continue to AI →
+            </Button>
+          </footer>
+        </div>
+      )}
 
       <div className="mt-2 flex w-full items-center justify-between text-[10px] text-muted-foreground/80">
         <span>🔐 AES-256-GCM · stored locally</span>
@@ -338,9 +306,7 @@ function PickerCard({
   return (
     <div className="w-full rounded-2xl border border-border bg-card p-5 text-start shadow-sm">
       <div className="mb-3 flex items-baseline justify-between">
-        <div className="text-[11px] font-bold tracking-tight">
-          Supported providers · {total}
-        </div>
+        <div className="text-[11px] font-bold tracking-tight">Supported providers · {total}</div>
         <FilterPills value={filter} onChange={onFilter} />
       </div>
       <Input
@@ -366,9 +332,7 @@ function PickerCard({
                 onClick={() => !isDisabled && onPick(p.id)}
                 whileHover={!isDisabled ? { x: 1 } : undefined}
                 className={`flex items-center gap-3 rounded-lg p-2.5 text-start transition-colors ${
-                  isDisabled
-                    ? "cursor-not-allowed opacity-50"
-                    : "cursor-pointer hover:bg-muted/40"
+                  isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-muted/40"
                 }`}
               >
                 <ProviderBadge
@@ -380,22 +344,13 @@ function PickerCard({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-bold tracking-tight">
-                      {p.name}
-                    </span>
-                    {isConnected && (
-                      <span className="text-[10px] text-primary">✓</span>
-                    )}
+                    <span className="truncate text-sm font-bold tracking-tight">{p.name}</span>
+                    {isConnected && <span className="text-[10px] text-primary">✓</span>}
                   </div>
-                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {p.blurb}
-                  </div>
+                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{p.blurb}</div>
                 </div>
                 <KindTag kind={p.kind} />
-                <span
-                  aria-hidden
-                  className="ms-1 text-base leading-none text-muted-foreground"
-                >
+                <span aria-hidden className="ms-1 text-base leading-none text-muted-foreground">
                   ›
                 </span>
               </motion.button>
@@ -473,17 +428,13 @@ function CredentialForm({
 }) {
   const queryClient = useQueryClient();
   const [label, setLabel] = useState(initialLabel);
-  const [savedCredentialId, setSavedCredentialId] = useState<number | null>(
-    credentialId
-  );
+  const [savedCredentialId, setSavedCredentialId] = useState<number | null>(credentialId);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [requiresManualTwoFactor, setRequiresManualTwoFactor] = useState(false);
   const [loaded, setLoaded] = useState(!isEdit);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<
-    "idle" | "testing-ok" | "testing-fail" | "saved"
-  >("idle");
+  const [status, setStatus] = useState<"idle" | "testing-ok" | "testing-fail" | "saved">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -512,10 +463,10 @@ function CredentialForm({
   const valid =
     label.trim().length > 0 &&
     info.credentialFields.every((f) => {
-    const v = credentials[f.key]?.trim() ?? "";
-    if (!v) return false;
-    if (f.exactLength != null && v.length !== f.exactLength) return false;
-    return true;
+      const v = credentials[f.key]?.trim() ?? "";
+      if (!v) return false;
+      if (f.exactLength != null && v.length !== f.exactLength) return false;
+      return true;
     });
 
   const saveOptions = (id: number | null) => ({
@@ -532,11 +483,7 @@ function CredentialForm({
       const existingId = savedCredentialId;
       let testId = existingId;
       if (existingId != null) {
-        const saved = await saveBankCredentials(
-          info.id,
-          credentials,
-          saveOptions(existingId)
-        );
+        const saved = await saveBankCredentials(info.id, credentials, saveOptions(existingId));
         testId = saved.credentialId;
         setSavedCredentialId(testId);
       }
@@ -560,11 +507,7 @@ function CredentialForm({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const saved = await saveBankCredentials(
-        info.id,
-        credentials,
-        saveOptions(savedCredentialId)
-      );
+      const saved = await saveBankCredentials(info.id, credentials, saveOptions(savedCredentialId));
       setSavedCredentialId(saved.credentialId);
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
       setStatus("saved");
@@ -588,9 +531,7 @@ function CredentialForm({
           radius={11}
         />
         <div className="min-w-0 flex-1">
-          <div className="font-serif text-xl leading-tight tracking-tight">
-            {info.name}
-          </div>
+          <div className="font-serif text-xl leading-tight tracking-tight">{info.name}</div>
           <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             {info.kind === "bank" ? "Bank" : "Credit cards"}
           </div>
@@ -623,9 +564,7 @@ function CredentialForm({
           {info.credentialFields.map((field) => {
             const value = credentials[field.key] ?? "";
             const tooShort =
-              field.exactLength != null &&
-              value.length > 0 &&
-              value.length !== field.exactLength;
+              field.exactLength != null && value.length > 0 && value.length !== field.exactLength;
             return (
               <div key={field.key} className="space-y-1.5">
                 <div className="flex items-baseline justify-between">
@@ -651,8 +590,7 @@ function CredentialForm({
                   onChange={(e) => {
                     let next = e.target.value;
                     if (field.numeric) next = next.replace(/\D/g, "");
-                    if (field.exactLength)
-                      next = next.slice(0, field.exactLength);
+                    if (field.exactLength) next = next.slice(0, field.exactLength);
                     if (field.maxLength) next = next.slice(0, field.maxLength);
                     setCredentials((prev) => ({
                       ...prev,
@@ -662,11 +600,7 @@ function CredentialForm({
                   placeholder={field.placeholder ?? field.label}
                   className={field.numeric ? "font-mono" : undefined}
                 />
-                {field.hint && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {field.hint}
-                  </p>
-                )}
+                {field.hint && <p className="text-[11px] text-muted-foreground">{field.hint}</p>}
                 {tooShort && (
                   <p className="text-[11px] text-destructive">
                     Must be exactly {field.exactLength} digits.
@@ -735,9 +669,7 @@ function CredentialForm({
 
           <div className="mt-2 flex items-start gap-2 rounded-md bg-muted/40 p-2 text-[11px] text-muted-foreground">
             <span>🔐</span>
-            <span>
-              AES-256-GCM · stored on this machine only. Never sent to a server.
-            </span>
+            <span>AES-256-GCM · stored on this machine only. Never sent to a server.</span>
           </div>
         </div>
       )}

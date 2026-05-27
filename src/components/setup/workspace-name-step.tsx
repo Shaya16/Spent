@@ -10,10 +10,7 @@ interface WorkspaceNameStepProps {
 
 const SUGGESTIONS = ["Personal", "Business", "Joint", "Side hustle"];
 
-export function WorkspaceNameStep({
-  onComplete,
-  submitting = false,
-}: WorkspaceNameStepProps) {
+export function WorkspaceNameStep({ onComplete, submitting = false }: WorkspaceNameStepProps) {
   const [name, setName] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
@@ -32,8 +29,8 @@ export function WorkspaceNameStep({
         What should we call this corner of your finances?
       </h1>
       <p className="max-w-[380px] text-sm leading-relaxed text-muted-foreground">
-        A workspace keeps one slice of your life isolated — its own banks,
-        categories, budgets. Most people start with{" "}
+        A workspace keeps one slice of your life isolated — its own banks, categories, budgets. Most
+        people start with{" "}
         <span className="text-foreground underline decoration-primary underline-offset-2">
           Personal
         </span>
@@ -60,7 +57,6 @@ export function WorkspaceNameStep({
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={60}
-            autoFocus
             disabled={submitting}
             placeholder="Personal"
             className="mt-2 w-full border-0 bg-transparent p-0 font-serif text-2xl leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/40"
@@ -81,9 +77,7 @@ export function WorkspaceNameStep({
           ))}
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          You can rename it later from Settings.
-        </p>
+        <p className="text-xs text-muted-foreground">You can rename it later from Settings.</p>
 
         <Button
           type="submit"

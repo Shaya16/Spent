@@ -1,58 +1,41 @@
 import "server-only";
 
+import { BANK_PROVIDERS, type BankProvider, type SyncKind } from "@/lib/types";
+import { createAIProvider } from "@/server/ai/factory";
+import { ensureOllamaRunning } from "@/server/ai/ollama-manager";
 import {
+  type BankCredentialMeta,
   getBankCredentials,
   getRequiresManualTwoFactor,
   listBankCredentials,
   updateCredentialField,
-  type BankCredentialMeta,
 } from "@/server/db/queries/bank-credentials";
-import { getAppSettings } from "@/server/db/queries/settings";
-import {
-  createSyncRun,
-  completeSyncRun,
-  failSyncRun,
-} from "@/server/db/queries/sync-runs";
-import {
-  insertTransactions,
-  getUncategorizedIdsByKind,
-  getTransactionsForCategorization,
-  batchUpdateCategories,
-  batchSetNeedsReview,
-} from "@/server/db/queries/transactions";
-import {
-  lookupMerchantCategoriesBulk,
-  normalizeMerchant,
-  incrementMerchantHits,
-} from "@/server/lib/merchant-memory";
 import { getAllCategories } from "@/server/db/queries/categories";
 import { getRecentCorrections } from "@/server/db/queries/category-corrections";
-import { scrapeBank } from "@/server/scrapers";
+import { getAppSettings } from "@/server/db/queries/settings";
+import { completeSyncRun, createSyncRun, failSyncRun } from "@/server/db/queries/sync-runs";
 import {
-  scrapeOneZeroFirstTime,
-  scrapeOneZeroWithToken,
-} from "@/server/scrapers/one-zero";
-import { createAIProvider } from "@/server/ai/factory";
-import { ensureOllamaRunning } from "@/server/ai/ollama-manager";
-import { toLocalISODate } from "@/server/lib/date-utils";
-import { listAllWorkspaceIds } from "@/server/lib/workspace-context";
+  batchSetNeedsReview,
+  batchUpdateCategories,
+  getTransactionsForCategorization,
+  getUncategorizedIdsByKind,
+  insertTransactions,
+} from "@/server/db/queries/transactions";
 import { getWorkspace } from "@/server/db/queries/workspaces";
-import { BANK_PROVIDERS, type BankProvider, type SyncKind } from "@/lib/types";
+import { toLocalISODate } from "@/server/lib/date-utils";
 import {
-  cancelOtpRequest,
-  registerOtpRequest,
-} from "@/server/sync/otp-bridge";
-import {
-  markSyncEnd,
-  markSyncHeartbeat,
-  markSyncStart,
-} from "@/server/sync/activity";
+  incrementMerchantHits,
+  lookupMerchantCategoriesBulk,
+  normalizeMerchant,
+} from "@/server/lib/merchant-memory";
+import { listAllWorkspaceIds } from "@/server/lib/workspace-context";
+import { scrapeBank } from "@/server/scrapers";
+import { scrapeOneZeroFirstTime, scrapeOneZeroWithToken } from "@/server/scrapers/one-zero";
 import type { ScrapeResult } from "@/server/scrapers/types";
+import { markSyncEnd, markSyncHeartbeat, markSyncStart } from "@/server/sync/activity";
+import { cancelOtpRequest, registerOtpRequest } from "@/server/sync/otp-bridge";
 
-export type SyncEventSender = (
-  event: string,
-  data: Record<string, unknown>
-) => void;
+export type SyncEventSender = (event: string, data: Record<string, unknown>) => void;
 
 export interface ProviderResult {
   provider: BankProvider;
@@ -75,24 +58,30 @@ export interface WorkspaceSummary {
   aiWarning: string | null;
 }
 
-export function friendlyAIError(err: unknown, modelName: string): string {
+export function friendlyAIError(err: unknown, modelName: string, provider?: string): string {
   const msg = err instanceof Error ? err.message : String(err);
-  if (/model.*not found|pull.*model|404/i.test(msg)) {
-    return `Ollama model "${modelName}" is not installed. Run: ollama pull ${modelName}`;
+  const isNetwork = /ECONNREFUSED|fetch failed|ENOTFOUND|ETIMEDOUT/i.test(msg);
+  const isAuth = /api[_-]?key|401|403/i.test(msg);
+
+  if (provider === "ollama") {
+    if (/model.*not found|pull.*model|404/i.test(msg)) {
+      return `Ollama model "${modelName}" is not installed. Run: ollama pull ${modelName}`;
+    }
+    if (isNetwork) {
+      return "Ollama is not reachable. Make sure it's installed and that no firewall is blocking port 11434.";
+    }
   }
-  if (/ECONNREFUSED|fetch failed/i.test(msg)) {
-    return "Ollama is not reachable. Make sure it's installed and that no firewall is blocking port 11434.";
+  if (provider === "claude" && (isNetwork || isAuth)) {
+    return "Claude API request failed. Check your API key and connection in settings.";
   }
-  if (/Anthropic|api[_-]?key|401|403/i.test(msg)) {
-    return "Claude API request was rejected. Check your API key in settings.";
+  if (provider === "gemini" && (isNetwork || isAuth)) {
+    return "Gemini API request failed. Check your API key and connection in settings.";
   }
   return `AI categorization failed: ${msg}`;
 }
 
 function supportsProgrammaticTwoFactor(provider: BankProvider): boolean {
-  return Boolean(
-    BANK_PROVIDERS.find((b) => b.id === provider)?.supportsProgrammaticTwoFactor
-  );
+  return Boolean(BANK_PROVIDERS.find((b) => b.id === provider)?.supportsProgrammaticTwoFactor);
 }
 
 interface RunScrapeArgs {
@@ -142,8 +131,7 @@ async function runScrapeForProvider(args: RunScrapeArgs): Promise<ScrapeResult> 
       return {
         success: false,
         accounts: [],
-        errorMessage:
-          "Phone number is required to receive the One Zero 2FA code.",
+        errorMessage: "Phone number is required to receive the One Zero 2FA code.",
       };
     }
 
@@ -174,12 +162,7 @@ async function runScrapeForProvider(args: RunScrapeArgs): Promise<ScrapeResult> 
     });
 
     if (result.otpLongTermToken) {
-      updateCredentialField(
-        workspaceId,
-        credentialId,
-        "otpLongTermToken",
-        result.otpLongTermToken
-      );
+      updateCredentialField(workspaceId, credentialId, "otpLongTermToken", result.otpLongTermToken);
     }
 
     return result;
@@ -204,15 +187,10 @@ async function syncOneCredential(
   meta: BankCredentialMeta,
   credentials: Record<string, string>,
   startDate: Date,
-  send: SyncEventSender
+  send: SyncEventSender,
 ): Promise<ProviderResult> {
   const provider = meta.provider as BankProvider;
-  const syncRunId = createSyncRun(
-    workspaceId,
-    provider,
-    meta.id,
-    toLocalISODate(startDate)
-  );
+  const syncRunId = createSyncRun(workspaceId, provider, meta.id, toLocalISODate(startDate));
   const manualTwoFactor = getRequiresManualTwoFactor(workspaceId, meta.id);
 
   let result: ScrapeResult;
@@ -252,7 +230,7 @@ async function syncOneCredential(
       ...txn,
       installmentNumber: txn.installments?.number,
       installmentTotal: txn.installments?.total,
-    }))
+    })),
   );
 
   const { added, updated } = insertTransactions(
@@ -260,7 +238,7 @@ async function syncOneCredential(
     allTransactions,
     provider,
     meta.id,
-    syncRunId
+    syncRunId,
   );
   completeSyncRun(syncRunId, added, updated);
 
@@ -278,7 +256,7 @@ async function syncOneCredential(
 export async function syncWorkspace(
   workspaceId: number,
   filterCredentialId: number | undefined,
-  send: SyncEventSender
+  send: SyncEventSender,
 ): Promise<WorkspaceSummary> {
   const workspace = getWorkspace(workspaceId);
   const workspaceName = workspace?.name ?? `Workspace ${workspaceId}`;
@@ -366,7 +344,7 @@ export async function syncWorkspace(
         meta,
         credentials,
         startDate,
-        send
+        send,
       );
       results.push(result);
       send("provider-done", {
@@ -416,8 +394,7 @@ export async function syncWorkspace(
 
   const aiProvider = createAIProvider();
   if (!aiProvider) {
-    aiWarning =
-      "AI provider not connected — new transactions weren't auto-categorized.";
+    aiWarning = "AI provider not connected — new transactions weren't auto-categorized.";
   }
   if (aiProvider) {
     if (settings.aiProvider === "ollama") {
@@ -455,14 +432,11 @@ export async function syncWorkspace(
         }));
         const pastCorrections = getRecentCorrections(workspaceId, kind);
 
-        const allTxns = getTransactionsForCategorization(
-          workspaceId,
-          uncategorizedIds
-        );
+        const allTxns = getTransactionsForCategorization(workspaceId, uncategorizedIds);
 
         const memoryMap = lookupMerchantCategoriesBulk(
           workspaceId,
-          allTxns.map((t) => t.description)
+          allTxns.map((t) => t.description),
         );
 
         const memoryUpdates: { id: number; categoryId: number }[] = [];
@@ -502,7 +476,7 @@ export async function syncWorkspace(
                 memo: t.memo,
               })),
               categoryInput,
-              { pastCorrections }
+              { pastCorrections },
             );
 
             const updates: {
@@ -513,9 +487,7 @@ export async function syncWorkspace(
             const reviewFlags: { id: number; needsReview: boolean }[] = [];
 
             for (const m of mappings) {
-              const category = categories.find(
-                (c) => c.name === m.categoryName
-              );
+              const category = categories.find((c) => c.name === m.categoryName);
               const txn = batch[m.index];
               if (!category || !txn) continue;
               const confidence = m.confidence ?? null;
@@ -534,12 +506,9 @@ export async function syncWorkspace(
             batchSetNeedsReview(workspaceId, reviewFlags);
             categorized += updates.length;
           } catch (err) {
-            console.error(
-              `[sync] AI categorization batch failed (${kind}):`,
-              err
-            );
+            console.error(`[sync] AI categorization batch failed (${kind}):`, err);
             if (!aiWarning) {
-              aiWarning = friendlyAIError(err, settings.ollamaModel);
+              aiWarning = friendlyAIError(err, settings.ollamaModel, settings.aiProvider);
             }
           }
         }
@@ -563,7 +532,7 @@ const NOOP_SEND: SyncEventSender = () => {};
 export async function runAllWorkspaces(
   filterCredentialId?: number,
   onEvent?: SyncEventSender,
-  kind: SyncKind = "manual"
+  kind: SyncKind = "manual",
 ): Promise<WorkspaceSummary[]> {
   const send = onEvent ?? NOOP_SEND;
   markSyncStart(kind);

@@ -5,10 +5,7 @@ import type { FormatLastSyncLabels } from "./formatters";
 
 type TranslatorFn = ReturnType<typeof useTranslations<string>>;
 
-export function translateCategoryName(
-  rawName: string,
-  tCat: TranslatorFn,
-): string {
+export function translateCategoryName(rawName: string, tCat: TranslatorFn): string {
   try {
     const translated = tCat(rawName);
     return translated && translated !== rawName ? translated : rawName;

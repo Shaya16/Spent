@@ -1,8 +1,8 @@
 import "server-only";
 
+import fs from "node:fs";
+import path from "node:path";
 import Database from "better-sqlite3";
-import path from "path";
-import fs from "fs";
 import { runMigrations } from "./migrate";
 
 const DB_DIR = process.env.SPENT_DATA_DIR

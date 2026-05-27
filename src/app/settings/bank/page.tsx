@@ -1,16 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronRight, CircleAlert, CircleCheck, Loader2, Plus, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
-import {
-  ChevronRight,
-  Plus,
-  RefreshCw,
-  Loader2,
-  CircleCheck,
-  CircleAlert,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { BankDetailSheet } from "@/components/settings/bank-detail-sheet";
+import { SectionShell } from "@/components/settings/section-shell";
+import { useBankSync } from "@/components/settings/use-bank-sync";
+import { ProviderBadge } from "@/components/setup/provider-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,15 +15,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ProviderBadge } from "@/components/setup/provider-badge";
-import { SectionShell } from "@/components/settings/section-shell";
-import { BankDetailSheet } from "@/components/settings/bank-detail-sheet";
-import { useBankSync } from "@/components/settings/use-bank-sync";
 import { listIntegrations } from "@/lib/api";
-import { BANK_PROVIDERS } from "@/lib/types";
-import { translateProviderName, useFormatterLabels } from "@/lib/i18n-data";
 import { formatLastSync } from "@/lib/formatters";
+import { translateProviderName, useFormatterLabels } from "@/lib/i18n-data";
 import type { Integration } from "@/lib/types";
+import { BANK_PROVIDERS } from "@/lib/types";
 
 interface SheetState {
   open: boolean;
@@ -53,9 +46,7 @@ export default function BankSettingsPage() {
   });
 
   const lastSync = useMemo(() => {
-    const stamps = integrations
-      .map((i) => i.lastSyncAt)
-      .filter((s): s is string => Boolean(s));
+    const stamps = integrations.map((i) => i.lastSyncAt).filter((s): s is string => Boolean(s));
     if (stamps.length === 0) return null;
     return stamps.sort().slice(-1)[0];
   }, [integrations]);
@@ -68,7 +59,7 @@ export default function BankSettingsPage() {
 
   const sheetIntegration: Integration | null =
     sheet.mode === "edit" && sheet.credentialId != null
-      ? integrations.find((i) => i.id === sheet.credentialId) ?? null
+      ? (integrations.find((i) => i.id === sheet.credentialId) ?? null)
       : null;
 
   const countLabel =
@@ -126,10 +117,7 @@ export default function BankSettingsPage() {
                       }
                     >
                       <span className="flex items-center gap-2">
-                        <span
-                          className="h-2 w-2 rounded-full"
-                          style={{ background: b.color }}
-                        />
+                        <span className="h-2 w-2 rounded-full" style={{ background: b.color }} />
                         {translateProviderName(b.id, b.name, tBanks)}
                       </span>
                     </DropdownMenuItem>
@@ -150,9 +138,7 @@ export default function BankSettingsPage() {
           <div className="overflow-hidden rounded-2xl border border-border bg-card">
             <ul className="divide-y divide-border/60">
               {integrations.map((integration) => {
-                const info = BANK_PROVIDERS.find(
-                  (b) => b.id === integration.provider
-                );
+                const info = BANK_PROVIDERS.find((b) => b.id === integration.provider);
                 if (!info) return null;
                 const sync = stateFor(integration.id);
                 const localName = translateProviderName(info.id, info.name, tBanks);
@@ -194,10 +180,7 @@ export default function BankSettingsPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 text-sm font-medium">
                           {integration.label}
-                          <StatusPill
-                            lastSyncAt={integration.lastSyncAt}
-                            syncing={sync.syncing}
-                          />
+                          <StatusPill lastSyncAt={integration.lastSyncAt} syncing={sync.syncing} />
                         </div>
                         <div className="mt-0.5 truncate text-xs text-muted-foreground">
                           {localName}
@@ -241,13 +224,7 @@ export default function BankSettingsPage() {
   );
 }
 
-function StatusPill({
-  lastSyncAt,
-  syncing,
-}: {
-  lastSyncAt: string | null;
-  syncing: boolean;
-}) {
+function StatusPill({ lastSyncAt, syncing }: { lastSyncAt: string | null; syncing: boolean }) {
   const t = useTranslations("settings.bank");
   if (syncing) {
     return (
@@ -289,12 +266,7 @@ function SyncShortButton({
     );
   }
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="shrink-0 gap-1.5"
-      onClick={onClick}
-    >
+    <Button variant="ghost" size="sm" className="shrink-0 gap-1.5" onClick={onClick}>
       <RefreshCw className="h-3.5 w-3.5" />
       {t("syncShort")}
     </Button>

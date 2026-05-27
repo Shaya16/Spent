@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/app/**/{page,layout,route,not-found,loading,error,global-error,template,default,opengraph-image,icon,sitemap,robots}.{ts,tsx}",
+    "src/i18n/routing.ts",
+    "scripts/**/*.{mjs,ts}",
+    "menubar/**/build.sh"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{mjs,js,ts}"],
+  "include": ["files", "dependencies", "unlisted", "unresolved", "binaries"],
+  "ignoreDependencies": ["tailwindcss", "tw-animate-css", "shadcn"],
+  "ignoreBinaries": ["powershell"],
+  "ignore": ["src/server/db/queries/excluded-merchants.ts"]
+}

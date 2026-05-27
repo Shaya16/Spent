@@ -1,7 +1,7 @@
 import "server-only";
 
-import { runAllWorkspaces } from "@/server/sync/orchestrator";
 import { getGlobalSetting } from "@/server/db/queries/settings";
+import { runAllWorkspaces } from "@/server/sync/orchestrator";
 
 interface SchedulerState {
   timeoutId: ReturnType<typeof setTimeout> | null;
@@ -46,7 +46,7 @@ function intlParts(d: Date) {
     fmt
       .formatToParts(d)
       .filter((p) => p.type !== "literal")
-      .map((p) => [p.type, p.value])
+      .map((p) => [p.type, p.value]),
   );
   return {
     year: Number(parts.year),
@@ -65,14 +65,7 @@ function computeNextDelay(targetHHMM: string): number {
   const jlm = intlParts(now);
 
   let candidateMs = Date.UTC(jlm.year, jlm.month - 1, jlm.day, tHour, tMin, 0);
-  const nowMs = Date.UTC(
-    jlm.year,
-    jlm.month - 1,
-    jlm.day,
-    jlm.hour,
-    jlm.minute,
-    jlm.second
-  );
+  const nowMs = Date.UTC(jlm.year, jlm.month - 1, jlm.day, jlm.hour, jlm.minute, jlm.second);
 
   if (candidateMs <= nowMs) {
     candidateMs += 24 * 3600 * 1000;
@@ -111,8 +104,8 @@ function armNext(): void {
   state.nextRunAt = Date.now() + delayMs;
   console.log(
     `[scheduler] armed for ${new Date(state.nextRunAt).toISOString()} (in ${Math.round(
-      delayMs / 1000
-    )}s)`
+      delayMs / 1000,
+    )}s)`,
   );
 }
 

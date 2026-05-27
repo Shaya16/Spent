@@ -1,18 +1,15 @@
 import "server-only";
 
-import { getDb } from "../index";
+import { isTransactionSortField, TRANSACTION_SORT_SQL } from "@/lib/transaction-sort";
+import type {
+  CategoryBreakdown,
+  MerchantSummary,
+  MonthlySummary,
+  TransactionWithCategory,
+} from "@/lib/types";
 import { computeDedupHash } from "../../lib/dedup";
 import { detectKind } from "../../lib/transfers";
-import type {
-  TransactionWithCategory,
-  MonthlySummary,
-  MerchantSummary,
-  CategoryBreakdown,
-} from "@/lib/types";
-import {
-  isTransactionSortField,
-  TRANSACTION_SORT_SQL,
-} from "@/lib/transaction-sort";
+import { getDb } from "../index";
 export type TransactionKindFilter = "expense" | "income" | "all";
 
 interface RawTransaction {
@@ -42,7 +39,7 @@ export function insertTransactions(
   transactions: RawTransaction[],
   provider: string,
   credentialId: number,
-  syncRunId: number
+  syncRunId: number,
 ): InsertResult {
   const db = getDb();
   let added = 0;
@@ -51,7 +48,7 @@ export function insertTransactions(
   const hashCounts = new Map<string, number>();
 
   const existingCountStmt = db.prepare(
-    "SELECT COUNT(*) as count FROM transactions WHERE workspace_id = ? AND dedup_hash = ?"
+    "SELECT COUNT(*) as count FROM transactions WHERE workspace_id = ? AND dedup_hash = ?",
   );
 
   const insertStmt = db.prepare(`
@@ -163,7 +160,7 @@ function appendCredentialIdsFilter(
   conditions: string[],
   values: (string | number)[],
   credentialIds: number[] | undefined,
-  columnPrefix = ""
+  columnPrefix = "",
 ): void {
   if (!credentialIds || credentialIds.length === 0) return;
   const col = `${columnPrefix}credential_id`;
@@ -191,7 +188,7 @@ const TRANSACTION_LIST_SELECT = `
 
 export function queryTransactions(
   workspaceId: number,
-  params: QueryParams
+  params: QueryParams,
 ): { transactions: TransactionWithCategory[]; total: number } {
   const db = getDb();
   const conditions: string[] = ["t.workspace_id = ?"];
@@ -220,9 +217,9 @@ export function queryTransactions(
   }
   const kind: TransactionKindFilter = params.kind ?? "all";
   if (kind === "income") {
-    conditions.push("t.charged_amount > 0");
+    conditions.push("t.kind = 'income'");
   } else if (kind === "expense") {
-    conditions.push("t.charged_amount < 0");
+    conditions.push("t.kind = 'expense'");
   }
   if (params.provider) {
     conditions.push("t.provider = ?");
@@ -252,7 +249,7 @@ export function queryTransactions(
       `${TRANSACTION_LIST_SELECT}
        ${where}
        ORDER BY ${sortSql} ${sortOrder}, t.id DESC
-       LIMIT ? OFFSET ?`
+       LIMIT ? OFFSET ?`,
     )
     .all(...values, limit, offset);
 
@@ -265,7 +262,7 @@ export function queryTransactions(
 export function getUncategorizedTransactionIds(workspaceId: number): number[] {
   const rows = getDb()
     .prepare(
-      "SELECT id FROM transactions WHERE workspace_id = ? AND category_id IS NULL AND kind != 'transfer' ORDER BY date DESC"
+      "SELECT id FROM transactions WHERE workspace_id = ? AND category_id IS NULL AND kind != 'transfer' ORDER BY date DESC",
     )
     .all(workspaceId) as { id: number }[];
   return rows.map((r) => r.id);
@@ -273,11 +270,11 @@ export function getUncategorizedTransactionIds(workspaceId: number): number[] {
 
 export function getUncategorizedIdsByKind(
   workspaceId: number,
-  kind: "expense" | "income"
+  kind: "expense" | "income",
 ): number[] {
   const rows = getDb()
     .prepare(
-      "SELECT id FROM transactions WHERE workspace_id = ? AND category_id IS NULL AND kind = ? ORDER BY date DESC"
+      "SELECT id FROM transactions WHERE workspace_id = ? AND category_id IS NULL AND kind = ? ORDER BY date DESC",
     )
     .all(workspaceId, kind) as { id: number }[];
   return rows.map((r) => r.id);
@@ -285,43 +282,55 @@ export function getUncategorizedIdsByKind(
 
 export function getTransactionsForCategorization(
   workspaceId: number,
-  ids: number[]
-): { id: number; description: string; chargedAmount: number; originalCurrency: string; memo: string | null }[] {
+  ids: number[],
+): {
+  id: number;
+  description: string;
+  chargedAmount: number;
+  originalCurrency: string;
+  memo: string | null;
+}[] {
   if (ids.length === 0) return [];
   const placeholders = ids.map(() => "?").join(",");
   return getDb()
     .prepare(
       `SELECT id, description, charged_amount as chargedAmount,
               original_currency as originalCurrency, memo
-       FROM transactions WHERE workspace_id = ? AND id IN (${placeholders})`
+       FROM transactions WHERE workspace_id = ? AND id IN (${placeholders})`,
     )
-    .all(workspaceId, ...ids) as { id: number; description: string; chargedAmount: number; originalCurrency: string; memo: string | null }[];
+    .all(workspaceId, ...ids) as {
+    id: number;
+    description: string;
+    chargedAmount: number;
+    originalCurrency: string;
+    memo: string | null;
+  }[];
 }
 
 export function updateTransactionCategory(
   workspaceId: number,
   id: number,
   categoryId: number,
-  source: "ai" | "user"
+  source: "ai" | "user",
 ): void {
   getDb()
     .prepare(
       `UPDATE transactions
        SET category_id = ?, category_source = ?, updated_at = datetime('now')
-       WHERE workspace_id = ? AND id = ?`
+       WHERE workspace_id = ? AND id = ?`,
     )
     .run(categoryId, source, workspaceId, id);
 }
 
 export function batchUpdateCategories(
   workspaceId: number,
-  updates: { id: number; categoryId: number; aiConfidence?: number | null }[]
+  updates: { id: number; categoryId: number; aiConfidence?: number | null }[],
 ): void {
   const db = getDb();
   const stmt = db.prepare(
     `UPDATE transactions
      SET category_id = ?, category_source = 'ai', ai_confidence = ?, updated_at = datetime('now')
-     WHERE workspace_id = ? AND id = ? AND category_source IS NOT 'user'`
+     WHERE workspace_id = ? AND id = ? AND category_source IS NOT 'user'`,
   );
 
   db.transaction(() => {
@@ -331,11 +340,7 @@ export function batchUpdateCategories(
   })();
 }
 
-
-export function getMonthlySummary(
-  workspaceId: number,
-  months: number
-): MonthlySummary[] {
+export function getMonthlySummary(workspaceId: number, months: number): MonthlySummary[] {
   return getDb()
     .prepare(
       `SELECT strftime('%Y-%m', date) as month,
@@ -346,7 +351,7 @@ export function getMonthlySummary(
          AND status = 'completed'
          AND kind = 'expense'
        GROUP BY month
-       ORDER BY month ASC`
+       ORDER BY month ASC`,
     )
     .all(workspaceId, months) as MonthlySummary[];
 }
@@ -355,7 +360,7 @@ export function getTopMerchants(
   workspaceId: number,
   from: string,
   to: string,
-  limit = 10
+  limit = 10,
 ): MerchantSummary[] {
   return getDb()
     .prepare(
@@ -366,7 +371,7 @@ export function getTopMerchants(
        WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'
        GROUP BY description
        ORDER BY amount DESC
-       LIMIT ?`
+       LIMIT ?`,
     )
     .all(workspaceId, from, to, limit) as MerchantSummary[];
 }
@@ -374,7 +379,7 @@ export function getTopMerchants(
 export function getCategoryBreakdown(
   workspaceId: number,
   from: string,
-  to: string
+  to: string,
 ): CategoryBreakdown[] {
   return getDb()
     .prepare(
@@ -388,7 +393,7 @@ export function getCategoryBreakdown(
        LEFT JOIN categories c ON t.category_id = c.id
        WHERE t.workspace_id = ? AND t.date >= ? AND t.date <= ? AND t.status = 'completed' AND t.kind = 'expense'
        GROUP BY t.category_id
-       ORDER BY amount DESC`
+       ORDER BY amount DESC`,
     )
     .all(workspaceId, from, to) as CategoryBreakdown[];
 }
@@ -402,7 +407,7 @@ export interface CategorySpend {
 export function getCategorySpendInRange(
   workspaceId: number,
   from: string,
-  to: string
+  to: string,
 ): CategorySpend[] {
   return getDb()
     .prepare(
@@ -411,7 +416,7 @@ export function getCategorySpendInRange(
               COUNT(*) as count
        FROM transactions
        WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense' AND category_id IS NOT NULL
-       GROUP BY category_id`
+       GROUP BY category_id`,
     )
     .all(workspaceId, from, to) as CategorySpend[];
 }
@@ -425,7 +430,7 @@ export interface CategoryTopMerchant {
 export function getTopMerchantPerCategory(
   workspaceId: number,
   from: string,
-  to: string
+  to: string,
 ): CategoryTopMerchant[] {
   return getDb()
     .prepare(
@@ -437,7 +442,7 @@ export function getTopMerchantPerCategory(
          WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense' AND category_id IS NOT NULL
          GROUP BY category_id, description
        )
-       WHERE rn = 1`
+       WHERE rn = 1`,
     )
     .all(workspaceId, from, to) as CategoryTopMerchant[];
 }
@@ -451,7 +456,7 @@ export function getCategorySpendByDay(
   workspaceId: number,
   categoryId: number,
   from: string,
-  to: string
+  to: string,
 ): DailySpendPoint[] {
   return getDb()
     .prepare(
@@ -470,7 +475,7 @@ export function getCategorySpendByDay(
          AND t.kind = 'expense'
          AND t.status = 'completed'
        GROUP BY days.d
-       ORDER BY days.d ASC`
+       ORDER BY days.d ASC`,
     )
     .all(from, to, workspaceId, categoryId) as DailySpendPoint[];
 }
@@ -486,7 +491,7 @@ export function getTopMerchantsForCategory(
   categoryId: number,
   from: string,
   to: string,
-  limit = 8
+  limit = 8,
 ): TopMerchantForCategory[] {
   return getDb()
     .prepare(
@@ -500,36 +505,28 @@ export function getTopMerchantsForCategory(
          AND kind = 'expense'
        GROUP BY description
        ORDER BY amount DESC
-       LIMIT ?`
+       LIMIT ?`,
     )
     .all(workspaceId, categoryId, from, to, limit) as TopMerchantForCategory[];
 }
 
-export function getPeriodTotal(
-  workspaceId: number,
-  from: string,
-  to: string
-): number {
+export function getPeriodTotal(workspaceId: number, from: string, to: string): number {
   const row = getDb()
     .prepare(
       `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'`
+       WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'`,
     )
     .get(workspaceId, from, to) as { total: number };
   return row.total;
 }
 
-export function getPeriodCount(
-  workspaceId: number,
-  from: string,
-  to: string
-): number {
+export function getPeriodCount(workspaceId: number, from: string, to: string): number {
   const row = getDb()
     .prepare(
       `SELECT COUNT(*) as count
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'`
+       WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'`,
     )
     .get(workspaceId, from, to) as { count: number };
   return row.count;
@@ -605,27 +602,23 @@ function mapTransactionRow(row: unknown): TransactionWithCategory {
 export function setTransactionKind(
   workspaceId: number,
   id: number,
-  kind: "expense" | "income" | "transfer"
+  kind: "expense" | "income" | "transfer",
 ): void {
   getDb()
     .prepare(
       `UPDATE transactions
        SET kind = ?, updated_at = datetime('now')
-       WHERE workspace_id = ? AND id = ?`
+       WHERE workspace_id = ? AND id = ?`,
     )
     .run(kind, workspaceId, id);
 }
 
-export function setTransactionNeedsReview(
-  workspaceId: number,
-  id: number,
-  value: boolean
-): void {
+export function setTransactionNeedsReview(workspaceId: number, id: number, value: boolean): void {
   getDb()
     .prepare(
       `UPDATE transactions
        SET needs_review = ?, updated_at = datetime('now')
-       WHERE workspace_id = ? AND id = ?`
+       WHERE workspace_id = ? AND id = ?`,
     )
     .run(value ? 1 : 0, workspaceId, id);
 }
@@ -638,15 +631,12 @@ interface TransactionContext {
   kind: "expense" | "income" | "transfer";
 }
 
-export function getTransactionContext(
-  workspaceId: number,
-  id: number
-): TransactionContext | null {
+export function getTransactionContext(workspaceId: number, id: number): TransactionContext | null {
   const row = getDb()
     .prepare(
       `SELECT id, description, category_id as categoryId,
               category_source as categorySource, kind
-       FROM transactions WHERE workspace_id = ? AND id = ?`
+       FROM transactions WHERE workspace_id = ? AND id = ?`,
     )
     .get(workspaceId, id) as TransactionContext | undefined;
   return row ?? null;
@@ -654,14 +644,14 @@ export function getTransactionContext(
 
 export function batchSetNeedsReview(
   workspaceId: number,
-  updates: { id: number; needsReview: boolean }[]
+  updates: { id: number; needsReview: boolean }[],
 ): void {
   if (updates.length === 0) return;
   const db = getDb();
   const stmt = db.prepare(
     `UPDATE transactions
      SET needs_review = ?, updated_at = datetime('now')
-     WHERE workspace_id = ? AND id = ?`
+     WHERE workspace_id = ? AND id = ?`,
   );
   db.transaction(() => {
     for (const { id, needsReview } of updates) {
@@ -701,15 +691,10 @@ export function getTransactionsSummary(
   workspaceId: number,
   from: string,
   to: string,
-  params: TransactionsSummaryParams = {}
+  params: TransactionsSummaryParams = {},
 ): TransactionsSummary {
   const db = getDb();
-  const baseConditions = [
-    "workspace_id = ?",
-    "date >= ?",
-    "date <= ?",
-    "status = 'completed'",
-  ];
+  const baseConditions = ["workspace_id = ?", "date >= ?", "date <= ?", "status = 'completed'"];
   const baseValues: (string | number)[] = [workspaceId, from, to];
   const summaryCredentialIds =
     params.credentialIds && params.credentialIds.length > 0
@@ -724,7 +709,7 @@ export function getTransactionsSummary(
     .prepare(
       `SELECT COALESCE(SUM(charged_amount), 0) as total, COUNT(*) as count
        FROM transactions
-       WHERE ${baseWhere} AND charged_amount > 0`
+       WHERE ${baseWhere} AND kind = 'income'`,
     )
     .get(...baseValues) as { total: number; count: number };
 
@@ -732,27 +717,26 @@ export function getTransactionsSummary(
     .prepare(
       `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total, COUNT(*) as count
        FROM transactions
-       WHERE ${baseWhere} AND charged_amount < 0`
+       WHERE ${baseWhere} AND kind = 'expense'`,
     )
     .get(...baseValues) as { total: number; count: number };
 
   const pickLargest = (sign: "income" | "expense"): TransactionWithCategory | null => {
-    const cmp = sign === "income" ? "> 0" : "< 0";
     const tConditions = [
       "t.workspace_id = ?",
       "t.date >= ?",
       "t.date <= ?",
       "t.status = 'completed'",
-      `t.charged_amount ${cmp}`,
+      "t.kind = ?",
     ];
-    const tValues: (string | number)[] = [workspaceId, from, to];
+    const tValues: (string | number)[] = [workspaceId, from, to, sign];
     appendCredentialIdsFilter(tConditions, tValues, summaryCredentialIds, "t.");
     const row = db
       .prepare(
         `${TRANSACTION_LIST_SELECT}
          WHERE ${tConditions.join(" AND ")}
          ORDER BY ABS(t.charged_amount) DESC, t.id DESC
-         LIMIT 1`
+         LIMIT 1`,
       )
       .get(...tValues);
     return row ? mapTransactionRow(row) : null;
@@ -764,10 +748,10 @@ export function getTransactionsSummary(
               SUM(ABS(charged_amount)) as total,
               COUNT(*) as count
        FROM transactions
-       WHERE ${baseWhere} AND charged_amount < 0
+       WHERE ${baseWhere} AND kind = 'expense'
        GROUP BY description
        ORDER BY total DESC
-       LIMIT 5`
+       LIMIT 5`,
     )
     .all(...baseValues) as { description: string; total: number; count: number }[];
 
@@ -775,7 +759,7 @@ export function getTransactionsSummary(
     .prepare(
       `SELECT COUNT(*) as count
        FROM transactions
-       WHERE ${baseWhere} AND needs_review = 1`
+       WHERE ${baseWhere} AND needs_review = 1`,
     )
     .get(...baseValues) as { count: number };
 
@@ -799,7 +783,7 @@ export function getTransactionsSummary(
 export function getNeedsReviewCountByCategory(
   workspaceId: number,
   from: string,
-  to: string
+  to: string,
 ): NeedsReviewCount[] {
   return getDb()
     .prepare(
@@ -810,7 +794,7 @@ export function getNeedsReviewCountByCategory(
          AND kind = 'expense'
          AND needs_review = 1
          AND category_id IS NOT NULL
-       GROUP BY category_id`
+       GROUP BY category_id`,
     )
     .all(workspaceId, from, to) as NeedsReviewCount[];
 }

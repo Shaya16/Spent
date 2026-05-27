@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Info } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, InputGroup } from "@/components/ui/input";
 import { updateSettings } from "@/lib/api";
@@ -47,8 +47,8 @@ export function MonthlyTargetStep({ onComplete, onBack }: MonthlyTargetStepProps
           <Info className="h-3 w-3" />
         </div>
         <p className="text-[12px] leading-relaxed text-muted-foreground">
-          Your dashboard will show a <strong className="text-foreground">pace meter</strong>:
-          green when you&apos;re tracking under, amber as you near the limit, red if you go over.
+          Your dashboard will show a <strong className="text-foreground">pace meter</strong>: green
+          when you&apos;re tracking under, amber as you near the limit, red if you go over.
         </p>
       </div>
 
@@ -82,10 +82,7 @@ export function MonthlyTargetStep({ onComplete, onBack }: MonthlyTargetStepProps
         <Button variant="outline" onClick={onBack} disabled={saving}>
           ← Back
         </Button>
-        <Button
-          onClick={() => save(valid ? parsed : null)}
-          disabled={saving || !valid}
-        >
+        <Button onClick={() => save(valid ? parsed : null)} disabled={saving || !valid}>
           {saving ? "Saving..." : "Continue →"}
         </Button>
       </footer>

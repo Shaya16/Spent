@@ -1,9 +1,9 @@
 import "server-only";
 
 import { CompanyTypes, createScraper } from "israeli-bank-scrapers";
-import type { ScrapeResult, ScrapedTransaction } from "./types";
 import type { BankProvider } from "@/lib/types";
 import { getWorkspaceSetting } from "../db/queries/settings";
+import type { ScrapedTransaction, ScrapeResult } from "./types";
 
 export const PROVIDER_MAP: Record<string, CompanyTypes> = {
   isracard: CompanyTypes.isracard,
@@ -35,14 +35,8 @@ function sanitizeError(error: unknown): string {
   msg = msg.replace(/\b\d{5,}\b/g, "[REDACTED]");
   // Strip password and id values from JSON-like blobs.
   // Match a key followed by quoted string OR unquoted value, non-greedy.
-  msg = msg.replace(
-    /"(password|id|card6Digits|cardSuffix)"\s*:\s*"[^"]*"/gi,
-    '"$1":"[REDACTED]"'
-  );
-  msg = msg.replace(
-    /\b(password|id|card6Digits|cardSuffix)\s*=\s*\S+/gi,
-    "$1=[REDACTED]"
-  );
+  msg = msg.replace(/"(password|id|card6Digits|cardSuffix)"\s*:\s*"[^"]*"/gi, '"$1":"[REDACTED]"');
+  msg = msg.replace(/\b(password|id|card6Digits|cardSuffix)\s*=\s*\S+/gi, "$1=[REDACTED]");
   return msg;
 }
 
@@ -81,10 +75,7 @@ function classifyError(error: unknown): {
   }
 
   // Empty JSON response from bank - usually transient (rate limit, bot block, flaky endpoint).
-  if (
-    /Unexpected end of JSON input/.test(msg) ||
-    /fetchPostWithinPage parse error/.test(msg)
-  ) {
+  if (/Unexpected end of JSON input/.test(msg) || /fetchPostWithinPage parse error/.test(msg)) {
     return {
       retryable: true,
       friendly:
@@ -95,8 +86,7 @@ function classifyError(error: unknown): {
   if (/net::ERR_/i.test(msg) || /ECONNRESET|ECONNREFUSED|ETIMEDOUT/i.test(msg)) {
     return {
       retryable: true,
-      friendly:
-        "Network error reaching the bank. Check your connection and try again.",
+      friendly: "Network error reaching the bank. Check your connection and try again.",
     };
   }
 
@@ -116,10 +106,8 @@ const FRIENDLY_ERRORS: Record<string, string> = {
     "The credentials were rejected by the bank. Double-check ID, card last 6 digits, and password.",
   CHANGE_PASSWORD:
     "The bank is asking you to change your password. Log in via the bank's website first.",
-  ACCOUNT_BLOCKED:
-    "The account is blocked by the bank. Resolve this on the bank's website.",
-  TIMEOUT:
-    "The scrape timed out. The bank's site may be slow or down. Try again.",
+  ACCOUNT_BLOCKED: "The account is blocked by the bank. Resolve this on the bank's website.",
+  TIMEOUT: "The scrape timed out. The bank's site may be slow or down. Try again.",
   TWO_FACTOR_RETRIEVER_MISSING:
     "This account is asking for 2FA. For most banks, turn on 'This account requires 2FA' in the bank's settings so Spent shows the browser and you can solve it manually. For One Zero, make sure the phone number is set on the account.",
   GENERIC:
@@ -132,7 +120,7 @@ async function runScrape(
   provider: BankProvider,
   credentials: Record<string, string>,
   startDate: Date,
-  showBrowser: boolean
+  showBrowser: boolean,
 ): Promise<ScrapeResult> {
   const companyId = PROVIDER_MAP[provider];
   if (!companyId) {
@@ -167,32 +155,23 @@ async function runScrape(
   });
 
   // credentials shape varies by provider; the library accepts different types per bank
-  const result = await scraper.scrape(
-    credentials as Parameters<typeof scraper.scrape>[0]
-  );
+  const result = await scraper.scrape(credentials as Parameters<typeof scraper.scrape>[0]);
 
   if (!result.success) {
     const errorType = result.errorType ?? "GENERIC";
     console.error(`[scraper] failed (${errorType}):`, result.errorMessage);
     const friendly = FRIENDLY_ERRORS[errorType];
-    const detail = result.errorMessage
-      ? sanitizeError(new Error(result.errorMessage))
-      : errorType;
+    const detail = result.errorMessage ? sanitizeError(new Error(result.errorMessage)) : errorType;
     return {
       success: false,
       accounts: [],
-      errorMessage: friendly
-        ? `${friendly} (${detail})`
-        : `Scraping failed: ${detail}`,
+      errorMessage: friendly ? `${friendly} (${detail})` : `Scraping failed: ${detail}`,
     };
   }
 
-  const txnCount = (result.accounts ?? []).reduce(
-    (sum, a) => sum + a.txns.length,
-    0
-  );
+  const txnCount = (result.accounts ?? []).reduce((sum, a) => sum + a.txns.length, 0);
   console.log(
-    `[scraper] success: ${result.accounts?.length ?? 0} account(s), ${txnCount} transaction(s)`
+    `[scraper] success: ${result.accounts?.length ?? 0} account(s), ${txnCount} transaction(s)`,
   );
 
   const accounts = (result.accounts ?? []).map((account) => ({
@@ -213,7 +192,7 @@ async function runScrape(
           ? { number: txn.installments.number, total: txn.installments.total }
           : undefined,
         status: txn.status === "completed" ? "completed" : "pending",
-      })
+      }),
     ),
   }));
 
@@ -234,10 +213,9 @@ export async function scrapeBank(
   provider: BankProvider,
   credentials: Record<string, string>,
   startDate: Date,
-  options: ScrapeBankOptions = {}
+  options: ScrapeBankOptions = {},
 ): Promise<ScrapeResult> {
-  const workspaceShowBrowser =
-    getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true";
+  const workspaceShowBrowser = getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true";
   const showBrowser = options.manualTwoFactor === true || workspaceShowBrowser;
   const MAX_ATTEMPTS = 2;
   let lastError: unknown = null;
@@ -245,15 +223,12 @@ export async function scrapeBank(
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       console.log(
-        `[scraper] starting scrape for ${provider} from ${startDate.toISOString()} (attempt ${attempt}/${MAX_ATTEMPTS}, showBrowser=${showBrowser})`
+        `[scraper] starting scrape for ${provider} from ${startDate.toISOString()} (attempt ${attempt}/${MAX_ATTEMPTS}, showBrowser=${showBrowser})`,
       );
       return await runScrape(provider, credentials, startDate, showBrowser);
     } catch (error) {
       lastError = error;
-      console.error(
-        `[scraper] unexpected error on attempt ${attempt}:`,
-        sanitizeError(error)
-      );
+      console.error(`[scraper] unexpected error on attempt ${attempt}:`, sanitizeError(error));
       const { retryable } = classifyError(error);
       if (!retryable || attempt === MAX_ATTEMPTS) break;
       const backoffMs = 2000 * attempt;

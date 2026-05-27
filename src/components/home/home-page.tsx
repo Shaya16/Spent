@@ -1,26 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { getActivity, getHome } from "@/lib/api";
-import { PageHeader } from "@/components/layout/app-shell";
-import { SyncButton } from "@/components/dashboard/sync-button";
-import { CategorizeButton } from "@/components/dashboard/categorize-button";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AINotConnectedBanner } from "@/components/ai-not-connected-banner";
-import { ThisMonthCard } from "./this-month-card";
+import { CategorizeButton } from "@/components/dashboard/categorize-button";
+import { SyncButton } from "@/components/dashboard/sync-button";
+import { PageHeader } from "@/components/layout/app-shell";
+import { getActivity, getHome } from "@/lib/api";
+import type { HomePayload, HomeSection } from "@/lib/types";
+import { BankHealthCard } from "./bank-health-card";
+import { CardError, CardSkeleton } from "./card-shell";
 import { CashFlowCard } from "./cash-flow-card";
 import { CategorySnapshotCard } from "./category-snapshot-card";
 import { HistoricalTrendCard } from "./historical-trend-card";
-import { RecentTransactionsCard } from "./recent-transactions-card";
-import { TopMerchantsCard } from "./top-merchants-card";
 import { NeedsAttentionCard } from "./needs-attention-card";
-import { BankHealthCard } from "./bank-health-card";
-import { SyncStatusPill } from "./sync-status-pill";
+import { RecentTransactionsCard } from "./recent-transactions-card";
 import { SyncFailureBanner } from "./sync-failure-banner";
-import { CardError, CardSkeleton } from "./card-shell";
-import type { HomePayload, HomeSection } from "@/lib/types";
+import { SyncStatusPill } from "./sync-status-pill";
+import { ThisMonthCard } from "./this-month-card";
+import { TopMerchantsCard } from "./top-merchants-card";
 
 const ROW_1 = "col-span-12 lg:col-span-8";
 const ROW_1_SIDE = "col-span-12 md:col-span-6 lg:col-span-4";
@@ -44,7 +44,7 @@ export function HomePage() {
       needsAttention: t("needsAttention"),
       bankHealth: t("bankConnections"),
     }),
-    [t]
+    [t],
   );
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export function HomePage() {
       setActivityPopoverOpen(open);
       if (open) queryClient.invalidateQueries({ queryKey: ["activity"] });
     },
-    [queryClient]
+    [queryClient],
   );
 
   const handleSyncOrCategorizeComplete = useCallback(() => {
@@ -100,19 +100,13 @@ export function HomePage() {
               onOpenChange={handleActivityOpenChange}
             />
             <CategorizeButton onApplied={handleSyncOrCategorizeComplete} />
-            <SyncButton
-              onComplete={handleSyncOrCategorizeComplete}
-              autoStart={autoStartSync}
-            />
+            <SyncButton onComplete={handleSyncOrCategorizeComplete} autoStart={autoStartSync} />
           </>
         }
       />
 
       <div className="p-4 md:p-6 lg:p-8">
-        <SyncFailureBanner
-          items={data?.bankHealth ?? null}
-          className="mb-4 md:mb-5 lg:mb-6"
-        />
+        <SyncFailureBanner items={data?.bankHealth ?? null} className="mb-4 md:mb-5 lg:mb-6" />
         <AINotConnectedBanner className="mb-4 md:mb-5 lg:mb-6" />
         <div className="grid grid-cols-12 gap-4 md:gap-5 lg:gap-6">
           {renderSection("thisMonth", data, isLoading, isError, ROW_1, skeletonLabels)}
@@ -135,7 +129,7 @@ function renderSection(
   isLoading: boolean,
   isError: boolean,
   spanClass: string,
-  skeletonLabels: Record<HomeSection, string>
+  skeletonLabels: Record<HomeSection, string>,
 ) {
   if (isLoading || !data) {
     return (
@@ -145,8 +139,7 @@ function renderSection(
     );
   }
 
-  const sectionHasError =
-    isError || data.errors.some((e) => e.section === section);
+  const sectionHasError = isError || data.errors.some((e) => e.section === section);
 
   if (sectionHasError) {
     return (
@@ -170,29 +163,19 @@ function renderCard(section: HomeSection, data: HomePayload) {
     case "cashFlow":
       return data.cashFlow ? <CashFlowCard data={data.cashFlow} /> : null;
     case "categorySnapshot":
-      return data.categorySnapshot ? (
-        <CategorySnapshotCard items={data.categorySnapshot} />
-      ) : null;
+      return data.categorySnapshot ? <CategorySnapshotCard items={data.categorySnapshot} /> : null;
     case "historicalTrend":
-      return data.historicalTrend ? (
-        <HistoricalTrendCard data={data.historicalTrend} />
-      ) : null;
+      return data.historicalTrend ? <HistoricalTrendCard data={data.historicalTrend} /> : null;
     case "recentTransactions":
       return data.recentTransactions ? (
         <RecentTransactionsCard items={data.recentTransactions} />
       ) : null;
     case "topMerchants":
-      return data.topMerchants ? (
-        <TopMerchantsCard items={data.topMerchants} />
-      ) : null;
+      return data.topMerchants ? <TopMerchantsCard items={data.topMerchants} /> : null;
     case "needsAttention":
-      return data.needsAttention ? (
-        <NeedsAttentionCard data={data.needsAttention} />
-      ) : null;
+      return data.needsAttention ? <NeedsAttentionCard data={data.needsAttention} /> : null;
     case "bankHealth":
-      return data.bankHealth ? (
-        <BankHealthCard items={data.bankHealth} />
-      ) : null;
+      return data.bankHealth ? <BankHealthCard items={data.bankHealth} /> : null;
   }
 }
 

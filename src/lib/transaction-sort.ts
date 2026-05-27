@@ -16,11 +16,7 @@ export const TRANSACTION_SORT_FIELDS: TransactionSortField[] = [
 ];
 
 export function defaultSortOrder(field: TransactionSortField): SortOrder {
-  if (
-    field === "description" ||
-    field === "category_name" ||
-    field === "account"
-  ) {
+  if (field === "description" || field === "category_name" || field === "account") {
     return "asc";
   }
   return "desc";
@@ -29,7 +25,7 @@ export function defaultSortOrder(field: TransactionSortField): SortOrder {
 export function nextSortState(
   currentField: TransactionSortField,
   currentOrder: SortOrder,
-  clickedField: TransactionSortField
+  clickedField: TransactionSortField,
 ): { field: TransactionSortField; order: SortOrder } {
   if (clickedField === currentField) {
     return {
@@ -50,10 +46,7 @@ export const TRANSACTION_SORT_SQL: Record<TransactionSortField, string> = {
 };
 
 export function isTransactionSortField(
-  value: string | null | undefined
+  value: string | null | undefined,
 ): value is TransactionSortField {
-  return (
-    value != null &&
-    (TRANSACTION_SORT_FIELDS as string[]).includes(value)
-  );
+  return value != null && (TRANSACTION_SORT_FIELDS as string[]).includes(value);
 }

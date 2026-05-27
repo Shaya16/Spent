@@ -1,31 +1,28 @@
 import { NextResponse } from "next/server";
-import {
-  getMonthlySummary,
-  getTopMerchants,
-  getCategoryBreakdown,
-  getPeriodTotal,
-  getPeriodCount,
-  getCategorySpendInRange,
-  getTopMerchantPerCategory,
-  getNeedsReviewCountByCategory,
-} from "@/server/db/queries/transactions";
+import type { BudgetSource, CategoryWithData } from "@/lib/types";
+import { getAllBudgets, getAutoBudgetAverage } from "@/server/db/queries/budgets";
 import { getAllCategories } from "@/server/db/queries/categories";
-import {
-  getAllBudgets,
-  getAutoBudgetAverage,
-} from "@/server/db/queries/budgets";
 import { getWorkspaceSetting } from "@/server/db/queries/settings";
-import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
+import {
+  getCategoryBreakdown,
+  getCategorySpendInRange,
+  getMonthlySummary,
+  getNeedsReviewCountByCategory,
+  getPeriodCount,
+  getPeriodTotal,
+  getTopMerchantPerCategory,
+  getTopMerchants,
+} from "@/server/db/queries/transactions";
+import { toLocalISODate } from "@/server/lib/date-utils";
 import {
   computeStatus,
   daysInMonth,
-  dayWithinMonth,
   daysUntil,
+  dayWithinMonth,
   nextPayday,
   pacePhrase,
 } from "@/server/lib/pace";
-import { toLocalISODate } from "@/server/lib/date-utils";
-import type { BudgetSource, CategoryWithData } from "@/lib/types";
+import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 function parseISODate(s: string): Date {
   const [y, m, d] = s.split("-").map(Number);
@@ -37,9 +34,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const now = new Date();
   const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const defaultTo = toLocalISODate(
-    new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  );
+  const defaultTo = toLocalISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
   const from = searchParams.get("from") ?? defaultFrom;
   const to = searchParams.get("to") ?? defaultTo;
@@ -70,18 +65,12 @@ export async function GET(request: Request) {
   const topMerchants = getTopMerchantPerCategory(workspaceId, from, to);
   const explicitBudgets = getAllBudgets(workspaceId);
   const needsReviewCounts = getNeedsReviewCountByCategory(workspaceId, from, to);
-  const needsReviewMap = new Map(
-    needsReviewCounts.map((r) => [r.categoryId, r.count])
-  );
+  const needsReviewMap = new Map(needsReviewCounts.map((r) => [r.categoryId, r.count]));
 
   const currentMap = new Map(currentSpend.map((s) => [s.categoryId, s]));
   const prevMap = new Map(prevSpend.map((s) => [s.categoryId, s.amount]));
-  const topMerchantMap = new Map(
-    topMerchants.map((m) => [m.categoryId, m])
-  );
-  const budgetMap = new Map(
-    explicitBudgets.map((b) => [b.categoryId, b])
-  );
+  const topMerchantMap = new Map(topMerchants.map((m) => [m.categoryId, m]));
+  const budgetMap = new Map(explicitBudgets.map((b) => [b.categoryId, b]));
 
   // Identify parents (any category that is referenced as parent_id by at
   // least one other category). Parents get synthetic rollup rows.
@@ -105,8 +94,7 @@ export async function GET(request: Request) {
     const spent = spend?.amount ?? 0;
     const count = spend?.count ?? 0;
     const prev = prevMap.get(cat.id) ?? null;
-    const vsLastMonth =
-      prev != null && prev > 0 ? ((spent - prev) / prev) * 100 : null;
+    const vsLastMonth = prev != null && prev > 0 ? ((spent - prev) / prev) * 100 : null;
     const topMerchant = topMerchantMap.get(cat.id)?.merchant ?? null;
     const needsReviewCount = needsReviewMap.get(cat.id) ?? 0;
 
@@ -114,9 +102,7 @@ export async function GET(request: Request) {
       return {
         categoryId: cat.id,
         parentId: cat.parentId,
-        parentName: cat.parentId != null
-          ? parentNameById.get(cat.parentId) ?? null
-          : null,
+        parentName: cat.parentId != null ? (parentNameById.get(cat.parentId) ?? null) : null,
         isParent: false,
         budgetSource: "leaf" satisfies BudgetSource,
         categoryName: cat.name,
@@ -142,17 +128,13 @@ export async function GET(request: Request) {
     const budget = explicit?.monthlyAmount ?? 0;
     const remaining = Math.max(0, budget - spent);
     const perDayRemaining =
-      daysUntilPayday > 0 && remaining > 0
-        ? remaining / daysUntilPayday
-        : null;
+      daysUntilPayday > 0 && remaining > 0 ? remaining / daysUntilPayday : null;
     const percentSpent = budget > 0 ? (spent / budget) * 100 : 0;
     const status = computeStatus(spent, budget, timeElapsedPercent);
     return {
       categoryId: cat.id,
       parentId: cat.parentId,
-      parentName: cat.parentId != null
-        ? parentNameById.get(cat.parentId) ?? null
-        : null,
+      parentName: cat.parentId != null ? (parentNameById.get(cat.parentId) ?? null) : null,
       isParent: false,
       budgetSource: "leaf" satisfies BudgetSource,
       categoryName: cat.name,
@@ -187,25 +169,13 @@ export async function GET(request: Request) {
   for (const parent of categories) {
     if (!parentIdSet.has(parent.id)) continue;
     const kids = childrenByParent.get(parent.id) ?? [];
-    const kidRows = kids
-      .map((k) => leafById.get(k.id))
-      .filter((r): r is CategoryWithData => !!r);
+    const kidRows = kids.map((k) => leafById.get(k.id)).filter((r): r is CategoryWithData => !!r);
 
     const spent = kidRows.reduce((s, r) => s + r.spent, 0);
-    const transactionCount = kidRows.reduce(
-      (s, r) => s + r.transactionCount,
-      0
-    );
-    const needsReviewCount = kidRows.reduce(
-      (s, r) => s + r.needsReviewCount,
-      0
-    );
-    const prevTotal = kids.reduce(
-      (s, k) => s + (prevMap.get(k.id) ?? 0),
-      0
-    );
-    const vsLastMonth =
-      prevTotal > 0 ? ((spent - prevTotal) / prevTotal) * 100 : null;
+    const transactionCount = kidRows.reduce((s, r) => s + r.transactionCount, 0);
+    const needsReviewCount = kidRows.reduce((s, r) => s + r.needsReviewCount, 0);
+    const prevTotal = kids.reduce((s, k) => s + (prevMap.get(k.id) ?? 0), 0);
+    const vsLastMonth = prevTotal > 0 ? ((spent - prevTotal) / prevTotal) * 100 : null;
 
     // topMerchant: whichever child's top merchant has the largest spend
     let topMerchant: string | null = null;
@@ -221,18 +191,14 @@ export async function GET(request: Request) {
     // Budget: parent has its own explicit budget when in "budgeted" mode AND
     // a budget row exists for it. Otherwise roll up sum of budgeted children.
     const ownExplicit = budgetMap.get(parent.id);
-    const usesOwn =
-      parent.budgetMode === "budgeted" && ownExplicit !== undefined;
+    const usesOwn = parent.budgetMode === "budgeted" && ownExplicit !== undefined;
     let budget = 0;
     let budgetSource: BudgetSource = "rollup";
     if (usesOwn && ownExplicit) {
       budget = ownExplicit.monthlyAmount;
       budgetSource = "own";
     } else {
-      budget = kidRows.reduce(
-        (s, r) => (r.budgetMode === "budgeted" ? s + r.budget : s),
-        0
-      );
+      budget = kidRows.reduce((s, r) => (r.budgetMode === "budgeted" ? s + r.budget : s), 0);
       budgetSource = "rollup";
     }
 
@@ -280,9 +246,7 @@ export async function GET(request: Request) {
   const monthlyTargetRaw = getWorkspaceSetting(workspaceId, "monthly_target");
   const monthlyTargetParsed = monthlyTargetRaw != null ? Number(monthlyTargetRaw) : NaN;
   const monthlyTarget =
-    Number.isFinite(monthlyTargetParsed) && monthlyTargetParsed > 0
-      ? monthlyTargetParsed
-      : 0;
+    Number.isFinite(monthlyTargetParsed) && monthlyTargetParsed > 0 ? monthlyTargetParsed : 0;
   const totalBudget = monthlyTarget;
   const budgetedSpent = periodTotal;
 
@@ -291,17 +255,15 @@ export async function GET(request: Request) {
   // there's no completed history yet.
   const autoSource = getAutoBudgetAverage(workspaceId, 3);
   const typicalSum = autoSource.reduce((s, r) => s + (r.amount ?? 0), 0);
-  const typicalMonthly =
-    typicalSum > 0 ? Math.round(typicalSum / 100) * 100 : null;
+  const typicalMonthly = typicalSum > 0 ? Math.round(typicalSum / 100) * 100 : null;
 
-  const overallPercentSpent =
-    totalBudget > 0 ? (periodTotal / totalBudget) * 100 : 0;
+  const overallPercentSpent = totalBudget > 0 ? (periodTotal / totalBudget) * 100 : 0;
   const phrase = pacePhrase(
     periodTotal,
     budgetedSpent,
     totalBudget,
     timeElapsedPercent,
-    monthLabel
+    monthLabel,
   );
 
   // Format the date for hero header (e.g., "Tuesday, May 19")

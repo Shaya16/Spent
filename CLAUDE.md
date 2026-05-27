@@ -72,8 +72,16 @@ Key priorities (in order):
 ## Testing the app
 
 ```bash
-npm run dev               # starts on 127.0.0.1:3000
+bun dev                   # starts on 127.0.0.1:3000
 ```
+
+The full CI gate (formatting, typecheck, i18n, knip, react-doctor, tests) is `bun run ci`. GitHub Actions runs the same script on every PR via `.github/workflows/ci.yml`. The five strict checks the project enforces:
+
+- `bun run format:check` — Biome formatter
+- `bun run i18n:check` — `@lingual/i18n-check` for missing / orphan i18n keys (next-intl-recommended; wrapped in `scripts/check-i18n.mjs` with a baseline ignore list)
+- `bun run knip` — dead code (files, deps, unlisted deps)
+- `bun run react:doctor` — `react-compiler-healthcheck`
+- `bun test` — Bun's built-in Jest-compatible test runner, with `--conditions react-server` so `server-only` resolves as a no-op
 
 For end-to-end testing without real credentials, call the setup API directly:
 

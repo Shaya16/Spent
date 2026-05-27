@@ -10,13 +10,7 @@ interface ProviderBadgeProps {
   radius?: number;
 }
 
-export function ProviderBadge({
-  color,
-  name,
-  domain,
-  size = 44,
-  radius = 12,
-}: ProviderBadgeProps) {
+export function ProviderBadge({ color, name, domain, size = 44, radius = 12 }: ProviderBadgeProps) {
   const [imageOk, setImageOk] = useState<boolean | null>(null);
 
   const initials = name
@@ -26,9 +20,7 @@ export function ProviderBadge({
     .join("");
 
   // Google's S2 favicon API: free, no key. sz=128 returns 128px PNG.
-  const logoUrl = domain
-    ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
-    : null;
+  const logoUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null;
 
   const showImage = imageOk === true && logoUrl != null;
   const imageInset = Math.max(2, Math.round(size * 0.12));
@@ -63,11 +55,7 @@ export function ProviderBadge({
             }
           }}
           onError={() => setImageOk(false)}
-          className={
-            showImage
-              ? "block object-contain"
-              : "pointer-events-none absolute opacity-0"
-          }
+          className={showImage ? "block object-contain" : "pointer-events-none absolute opacity-0"}
           style={{ width: imageSize, height: imageSize }}
         />
       ) : null}
@@ -76,14 +64,10 @@ export function ProviderBadge({
           <div
             className="absolute inset-0"
             style={{
-              background:
-                "linear-gradient(135deg, rgba(255,255,255,0.18), rgba(0,0,0,0.05))",
+              background: "linear-gradient(135deg, rgba(255,255,255,0.18), rgba(0,0,0,0.05))",
             }}
           />
-          <span
-            className="relative font-bold tracking-tight"
-            style={{ fontSize: size * 0.4 }}
-          >
+          <span className="relative font-bold tracking-tight" style={{ fontSize: size * 0.4 }}>
             {initials}
           </span>
         </>

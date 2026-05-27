@@ -30,7 +30,7 @@ export interface OtpRequest {
 export function registerOtpRequest(
   syncRunId: number,
   workspaceId: number,
-  provider: string
+  provider: string,
 ): OtpRequest {
   // If there was a stale entry for this id, blow it away.
   const stale = pending.get(syncRunId);
@@ -49,11 +49,7 @@ export function registerOtpRequest(
         const timeoutHandle = setTimeout(() => {
           if (pending.get(syncRunId)) {
             pending.delete(syncRunId);
-            reject(
-              new Error(
-                "Timed out waiting for the one-time code. Try syncing again."
-              )
-            );
+            reject(new Error("Timed out waiting for the one-time code. Try syncing again."));
           }
         }, OTP_TIMEOUT_MS);
 
@@ -75,11 +71,7 @@ interface DeliverResult {
   reason?: string;
 }
 
-export function deliverOtp(
-  syncRunId: number,
-  workspaceId: number,
-  code: string
-): DeliverResult {
+export function deliverOtp(syncRunId: number, workspaceId: number, code: string): DeliverResult {
   const entry = pending.get(syncRunId);
   if (!entry) return { ok: false, reason: "No pending OTP request." };
   if (entry.workspaceId !== workspaceId) {

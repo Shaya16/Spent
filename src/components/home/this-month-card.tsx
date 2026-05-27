@@ -1,11 +1,11 @@
 "use client";
 
+import { ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { ArrowDown, ArrowUp } from "lucide-react";
-import { CardShell, CardAction } from "./card-shell";
 import { formatCurrency } from "@/lib/formatters";
 import type { HomeThisMonth } from "@/lib/types";
+import { CardAction, CardShell } from "./card-shell";
 
 interface Props {
   data: HomeThisMonth;
@@ -13,14 +13,7 @@ interface Props {
 
 export function ThisMonthCard({ data }: Props) {
   const t = useTranslations("home");
-  const {
-    spent,
-    budget,
-    deltaVsLastMonth,
-    daysUntilPayday,
-    timeElapsedPercent,
-    monthLabel,
-  } = data;
+  const { spent, budget, deltaVsLastMonth, daysUntilPayday, timeElapsedPercent, monthLabel } = data;
   const hasBudget = budget > 0;
   const percentSpent = hasBudget ? Math.min(100, (spent / budget) * 100) : 0;
   const pctSpent = hasBudget ? (spent / budget) * 100 : 0;
@@ -63,18 +56,12 @@ export function ThisMonthCard({ data }: Props) {
             </span>
             <span className={`mt-2 text-sm ${verdictClass}`}>{verdict}</span>
           </div>
-          {deltaVsLastMonth != null && (
-            <DeltaPill value={deltaVsLastMonth} />
-          )}
+          {deltaVsLastMonth != null && <DeltaPill value={deltaVsLastMonth} />}
         </div>
 
         {hasBudget && (
           <div className="space-y-2">
-            <ProgressBar
-              percent={percentSpent}
-              markPercent={timeElapsedPercent}
-              isOver={isOver}
-            />
+            <ProgressBar percent={percentSpent} markPercent={timeElapsedPercent} isOver={isOver} />
             <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
               <span>
                 {t("percentOfBudget", {
@@ -128,9 +115,7 @@ function ProgressBar({
   markPercent: number;
   isOver: boolean;
 }) {
-  const fillClass = isOver
-    ? "bg-[var(--status-over)]"
-    : "bg-[var(--status-on-track)]";
+  const fillClass = isOver ? "bg-[var(--status-over)]" : "bg-[var(--status-on-track)]";
   return (
     <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
       <div

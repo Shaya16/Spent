@@ -4,48 +4,48 @@
 // capture docs screenshots into website/src/assets/screenshots/.
 //
 // Usage:
-//   npm run docs:screenshots
+//   bun run docs:screenshots
 //
-// Requires a built Next app (run `npm run build` first) OR uses dev mode.
+// Requires a built Next app (run `bun run build` first) OR uses dev mode.
 
-import { spawn } from 'node:child_process';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import Database from 'better-sqlite3';
-import puppeteer from 'puppeteer';
-import { banks, transactions, budgets } from './docs-seed/fake-data.mjs';
+import { spawn } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import Database from "better-sqlite3";
+import puppeteer from "puppeteer";
+import { banks, budgets, transactions } from "./docs-seed/fake-data.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(HERE, '..');
-const OUT_DIR = path.join(REPO_ROOT, 'website/src/assets/screenshots');
+const REPO_ROOT = path.resolve(HERE, "..");
+const OUT_DIR = path.join(REPO_ROOT, "website/src/assets/screenshots");
 
 const VIEWPORT = { width: 1600, height: 1100, deviceScaleFactor: 2 };
 const PORT = 4399; // separate from prod 41234 and dev 3000
 
 const SCREENS = [
-  { name: 'home-light.png', path: '/', theme: 'light' },
-  { name: 'dashboard-light.png', path: '/budget', theme: 'light' },
-  { name: 'dashboard-dark.png', path: '/', theme: 'dark' },
-  { name: 'transactions-light.png', path: '/transactions', theme: 'light' },
-  { name: 'settings-banks-light.png', path: '/settings/bank', theme: 'light' },
-  { name: 'settings-ai-light.png', path: '/settings/ai', theme: 'light' },
-  { name: 'settings-categories-light.png', path: '/settings/categories', theme: 'light' },
+  { name: "home-light.png", path: "/", theme: "light" },
+  { name: "dashboard-light.png", path: "/budget", theme: "light" },
+  { name: "dashboard-dark.png", path: "/", theme: "dark" },
+  { name: "transactions-light.png", path: "/transactions", theme: "light" },
+  { name: "settings-banks-light.png", path: "/settings/bank", theme: "light" },
+  { name: "settings-ai-light.png", path: "/settings/ai", theme: "light" },
+  { name: "settings-categories-light.png", path: "/settings/categories", theme: "light" },
   {
-    name: 'setup-bank-light.png',
-    path: '/setup',
-    theme: 'light',
+    name: "setup-bank-light.png",
+    path: "/setup",
+    theme: "light",
   },
 ];
 
 function seedDb(dbDir) {
   fs.mkdirSync(dbDir, { recursive: true });
-  const dbPath = path.join(dbDir, 'spent.db');
+  const dbPath = path.join(dbDir, "spent.db");
   const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  const migrationPath = path.join(REPO_ROOT, 'src/server/db/migrations/001_initial.sql');
-  db.exec(fs.readFileSync(migrationPath, 'utf-8'));
+  db.pragma("journal_mode = WAL");
+  const migrationPath = path.join(REPO_ROOT, "src/server/db/migrations/001_initial.sql");
+  db.exec(fs.readFileSync(migrationPath, "utf-8"));
 
   // Insert banks with dummy encrypted blobs. The dashboard doesn't decrypt
   // these to render — it only shows the provider label.
@@ -54,7 +54,7 @@ function seedDb(dbDir) {
      VALUES (?, ?, ?, ?)`,
   );
   for (const b of banks) {
-    insertBank.run(b.provider, Buffer.from('demo'), Buffer.from('demo'), Buffer.from('demo'));
+    insertBank.run(b.provider, Buffer.from("demo"), Buffer.from("demo"), Buffer.from("demo"));
   }
 
   // Insert transactions. Schema in src/server/db/migrations/001_initial.sql.
@@ -69,13 +69,13 @@ function seedDb(dbDir) {
   for (let i = 0; i < transactions.length; i++) {
     const t = transactions[i];
     insertTx.run({
-      account: '****1234',
+      account: "****1234",
       date: t.date,
       amount: t.amount,
       desc: t.merchant,
       cat: t.cat,
       provider: t.provider,
-      hash: `demo-${i.toString().padStart(4, '0')}`,
+      hash: `demo-${i.toString().padStart(4, "0")}`,
     });
   }
 
@@ -86,7 +86,7 @@ function seedDb(dbDir) {
     );
     for (const b of budgets) insertBudget.run(b.category_id, b.monthly_target);
   } catch {
-    console.log('   (skipping budgets table — not in schema)');
+    console.log("   (skipping budgets table — not in schema)");
   }
 
   db.close();
@@ -95,8 +95,10 @@ function seedDb(dbDir) {
 
 function startServer(dataDir) {
   const env = { ...process.env, SPENT_DATA_DIR: dataDir, PORT: String(PORT) };
-  const child = spawn('npm', ['run', 'dev', '--', '-p', String(PORT)], {
-    cwd: REPO_ROOT, env, stdio: ['ignore', 'pipe', 'pipe'],
+  const child = spawn("npm", ["run", "dev", "--", "-p", String(PORT)], {
+    cwd: REPO_ROOT,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
   });
   return child;
 }
@@ -109,7 +111,7 @@ async function waitForServer() {
       const r = await fetch(url, { signal: AbortSignal.timeout(2000) });
       if (r.ok) return true;
     } catch {}
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 500));
   }
   return false;
 }
@@ -117,64 +119,69 @@ async function waitForServer() {
 async function setTheme(page, theme) {
   await page.evaluate((t) => {
     const html = document.documentElement;
-    html.classList.remove('light', 'dark');
+    html.classList.remove("light", "dark");
     html.classList.add(t);
-    try { localStorage.setItem('theme', t); } catch {}
+    try {
+      localStorage.setItem("theme", t);
+    } catch {}
   }, theme);
 }
 
 (async () => {
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spent-docs-'));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "spent-docs-"));
   console.log(`Tmp data dir: ${tmpDir}`);
 
-  console.log('Seeding fake data...');
+  console.log("Seeding fake data...");
   seedDb(tmpDir);
-  console.log('  ✓ seeded');
+  console.log("  ✓ seeded");
 
-  console.log('Starting Next.js (this can take 10-20s)...');
+  console.log("Starting Next.js (this can take 10-20s)...");
   const server = startServer(tmpDir);
-  server.stdout.on('data', (d) => process.stdout.write(`  [next] ${d}`));
-  server.stderr.on('data', (d) => process.stderr.write(`  [next!] ${d}`));
+  server.stdout.on("data", (d) => process.stdout.write(`  [next] ${d}`));
+  server.stderr.on("data", (d) => process.stderr.write(`  [next!] ${d}`));
 
   const ready = await waitForServer();
   if (!ready) {
-    server.kill('SIGTERM');
+    server.kill("SIGTERM");
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    throw new Error('Next.js did not become ready in 60s');
+    throw new Error("Next.js did not become ready in 60s");
   }
-  console.log('  ✓ Next.js is ready');
+  console.log("  ✓ Next.js is ready");
 
   const browser = await puppeteer.launch({
-    headless: 'new',
+    headless: "new",
     defaultViewport: VIEWPORT,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
   try {
     const page = await browser.newPage();
     await page.setViewport(VIEWPORT);
-    await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "networkidle2", timeout: 30000 });
 
     for (const screen of SCREENS) {
       const dest = path.join(OUT_DIR, screen.name);
       console.log(`Capturing ${screen.name} ← ${screen.path} (${screen.theme})`);
       await setTheme(page, screen.theme);
-      await page.goto(`http://127.0.0.1:${PORT}${screen.path}`, { waitUntil: 'networkidle2', timeout: 30000 });
+      await page.goto(`http://127.0.0.1:${PORT}${screen.path}`, {
+        waitUntil: "networkidle2",
+        timeout: 30000,
+      });
       await setTheme(page, screen.theme);
-      await new Promise(r => setTimeout(r, 1200));
+      await new Promise((r) => setTimeout(r, 1200));
       await page.screenshot({ path: dest, fullPage: false });
-      console.log('  ✓ saved');
+      console.log("  ✓ saved");
     }
   } finally {
     await browser.close();
-    server.kill('SIGTERM');
-    await new Promise(r => setTimeout(r, 1000));
+    server.kill("SIGTERM");
+    await new Promise((r) => setTimeout(r, 1000));
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    console.log('Cleaned up tmp dir');
+    console.log("Cleaned up tmp dir");
   }
 })().catch((err) => {
-  console.error('Failed:', err);
+  console.error("Failed:", err);
   process.exit(1);
 });

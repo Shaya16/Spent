@@ -1,19 +1,11 @@
 #!/usr/bin/env node
-import { assertRepoRoot, assertNotRoot, LOOPBACK_URL, URL_BASE } from "./paths.mjs";
+import { assertNotRoot, assertRepoRoot, LOOPBACK_URL, URL_BASE } from "./paths.mjs";
 
-const COMMANDS = new Set([
-  "install",
-  "uninstall",
-  "start",
-  "stop",
-  "status",
-  "logs",
-  "open",
-]);
+const COMMANDS = new Set(["install", "uninstall", "start", "stop", "status", "logs", "open"]);
 
 function usage() {
   console.error(
-    "usage: node scripts/service/install.mjs <install|uninstall|start|stop|status|logs|open>",
+    "usage: bun scripts/service/install.mjs <install|uninstall|start|stop|status|logs|open>",
   );
 }
 

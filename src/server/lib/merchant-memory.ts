@@ -1,7 +1,7 @@
 import "server-only";
 
-import { getDb } from "../db/index";
 import type { CategoryKind } from "@/lib/types";
+import { getDb } from "../db/index";
 
 export function normalizeMerchant(description: string): string {
   return description
@@ -21,7 +21,7 @@ export interface MerchantMapping {
 
 export function lookupMerchantCategory(
   workspaceId: number,
-  description: string
+  description: string,
 ): MerchantMapping | null {
   const key = normalizeMerchant(description);
   if (!key) return null;
@@ -32,7 +32,7 @@ export function lookupMerchantCategory(
               kind,
               source
        FROM merchant_categories
-       WHERE workspace_id = ? AND merchant_key = ?`
+       WHERE workspace_id = ? AND merchant_key = ?`,
     )
     .get(workspaceId, key) as MerchantMapping | undefined;
   return row ?? null;
@@ -40,7 +40,7 @@ export function lookupMerchantCategory(
 
 export function lookupMerchantCategoriesBulk(
   workspaceId: number,
-  descriptions: string[]
+  descriptions: string[],
 ): Map<string, MerchantMapping> {
   if (descriptions.length === 0) return new Map();
   const keys = new Set<string>();
@@ -53,7 +53,9 @@ export function lookupMerchantCategoriesBulk(
     }
   }
   if (keys.size === 0) return new Map();
-  const placeholders = Array.from(keys).map(() => "?").join(",");
+  const placeholders = Array.from(keys)
+    .map(() => "?")
+    .join(",");
   const rows = getDb()
     .prepare(
       `SELECT merchant_key as merchantKey,
@@ -61,7 +63,7 @@ export function lookupMerchantCategoriesBulk(
               kind,
               source
        FROM merchant_categories
-       WHERE workspace_id = ? AND merchant_key IN (${placeholders})`
+       WHERE workspace_id = ? AND merchant_key IN (${placeholders})`,
     )
     .all(workspaceId, ...Array.from(keys)) as MerchantMapping[];
   const lookupByKey = new Map<string, MerchantMapping>();
@@ -79,7 +81,7 @@ export function recordMerchantCategory(
   description: string,
   categoryId: number,
   kind: CategoryKind,
-  source: "user" | "approved-ai"
+  source: "user" | "approved-ai",
 ): void {
   const key = normalizeMerchant(description);
   if (!key) return;
@@ -96,19 +98,16 @@ export function recordMerchantCategory(
              THEN 'user'
            ELSE excluded.source
          END,
-         updated_at = datetime('now')`
+         updated_at = datetime('now')`,
     )
     .run(workspaceId, key, categoryId, kind, source);
 }
 
-export function incrementMerchantHits(
-  workspaceId: number,
-  merchantKeys: string[]
-): void {
+export function incrementMerchantHits(workspaceId: number, merchantKeys: string[]): void {
   if (merchantKeys.length === 0) return;
   const db = getDb();
   const stmt = db.prepare(
-    "UPDATE merchant_categories SET hit_count = hit_count + 1 WHERE workspace_id = ? AND merchant_key = ?"
+    "UPDATE merchant_categories SET hit_count = hit_count + 1 WHERE workspace_id = ? AND merchant_key = ?",
   );
   db.transaction(() => {
     for (const k of merchantKeys) stmt.run(workspaceId, k);

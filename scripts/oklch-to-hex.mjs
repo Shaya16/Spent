@@ -33,22 +33,22 @@ function oklchToHex(L, C, H) {
 }
 
 const categories = [
-  ["Groceries",         0.72, 0.09,  145],
-  ["Restaurants",       0.76, 0.10,   40],
-  ["Transport",         0.72, 0.09,  230],
-  ["Shopping",          0.80, 0.09,   80],
-  ["Entertainment",     0.76, 0.09,   10],
-  ["Health",            0.74, 0.08,  170],
-  ["Education",         0.72, 0.09,  275],
-  ["Bills & Utilities", 0.74, 0.04,   80],
-  ["Subscriptions",     0.73, 0.09,  295],
-  ["Travel",            0.74, 0.09,  220],
-  ["Cash & ATM",        0.82, 0.09,   90],
-  ["Transfers",         0.74, 0.035, 270],
-  ["Insurance",         0.76, 0.09,   20],
-  ["Home",              0.76, 0.09,   75],
-  ["Personal Care",     0.78, 0.09,  325],
-  ["Other",             0.74, 0.022,  85],
+  ["Groceries", 0.72, 0.09, 145],
+  ["Restaurants", 0.76, 0.1, 40],
+  ["Transport", 0.72, 0.09, 230],
+  ["Shopping", 0.8, 0.09, 80],
+  ["Entertainment", 0.76, 0.09, 10],
+  ["Health", 0.74, 0.08, 170],
+  ["Education", 0.72, 0.09, 275],
+  ["Bills & Utilities", 0.74, 0.04, 80],
+  ["Subscriptions", 0.73, 0.09, 295],
+  ["Travel", 0.74, 0.09, 220],
+  ["Cash & ATM", 0.82, 0.09, 90],
+  ["Transfers", 0.74, 0.035, 270],
+  ["Insurance", 0.76, 0.09, 20],
+  ["Home", 0.76, 0.09, 75],
+  ["Personal Care", 0.78, 0.09, 325],
+  ["Other", 0.74, 0.022, 85],
 ];
 
 for (const [name, L, C, H] of categories) {
@@ -57,18 +57,18 @@ for (const [name, L, C, H] of categories) {
 
 console.log("\nNew-category palette (for AI proposals):");
 const palette = [
-  ["light olive",       0.78, 0.09, 130],
-  ["sandy orange",      0.78, 0.10,  60],
-  ["light cyan-blue",   0.76, 0.09, 210],
-  ["bright pink",       0.74, 0.10, 340],
-  ["medium violet",     0.66, 0.11, 290],
-  ["jade",              0.76, 0.09, 170],
-  ["dusty indigo",      0.66, 0.09, 270],
-  ["medium slate",      0.74, 0.025, 260],
-  ["mauve",             0.75, 0.09, 310],
-  ["mint",              0.82, 0.08, 165],
-  ["sand gold",         0.82, 0.09,  95],
-  ["sage tan",          0.78, 0.04,  95],
+  ["light olive", 0.78, 0.09, 130],
+  ["sandy orange", 0.78, 0.1, 60],
+  ["light cyan-blue", 0.76, 0.09, 210],
+  ["bright pink", 0.74, 0.1, 340],
+  ["medium violet", 0.66, 0.11, 290],
+  ["jade", 0.76, 0.09, 170],
+  ["dusty indigo", 0.66, 0.09, 270],
+  ["medium slate", 0.74, 0.025, 260],
+  ["mauve", 0.75, 0.09, 310],
+  ["mint", 0.82, 0.08, 165],
+  ["sand gold", 0.82, 0.09, 95],
+  ["sage tan", 0.78, 0.04, 95],
 ];
 for (const [name, L, C, H] of palette) {
   console.log(`${name.padEnd(20)} oklch(${L} ${C} ${H})  →  ${oklchToHex(L, C, H)}`);
