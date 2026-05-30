@@ -7,13 +7,24 @@ export type TransactionKind = "expense" | "income" | "transfer";
 const BANK_PROVIDERS_SET: ReadonlySet<BankProvider> = new Set<BankProvider>([
   "hapoalim",
   "leumi",
+  "mizrahi",
+  "discount",
+  "mercantile",
+  "beinleumi",
+  "otsarHahayal",
+  "pagi",
+  "yahav",
+  "massad",
+  "union",
+  "oneZero",
 ]);
 
 export const CREDIT_CARD_PAYMENT_PATTERNS: readonly RegExp[] = [
   /ויזה/i,
   /ישראכרט/i,
   /ישרא[\s־-]?כארד/i,
-  /כאל/i,
+  // Match כאל / כ.א.ל / כ א ל / כ-א-ל (Israeli abbreviation for Cal credit).
+  /כ[\s.\-־]?א[\s.\-־]?ל/i,
   /מקסימום/i,
   /מאסטרקארד/i,
   /אמריקן\s*אקספרס/i,
@@ -21,6 +32,7 @@ export const CREDIT_CARD_PAYMENT_PATTERNS: readonly RegExp[] = [
   /תשלום\s*אשראי/i,
   /כרטיס\s*אשראי/i,
   /חיוב\s*כרטיס/i,
+  /חיוב\s*לכרטיס/i,
   /\bISRACARD\b/i,
   /\bVISA\b/i,
   /\bMASTERCARD\b/i,

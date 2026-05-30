@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getBankCredentials } from "@/server/db/queries/bank-credentials";
+import {
+  getBankCredentials,
+  getRequiresManualTwoFactor,
+} from "@/server/db/queries/bank-credentials";
 import { scrapeBank } from "@/server/scrapers";
 import type { BankProvider } from "@/lib/types";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
@@ -25,6 +28,11 @@ export async function POST(request: Request) {
     );
   }
 
+  const manualTwoFactor =
+    body.credentialId != null
+      ? getRequiresManualTwoFactor(workspaceId, body.credentialId)
+      : false;
+
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -32,7 +40,8 @@ export async function POST(request: Request) {
     workspaceId,
     body.provider as BankProvider,
     credentials,
-    sevenDaysAgo
+    sevenDaysAgo,
+    { manualTwoFactor }
   );
 
   if (!result.success) {
