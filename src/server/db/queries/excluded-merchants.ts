@@ -56,6 +56,20 @@ export function deleteExcludedMerchant(
   return result.changes > 0;
 }
 
+export function deleteExcludedMerchantByKey(
+  workspaceId: number,
+  provider: string,
+  merchantKey: string
+): boolean {
+  const result = getDb()
+    .prepare(
+      `DELETE FROM excluded_merchants
+       WHERE workspace_id = ? AND provider = ? AND merchant_key = ?`
+    )
+    .run(workspaceId, provider, merchantKey);
+  return result.changes > 0;
+}
+
 /**
  * Flags all rows just inserted by the given sync run that match an existing
  * excluded_merchants rule. Called once per sync immediately after

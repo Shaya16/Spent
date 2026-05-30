@@ -13,15 +13,19 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, EyeOff } from "lucide-react";
 import {
   deleteAllTransactions,
+  deleteExcludedMerchantRule,
   getSettings,
+  listExcludedMerchants,
   updateSettings,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { SectionShell, SettingCard } from "@/components/settings/section-shell";
 import { WorkspaceDangerCard } from "@/components/settings/workspace-controls";
+import { BANK_PROVIDERS } from "@/lib/types";
+import { translateProviderName } from "@/lib/i18n-data";
 
 export default function DataSettingsPage() {
   const t = useTranslations("settings.data");
@@ -48,6 +52,7 @@ export default function DataSettingsPage() {
           <code>data/spent.db</code> · <code>data/.encryption-key</code>
         </div>
       </SettingCard>
+      <ExcludedMerchantsCard />
       <DangerZone />
       <WorkspaceDangerCard />
     </SectionShell>
@@ -217,6 +222,85 @@ function DangerZone() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function ExcludedMerchantsCard() {
+  const t = useTranslations("settings.data");
+  const tBanks = useTranslations("banks");
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["excluded-merchants"],
+    queryFn: listExcludedMerchants,
+  });
+  const removeMutation = useMutation({
+    mutationFn: deleteExcludedMerchantRule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["excluded-merchants"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
+      queryClient.invalidateQueries({ queryKey: ["home"] });
+      toast.success(t("excludedRemoved"));
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : t("excludedRemoveFailed"));
+    },
+  });
+
+  const rules = data?.rules ?? [];
+
+  return (
+    <SettingCard
+      title={t("excludedTitle")}
+      description={t("excludedDescription")}
+    >
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">{t("excludedLoading")}</div>
+      ) : rules.length === 0 ? (
+        <div className="rounded-lg border border-dashed bg-muted/30 px-3 py-4 text-center text-xs text-muted-foreground">
+          {t("excludedEmpty")}
+        </div>
+      ) : (
+        <ul className="divide-y divide-border">
+          {rules.map((rule) => {
+            const info = BANK_PROVIDERS.find((b) => b.id === rule.provider);
+            const providerName = translateProviderName(
+              rule.provider,
+              info?.name ?? rule.provider,
+              tBanks,
+            );
+            return (
+              <li
+                key={rule.id}
+                className="flex items-center justify-between gap-3 py-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate font-medium">
+                      {rule.merchantKey}
+                    </span>
+                  </div>
+                  <div className="ms-5 text-[11px] text-muted-foreground">
+                    {providerName}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 px-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => removeMutation.mutate(rule.id)}
+                  disabled={removeMutation.isPending}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {t("excludedRemoveBtn")}
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </SettingCard>
   );
 }
 

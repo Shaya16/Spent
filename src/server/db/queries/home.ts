@@ -23,7 +23,7 @@ export function getCashFlow(
       `SELECT COALESCE(SUM(charged_amount), 0) as total
        FROM transactions
        WHERE workspace_id = ? AND date >= ? AND date <= ?
-         AND status = 'completed' AND kind = 'income'`
+         AND status = 'completed' AND kind = 'income' AND is_excluded = 0`
     )
     .get(workspaceId, from, to) as { total: number };
   const expenses = db
@@ -31,7 +31,7 @@ export function getCashFlow(
       `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total
        FROM transactions
        WHERE workspace_id = ? AND date >= ? AND date <= ?
-         AND status = 'completed' AND kind = 'expense'`
+         AND status = 'completed' AND kind = 'expense' AND is_excluded = 0`
     )
     .get(workspaceId, from, to) as { total: number };
   return {
@@ -66,7 +66,7 @@ export function getHistoricalTrend(
     `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total
      FROM transactions
      WHERE workspace_id = ? AND date >= ? AND date <= ?
-       AND status = 'completed' AND kind = 'expense'`
+       AND status = 'completed' AND kind = 'expense' AND is_excluded = 0`
   );
 
   return months.map((m) => {
@@ -92,6 +92,7 @@ export function getRecentTransactionsForHome(
        FROM transactions t
        LEFT JOIN categories c ON t.category_id = c.id
        WHERE t.workspace_id = ? AND t.status = 'completed' AND t.kind != 'transfer'
+         AND t.is_excluded = 0
        ORDER BY t.date DESC, t.id DESC
        LIMIT ?`
     )
@@ -115,20 +116,21 @@ export function getNeedsAttentionCounts(
   const uncategorized = db
     .prepare(
       `SELECT COUNT(*) as count FROM transactions
-       WHERE workspace_id = ? AND category_id IS NULL AND kind = 'expense' AND status = 'completed'`
+       WHERE workspace_id = ? AND category_id IS NULL AND kind = 'expense' AND status = 'completed'
+         AND is_excluded = 0`
     )
     .get(workspaceId) as { count: number };
   const lowConfidence = db
     .prepare(
       `SELECT COUNT(*) as count FROM transactions
        WHERE workspace_id = ? AND ai_confidence IS NOT NULL AND ai_confidence < 0.5
-         AND category_source = 'ai' AND status = 'completed'`
+         AND category_source = 'ai' AND status = 'completed' AND is_excluded = 0`
     )
     .get(workspaceId) as { count: number };
   const flagged = db
     .prepare(
       `SELECT COUNT(*) as count FROM transactions
-       WHERE workspace_id = ? AND needs_review = 1 AND status = 'completed'`
+       WHERE workspace_id = ? AND needs_review = 1 AND status = 'completed' AND is_excluded = 0`
     )
     .get(workspaceId) as { count: number };
   return {
@@ -235,7 +237,7 @@ export function getCategorySnapshot(
        FROM transactions
        WHERE workspace_id = ? AND date >= ? AND date <= ?
          AND status = 'completed' AND kind = 'expense'
-         AND category_id IS NOT NULL
+         AND category_id IS NOT NULL AND is_excluded = 0
        GROUP BY category_id`
     )
     .all(workspaceId, from, to) as Array<{ categoryId: number; amount: number }>;

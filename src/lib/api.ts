@@ -238,6 +238,37 @@ export function approveTransactionCategory(id: number) {
   });
 }
 
+export function setTransactionExcluded(
+  id: number,
+  excluded: boolean,
+  alwaysForMerchant = false,
+) {
+  return fetchJSON<{ success: boolean }>(`/api/transactions/${id}/exclude`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ excluded, alwaysForMerchant }),
+  });
+}
+
+export interface ExcludedMerchantRule {
+  id: number;
+  provider: string;
+  merchantKey: string;
+  createdAt: string;
+}
+
+export function listExcludedMerchants() {
+  return fetchJSON<{ rules: ExcludedMerchantRule[] }>(
+    `/api/excluded-merchants`,
+  );
+}
+
+export function deleteExcludedMerchantRule(id: number) {
+  return fetchJSON<{ success: boolean }>(`/api/excluded-merchants/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export function getSummary(params: {
   from: string;
   to: string;
