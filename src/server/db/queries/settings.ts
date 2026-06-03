@@ -1,11 +1,11 @@
 import "server-only";
 
 import { getDb } from "../index";
-import type { AppSettings } from "@/lib/types";
+import { RECOMMENDED_GEMINI_MODELS, type AppSettings } from "@/lib/types";
 
 // Global settings live in the `settings` table and apply to every workspace.
-// Currently: ai_provider, ai_ollama_url, ai_ollama_model, plus the encrypted
-// Claude API key triple (ai_api_key_encrypted/iv/auth_tag).
+// Currently: ai_provider, ai_ollama_url, ai_ollama_model, ai_gemini_model,
+// plus encrypted Claude/Gemini API key triples.
 export function getGlobalSetting(key: string): string | null {
   const row = getDb()
     .prepare("SELECT value FROM settings WHERE key = ?")
@@ -62,6 +62,7 @@ export const getSetting = getGlobalSetting;
 export const setSetting = setGlobalSetting;
 
 const AUTO_SYNC_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DEFAULT_GEMINI_MODEL = RECOMMENDED_GEMINI_MODELS[0].name;
 
 export function getAppSettings(workspaceId: number): AppSettings {
   const targetRaw = getWorkspaceSetting(workspaceId, "monthly_target");
@@ -71,6 +72,7 @@ export function getAppSettings(workspaceId: number): AppSettings {
   return {
     monthsToSync: Number(getWorkspaceSetting(workspaceId, "months_to_sync") ?? "3"),
     aiProvider: (getGlobalSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
+    geminiModel: getGlobalSetting("ai_gemini_model") ?? DEFAULT_GEMINI_MODEL,
     ollamaUrl: getGlobalSetting("ai_ollama_url") ?? "http://localhost:11434",
     ollamaModel: getGlobalSetting("ai_ollama_model") ?? "llama3.2:3b",
     showBrowser: getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true",
@@ -100,6 +102,9 @@ export function updateAppSettings(
     }
     if (settings.ollamaModel !== undefined) {
       setGlobalSetting("ai_ollama_model", settings.ollamaModel);
+    }
+    if (settings.geminiModel !== undefined) {
+      setGlobalSetting("ai_gemini_model", settings.geminiModel);
     }
     if (settings.showBrowser !== undefined) {
       setWorkspaceSetting(

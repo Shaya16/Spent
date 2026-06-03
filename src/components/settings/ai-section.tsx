@@ -13,7 +13,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { RECOMMENDED_OLLAMA_MODELS, type AppSettings } from "@/lib/types";
+import {
+  RECOMMENDED_GEMINI_MODELS,
+  RECOMMENDED_OLLAMA_MODELS,
+  type AppSettings,
+} from "@/lib/types";
 import { getSettings, saveAIConfig } from "@/lib/api";
 import { OllamaModelStatus } from "./ollama-model-status";
 import { SectionShell, SettingCard } from "./section-shell";
@@ -35,6 +39,15 @@ function ollamaModelDescription(
   } catch {
     return fallback;
   }
+}
+
+function errorMessage(err: unknown): string {
+  if (!(err instanceof Error)) return "Request failed";
+  try {
+    const parsed = JSON.parse(err.message) as { error?: unknown };
+    if (typeof parsed.error === "string") return parsed.error;
+  } catch {}
+  return err.message;
 }
 
 export function AISection() {
@@ -69,14 +82,21 @@ function AIForm({ settings }: { settings: AppSettings }) {
     settings.aiProvider
   );
   const [apiKey, setApiKey] = useState("");
+  const [geminiKey, setGeminiKey] = useState("");
+  const [geminiModel, setGeminiModel] = useState(settings.geminiModel);
   const [ollamaUrl, setOllamaUrl] = useState(settings.ollamaUrl);
   const [ollamaModel, setOllamaModel] = useState(settings.ollamaModel);
+  const missingKey =
+    (provider === "claude" && !apiKey) ||
+    (provider === "gemini" && !geminiKey);
 
   const mutation = useMutation({
     mutationFn: () =>
       saveAIConfig({
         provider,
-        apiKey: provider === "claude" && apiKey ? apiKey : undefined,
+        claudeApiKey: provider === "claude" && apiKey ? apiKey : undefined,
+        geminiApiKey: provider === "gemini" && geminiKey ? geminiKey : undefined,
+        geminiModel: provider === "gemini" ? geminiModel : undefined,
         ollamaUrl: provider === "ollama" ? ollamaUrl : undefined,
         ollamaModel: provider === "ollama" ? ollamaModel : undefined,
       }),
@@ -84,6 +104,10 @@ function AIForm({ settings }: { settings: AppSettings }) {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       toast.success(t("aiSettingsSaved"));
       setApiKey("");
+      setGeminiKey("");
+    },
+    onError: (err) => {
+      toast.error(errorMessage(err));
     },
   });
 
@@ -93,13 +117,18 @@ function AIForm({ settings }: { settings: AppSettings }) {
         title={t("providerCardTitle")}
         description={t("providerCardDescription")}
       >
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {(
             [
               {
                 id: "claude" as const,
                 title: t("providerClaudeTitle"),
                 desc: t("providerClaudeDesc"),
+              },
+              {
+                id: "gemini" as const,
+                title: t("providerGeminiTitle"),
+                desc: t("providerGeminiDesc"),
               },
               {
                 id: "ollama" as const,
@@ -146,8 +175,55 @@ function AIForm({ settings }: { settings: AppSettings }) {
               placeholder="sk-ant-..."
             />
             <p className="text-xs text-muted-foreground">
-              {t("leaveBlankHint")}
+              {t("apiKeyRequiredHint")}
             </p>
+          </div>
+        </SettingCard>
+      )}
+
+      {provider === "gemini" && (
+        <SettingCard
+          title={t("geminiKeyCardTitle")}
+          description={t("geminiKeyCardDescription")}
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="gemini-key">{t("apiKeyLabel")}</Label>
+              <Input
+                id="gemini-key"
+                type="password"
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+                placeholder="AIza..."
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("apiKeyRequiredHint")}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("modelLabel")}</Label>
+              <Select
+                value={geminiModel}
+                onValueChange={(v) => v && setGeminiModel(v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  {RECOMMENDED_GEMINI_MODELS.map((m) => (
+                    <SelectItem key={m.name} value={m.name}>
+                      {m.recommended
+                        ? `${m.name} (${t("recommendedTag")})`
+                        : m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {RECOMMENDED_GEMINI_MODELS.find((m) => m.name === geminiModel)
+                  ?.description ?? t("geminiModelDescription")}
+              </p>
+            </div>
           </div>
         </SettingCard>
       )}
@@ -173,10 +249,10 @@ function AIForm({ settings }: { settings: AppSettings }) {
                 value={ollamaModel}
                 onValueChange={(v) => v && setOllamaModel(v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="start">
                   {RECOMMENDED_OLLAMA_MODELS.map((m) => (
                     <SelectItem key={m.name} value={m.name}>
                       <div className="flex items-center gap-2">
@@ -209,7 +285,7 @@ function AIForm({ settings }: { settings: AppSettings }) {
       <div className="flex justify-end">
         <Button
           onClick={() => mutation.mutate()}
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || missingKey}
         >
           {mutation.isPending ? tCommon("saving") : t("saveAiSettings")}
         </Button>

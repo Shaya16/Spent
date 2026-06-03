@@ -36,7 +36,7 @@ Encrypted. AI-categorized. Yours.
 
 Israeli banks have terrible exports, YNAB doesn't speak ILS gracefully, and every "cloud finance" app wants you to hand over your bank password. Spent is the answer for people who'd rather just run something on their own laptop.
 
-Your transactions get pulled directly from your bank with [`israeli-bank-scrapers`](https://github.com/eshaham/israeli-bank-scrapers), stored in a local SQLite file you can `cp` and back up like any other file, and categorized by an AI provider you choose: paid Claude, free local Ollama, or nothing at all.
+Your transactions get pulled directly from your bank with [`israeli-bank-scrapers`](https://github.com/eshaham/israeli-bank-scrapers), stored in a local SQLite file you can `cp` and back up like any other file, and categorized by an AI provider you choose: paid Claude, Gemini, free local Ollama, or nothing at all.
 
 The trade-off is honest: you self-host, you trust the scraper, and you accept that banks may not love automation. In return you get a fast, beautiful, fully offline dashboard that never phones home.
 
@@ -53,7 +53,7 @@ Isracard, Bank Hapoalim, and Max work out of the box. Visa Cal and Bank Leumi ar
 <td width="33%" valign="top">
 
 ### 🤖 AI categorization
-Choose Claude (Anthropic) for best accuracy, Ollama for fully local LLMs, or skip and categorize manually.
+Choose Claude (Anthropic) for best accuracy, Gemini (Google) for a generous free tier, Ollama for fully local LLMs, or skip and categorize manually.
 
 </td>
 <td width="33%" valign="top">
@@ -155,7 +155,7 @@ flowchart LR
     Bank["🏦 Israeli bank<br/>(Isracard / Hapoalim / Max)"]
     Scraper["Puppeteer scraper<br/>(israeli-bank-scrapers)"]
     DB[("📦 SQLite<br/>data/spent.db<br/>(WAL mode)")]
-    AI{"🤖 AI provider<br/>Claude · Ollama · None"}
+    AI{"🤖 AI provider<br/>Claude · Gemini · Ollama · None"}
     UI["🖥 Dashboard<br/>http://spent.localhost:41234"]
 
     Bank -->|HTTPS<br/>credentials encrypted| Scraper
@@ -171,7 +171,7 @@ flowchart LR
     end
 ```
 
-Everything inside the dashed box stays on your laptop. The only outbound traffic is to your bank (for scraping) and optionally `api.anthropic.com` (if you chose Claude) or `localhost:11434` (if you chose Ollama).
+Everything inside the dashed box stays on your laptop. The only outbound traffic is to your bank (for scraping) and optionally `api.anthropic.com` (if you chose Claude), Google Gemini API endpoints (if you chose Gemini), or `localhost:11434` (if you chose Ollama).
 
 ## Supported banks
 
@@ -187,14 +187,14 @@ Don't see your bank? Adding a scraper is a small wrapper around `israeli-bank-sc
 
 ## AI providers
 
-| | **Claude** (Anthropic) | **Ollama** (local) | **None** |
-|---|---|---|---|
-| Cost | ~₪0.004 per sync | Free | Free |
-| Accuracy | Best | Good (depends on model) | Manual |
-| Network | `api.anthropic.com` | `localhost:11434` | Offline |
-| Setup | API key | Install Ollama + pull a model | Nothing |
+| | **Claude** (Anthropic) | **Gemini** (Google) | **Ollama** (local) | **None** |
+|---|---|---|---|---|
+| Cost | ~₪0.004 per sync | Free tier available | Free | Free |
+| Accuracy | Best | Strong | Good (depends on model) | Manual |
+| Network | `api.anthropic.com` | Google Gemini API | `localhost:11434` | Offline |
+| Setup | API key | API key from Google AI Studio + choose a model | Install Ollama + pull a model | Nothing |
 
-Default model when Claude is selected: `claude-haiku-4-5` (cheap, fast, accurate for categorization). For Ollama, `llama3.2:3b` is the recommended default.
+Default model when Claude is selected: `claude-haiku-4-5` (cheap, fast, accurate for categorization). Gemini defaults to `gemini-3.5-flash` and lets you choose from stable text models: `gemini-3.5-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, and `gemini-2.5-pro`. For Ollama, `llama3.2:3b` is the recommended default.
 
 You can change providers any time from **Settings → AI provider**. Existing categorizations are kept.
 
@@ -231,7 +231,7 @@ Open **`http://spent.localhost:41234`** and bookmark it.
 In the browser:
 
 1. **Connect your bank** — credentials are AES-256-GCM encrypted before they touch disk.
-2. **Choose an AI provider** — Claude (default), Ollama, or none.
+2. **Choose an AI provider** — Claude (default), Gemini, Ollama, or none.
 3. **Set your monthly ceiling** — total spend you want to stay under each month.
 4. **Set per-category budgets** — type an amount on any category to budget it; leave blank to track without a limit.
 5. **Done.** Sync starts automatically: 3 months of transactions, then AI categorization.
@@ -322,7 +322,7 @@ spent/
 │   │   └── settings/         Per-tab settings panels
 │   ├── lib/                  Shared client-side types and helpers
 │   └── server/
-│       ├── ai/               Claude + Ollama provider implementations
+│       ├── ai/               Claude + Gemini + Ollama provider implementations
 │       ├── db/               SQLite singleton, migrations, query helpers
 │       ├── lib/              Encryption, dedup, transfer detection, pace
 │       └── scrapers/         Wrapper around israeli-bank-scrapers
@@ -384,4 +384,4 @@ Built on the shoulders of:
 - [`shadcn/ui`](https://ui.shadcn.com/) on top of [`base-ui`](https://base-ui.com/)
 - [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3)
 - [`next-intl`](https://next-intl.dev/) for English / Hebrew i18n
-- [Anthropic Claude](https://www.anthropic.com/) and the local-LLM crew at [Ollama](https://ollama.com/)
+- [Anthropic Claude](https://www.anthropic.com/), [Google Gemini](https://ai.google.dev/), and the local-LLM crew at [Ollama](https://ollama.com/)

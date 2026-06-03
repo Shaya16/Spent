@@ -29,6 +29,12 @@ Key priorities (in order):
 - Comments only where the "why" isn't obvious.
 - `import "server-only"` at the top of every file in `src/server/`.
 
+## Pull requests
+
+This is a fork (`alon710/Spent`) of the upstream open-source project (`Shaya16/Spent`). PRs always target the upstream repo, never the fork.
+
+Default: `gh pr create --repo Shaya16/Spent --base main` (after pushing the branch to `origin`, which is the fork). When updating an existing PR, push to the branch the PR tracks on the fork.
+
 ## Architecture
 
 ### Data flow
