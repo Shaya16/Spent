@@ -57,7 +57,7 @@ The setup script edits `hosts` only when it has admin/sudo. If you ran setup non
 - **Mac/Linux:** `echo "127.0.0.1 spent.local" | sudo tee -a /etc/hosts`
 - **Windows (elevated PowerShell):** `npm run service:install` re-runs the hosts step.
 
-Either way, `http://127.0.0.1:41234` always works.
+Either way, `http://127.0.0.1:2412` always works.
 
 ## During sync
 
@@ -89,7 +89,7 @@ Your Claude API key is invalid or revoked. Generate a new one at `console.anthro
 
 ## With the dashboard
 
-### "Cannot connect to localhost:41234"
+### "Cannot connect to localhost:2412"
 
 The background service isn't running:
 
@@ -110,7 +110,7 @@ Some banks expose limited history. Yahav, in particular, only goes back about **
 
 ### Dashboard looks broken after an update
 
-Clear your browser cache for `localhost:41234`. The dashboard's assets are cached aggressively.
+Clear your browser cache for `localhost:2412`. The dashboard's assets are cached aggressively.
 
 ## With your data
 
@@ -150,7 +150,7 @@ Or copy the `.db`, `.db-wal`, and `.db-shm` files together while the service is 
 
 ## Still stuck?
 
-Open an issue on [GitHub](https://github.com/Shaya16/Spent/issues) with:
+Open an issue on [GitHub](https://github.com/alon710/Spent/issues) with:
 
 - Your operating system and version
 - What you were doing when it broke

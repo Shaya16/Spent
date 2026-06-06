@@ -1,34 +1,17 @@
 "use client";
 
+import { Check, ExternalLink, Loader2, ShieldCheck, Sparkles, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Check,
-  X,
-  Loader2,
-  Sparkles,
-  ShieldCheck,
-  ExternalLink,
-} from "lucide-react";
-import { BANK_PROVIDERS } from "@/lib/types";
 import { ProviderBadge } from "@/components/setup/provider-badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Link } from "@/i18n/navigation";
+import { BANK_PROVIDERS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type RowStatus =
-  | "idle"
-  | "running"
-  | "awaiting-otp"
-  | "manual-2fa"
-  | "done"
-  | "error";
+type RowStatus = "idle" | "running" | "awaiting-otp" | "manual-2fa" | "done" | "error";
 
 export interface ProviderRow {
   provider: string;
@@ -51,12 +34,6 @@ interface SyncProgressDialogProps {
   onSubmitOtp?: (syncRunId: number, code: string) => Promise<void>;
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  "ollama-start": "Starting Ollama…",
-  categorizing: "Categorizing with AI…",
-  "memory-hit": "Recognized from memory",
-};
-
 export function SyncProgressDialog({
   open,
   providers,
@@ -68,6 +45,20 @@ export function SyncProgressDialog({
   onClose,
   onSubmitOtp,
 }: SyncProgressDialogProps) {
+  const t = useTranslations("syncProgress");
+  // Literal t() calls (not a dynamic map) so the i18n checker sees these keys.
+  const stageLabel = (s: string): string => {
+    switch (s) {
+      case "ollama-start":
+        return t("stageOllamaStart");
+      case "categorizing":
+        return t("stageCategorizing");
+      case "memory-hit":
+        return t("stageMemoryHit");
+      default:
+        return t("stageWorking");
+    }
+  };
   const fullRows = useMemo(() => {
     const map = new Map(rows.map((r) => [r.provider, r]));
     return providers.map<ProviderRow>(
@@ -77,7 +68,7 @@ export function SyncProgressDialog({
           status: "idle",
           added: 0,
           updated: 0,
-        }
+        },
     );
   }, [providers, rows]);
 
@@ -88,48 +79,41 @@ export function SyncProgressDialog({
         if (!o && done) onClose();
       }}
     >
-      <DialogContent
-        className="max-w-md p-0 sm:max-w-md"
-        showCloseButton={done}
-      >
+      <DialogContent className="max-w-md p-0 sm:max-w-md" showCloseButton={done}>
         <div className="px-6 pt-6 pb-2">
           <HeroDots done={done} warning={Boolean(aiWarning)} />
           <DialogTitle className="mt-4 text-center font-serif text-2xl font-normal">
             {done
               ? aiWarning
-                ? "Synced — categorization skipped"
-                : "All synced!"
-              : "Syncing your accounts"}
+                ? t("titleSyncedNoCategorize")
+                : t("titleAllSynced")
+              : t("titleSyncing")}
           </DialogTitle>
           <DialogDescription className="mt-1 text-center text-xs">
             {done
               ? aiWarning
-                ? "Connect an AI provider to auto-categorize transactions."
-                : "Pulling fresh data from your banks. You're up to date."
+                ? t("descSyncedNoCategorize")
+                : t("descAllSynced")
               : stage
-                ? STAGE_LABELS[stage] ?? "Working…"
-                : "Reaching out to your banks…"}
+                ? stageLabel(stage)
+                : t("descReachingOut")}
           </DialogDescription>
         </div>
 
-        <div className="space-y-2 px-6 pb-2">
+        <div className="space-y-2 px-6 pb-2" aria-live="polite">
           {fullRows.map((row) => (
-            <ProviderRowView
-              key={row.provider}
-              row={row}
-              onSubmitOtp={onSubmitOtp}
-            />
+            <ProviderRowView key={row.provider} row={row} onSubmitOtp={onSubmitOtp} />
           ))}
         </div>
 
         {summary && (
           <div className="mx-6 mb-4 mt-2 overflow-hidden rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-around gap-3 text-center">
-              <SummaryStat label="New" value={summary.added} accent />
+              <SummaryStat label={t("statNew")} value={summary.added} accent />
               <Divider />
-              <SummaryStat label="Updated" value={summary.updated} />
+              <SummaryStat label={t("statUpdated")} value={summary.updated} />
               <Divider />
-              <SummaryStat label="Categorized" value={summary.categorized} />
+              <SummaryStat label={t("statCategorized")} value={summary.categorized} />
             </div>
           </div>
         )}
@@ -138,17 +122,14 @@ export function SyncProgressDialog({
           <div
             className="mx-6 mb-6 flex flex-col gap-3 rounded-xl border p-4 text-sm sm:flex-row sm:items-center"
             style={{
-              background:
-                "color-mix(in oklch, var(--status-heads-up) 14%, var(--card))",
-              borderColor:
-                "color-mix(in oklch, var(--status-heads-up) 35%, var(--border))",
+              background: "color-mix(in oklch, var(--status-heads-up) 14%, var(--card))",
+              borderColor: "color-mix(in oklch, var(--status-heads-up) 35%, var(--border))",
             }}
           >
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
               style={{
-                background:
-                  "color-mix(in oklch, var(--status-heads-up) 28%, var(--card))",
+                background: "color-mix(in oklch, var(--status-heads-up) 28%, var(--card))",
                 color: "var(--status-heads-up)",
               }}
             >
@@ -159,7 +140,7 @@ export function SyncProgressDialog({
               size="sm"
               nativeButton={false}
               className="self-start sm:self-auto"
-              render={<Link href="/settings/ai">Connect AI</Link>}
+              render={<Link href="/settings/ai">{t("connectAi")}</Link>}
             />
           </div>
         )}
@@ -175,6 +156,7 @@ function ProviderRowView({
   row: ProviderRow;
   onSubmitOtp?: (syncRunId: number, code: string) => Promise<void>;
 }) {
+  const t = useTranslations("syncProgress");
   const info = BANK_PROVIDERS.find((b) => b.id === row.provider);
   const label = info?.name ?? row.provider;
   const color = info?.color ?? "#888";
@@ -182,12 +164,13 @@ function ProviderRowView({
 
   return (
     <div
+      role={isInteractive2fa ? "status" : undefined}
       className={cn(
         "relative overflow-hidden rounded-xl border bg-card p-3 transition-all duration-300",
         row.status === "running" &&
           "shadow-[0_0_0_1px_color-mix(in_oklch,var(--ring)_30%,transparent)]",
         isInteractive2fa &&
-          "shadow-[0_0_0_1px_color-mix(in_oklch,var(--status-heads-up)_50%,transparent)]"
+          "shadow-[0_0_0_1px_color-mix(in_oklch,var(--status-heads-up)_50%,transparent)]",
       )}
     >
       <div className="relative flex items-center gap-3">
@@ -201,34 +184,33 @@ function ProviderRowView({
         )}
 
         <div className="relative">
-          <ProviderBadge
-            color={color}
-            name={label}
-            domain={info?.domain}
-            size={36}
-            radius={10}
-          />
+          <ProviderBadge color={color} name={label} domain={info?.domain} size={36} radius={10} />
         </div>
 
         <div className="relative min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{label}</div>
-          <div className="truncate text-[11px] text-muted-foreground">
-            {row.status === "idle" && "Waiting…"}
-            {row.status === "running" && "Pulling transactions…"}
-            {row.status === "awaiting-otp" &&
-              "Enter the one-time code we just sent you"}
+          <div
+            className={cn(
+              "text-[11px] text-muted-foreground",
+              row.status === "error" ? "break-words" : "truncate",
+            )}
+          >
+            {row.status === "idle" && t("rowWaiting")}
+            {row.status === "running" && t("rowPulling")}
+            {row.status === "awaiting-otp" && t("rowEnterCode")}
             {row.status === "manual-2fa" && (
               <span className="inline-flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" />
-                Solve the 2FA in the popup window
+                {t("rowSolve2fa")}
               </span>
             )}
             {row.status === "done" &&
               (row.added === 0 && row.updated === 0
-                ? "Already up to date"
-                : `+${row.added} new${row.updated ? ` · ${row.updated} updated` : ""}`)}
-            {row.status === "error" &&
-              (row.errorMessage?.slice(0, 60) ?? "Failed")}
+                ? t("rowUpToDate")
+                : row.updated > 0
+                  ? t("rowAddedUpdated", { added: row.added, updated: row.updated })
+                  : t("rowAdded", { added: row.added }))}
+            {row.status === "error" && (row.errorMessage ?? t("rowFailed"))}
           </div>
         </div>
 
@@ -238,10 +220,7 @@ function ProviderRowView({
       </div>
 
       {isInteractive2fa && onSubmitOtp && row.syncRunId ? (
-        <OtpInputArea
-          syncRunId={row.syncRunId}
-          onSubmit={onSubmitOtp}
-        />
+        <OtpInputArea syncRunId={row.syncRunId} onSubmit={onSubmitOtp} />
       ) : null}
     </div>
   );
@@ -254,6 +233,7 @@ function OtpInputArea({
   syncRunId: number;
   onSubmit: (syncRunId: number, code: string) => Promise<void>;
 }) {
+  const t = useTranslations("syncProgress");
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -268,7 +248,7 @@ function OtpInputArea({
       await onSubmit(syncRunId, trimmed);
       setCode("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not submit the code.");
+      setError(err instanceof Error ? err.message : t("otpSubmitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -285,60 +265,37 @@ function OtpInputArea({
         onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
         inputMode="numeric"
         pattern="[0-9]*"
-        placeholder="6-digit code"
+        placeholder={t("otpPlaceholder")}
         className="font-mono"
         disabled={submitting}
-        aria-label="One-time code"
+        aria-label={t("otpLabel")}
       />
-      <Button
-        type="submit"
-        size="sm"
-        disabled={submitting || code.trim().length < 4}
-      >
-        {submitting ? "Submitting…" : "Submit"}
+      <Button type="submit" size="sm" disabled={submitting || code.trim().length < 4}>
+        {submitting ? t("otpSubmitting") : t("otpSubmit")}
       </Button>
-      {error && (
-        <p className="absolute -bottom-5 start-0 text-[11px] text-destructive">
-          {error}
-        </p>
-      )}
+      {error && <p className="absolute -bottom-5 start-0 text-[11px] text-destructive">{error}</p>}
     </form>
   );
 }
 
-function StatusBadge({
-  status,
-  color,
-}: {
-  status: RowStatus;
-  color: string;
-}) {
+function StatusBadge({ status, color }: { status: RowStatus; color: string }) {
+  const t = useTranslations("syncProgress");
   if (status === "running") {
-    return (
-      <Loader2
-        className="h-4 w-4 animate-spin"
-        style={{ color }}
-      />
-    );
+    return <Loader2 className="h-4 w-4 animate-spin" style={{ color }} />;
   }
   if (status === "awaiting-otp") {
     return (
       <div
         className="flex h-6 w-6 items-center justify-center rounded-full"
         style={{ background: "var(--status-heads-up)" }}
-        aria-label="Waiting for one-time code"
+        aria-label={t("badgeAwaitingOtp")}
       >
         <ShieldCheck className="h-3.5 w-3.5 text-background" strokeWidth={2.5} />
       </div>
     );
   }
   if (status === "manual-2fa") {
-    return (
-      <Loader2
-        className="h-4 w-4 animate-spin"
-        style={{ color: "var(--status-heads-up)" }}
-      />
-    );
+    return <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--status-heads-up)" }} />;
   }
   if (status === "done") {
     return (
@@ -369,33 +326,12 @@ function HeroDots({ done, warning }: { done: boolean; warning?: boolean }) {
       <div
         className={cn(
           "relative h-16 w-16",
-          done && "motion-safe:animate-[pop_500ms_cubic-bezier(0.3,1.6,0.4,1)_forwards]"
+          done && "motion-safe:animate-[pop_500ms_cubic-bezier(0.3,1.6,0.4,1)_forwards]",
         )}
       >
-        <Dot
-          x={32}
-          y={42}
-          r={20}
-          color="var(--primary)"
-          delay={0}
-          done={done}
-        />
-        <Dot
-          x={32}
-          y={20}
-          r={9}
-          color="var(--status-heads-up)"
-          delay={150}
-          done={done}
-        />
-        <Dot
-          x={48}
-          y={28}
-          r={7}
-          color="var(--status-plenty-left)"
-          delay={300}
-          done={done}
-        />
+        <Dot x={32} y={42} r={20} color="var(--primary)" delay={0} done={done} />
+        <Dot x={32} y={20} r={9} color="var(--status-heads-up)" delay={150} done={done} />
+        <Dot x={48} y={28} r={7} color="var(--status-plenty-left)" delay={300} done={done} />
         {done && (
           <div
             className="absolute inset-0 flex items-center justify-center motion-safe:animate-[fadeIn_500ms_ease-out_forwards]"
@@ -404,16 +340,11 @@ function HeroDots({ done, warning }: { done: boolean; warning?: boolean }) {
             <div
               className="flex h-9 w-9 items-center justify-center rounded-full"
               style={{
-                background: warning
-                  ? "var(--status-heads-up)"
-                  : "var(--status-on-track)",
+                background: warning ? "var(--status-heads-up)" : "var(--status-on-track)",
               }}
             >
               {warning ? (
-                <Sparkles
-                  className="h-5 w-5 text-background"
-                  strokeWidth={2.5}
-                />
+                <Sparkles className="h-5 w-5 text-background" strokeWidth={2.5} />
               ) : (
                 <Check className="h-5 w-5 text-background" strokeWidth={3} />
               )}
@@ -442,46 +373,33 @@ function Dot({
 }) {
   return (
     <div
-      className="absolute rounded-full"
+      className="absolute rounded-full [transition:opacity_400ms_ease]"
       style={{
         left: x - r,
         top: y - r,
         width: r * 2,
         height: r * 2,
         background: color,
-        animation: done
-          ? "none"
-          : `dotPulse 1.4s ease-in-out ${delay}ms infinite`,
+        animation: done ? "none" : `dotPulse 1.4s ease-in-out ${delay}ms infinite`,
         opacity: done ? 0.35 : 1,
-        transition: "opacity 400ms ease",
       }}
     />
   );
 }
 
-function SummaryStat({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent?: boolean;
-}) {
+function SummaryStat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div className="flex flex-1 flex-col">
       <span
         className={cn(
           "font-serif text-2xl tabular-nums",
           accent && "text-[var(--status-on-track)]",
-          "motion-safe:animate-[countIn_450ms_cubic-bezier(0.3,1.6,0.4,1)_forwards]"
+          "motion-safe:animate-[countIn_450ms_cubic-bezier(0.3,1.6,0.4,1)_forwards]",
         )}
       >
         {value}
       </span>
-      <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-        {label}
-      </span>
+      <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{label}</span>
     </div>
   );
 }
@@ -490,12 +408,7 @@ function Divider() {
   return <span className="h-8 w-px bg-border" />;
 }
 
-export function useAutoClose(
-  open: boolean,
-  done: boolean,
-  delayMs: number,
-  onClose: () => void
-) {
+export function useAutoClose(open: boolean, done: boolean, delayMs: number, onClose: () => void) {
   useEffect(() => {
     if (!open || !done) return;
     const t = setTimeout(onClose, delayMs);

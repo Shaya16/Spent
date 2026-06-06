@@ -1,7 +1,6 @@
 import "server-only";
 
-import { getDb } from "../index";
-import { toLocalISODate } from "../../lib/date-utils";
+import { and, asc, desc, eq } from "drizzle-orm";
 import type {
   HomeBankHealthItem,
   HomeCashFlow,
@@ -11,19 +10,19 @@ import type {
   HomeRecentTransaction,
 } from "@/lib/types";
 import { BANK_PROVIDERS } from "@/lib/types";
+import { toLocalISODate } from "../../lib/date-utils";
+import { getDb } from "../index";
+import { getOrm } from "../orm";
+import { bankCredentials, budgets, categories, syncRuns } from "../schema";
 
-export function getCashFlow(
-  workspaceId: number,
-  from: string,
-  to: string
-): HomeCashFlow {
+export function getCashFlow(workspaceId: number, from: string, to: string): HomeCashFlow {
   const db = getDb();
   const income = db
     .prepare(
       `SELECT COALESCE(SUM(charged_amount), 0) as total
        FROM transactions
        WHERE workspace_id = ? AND date >= ? AND date <= ?
-         AND status = 'completed' AND kind = 'income' AND is_excluded = 0`
+         AND status = 'completed' AND kind = 'income' AND is_excluded = 0`,
     )
     .get(workspaceId, from, to) as { total: number };
   const expenses = db
@@ -31,7 +30,7 @@ export function getCashFlow(
       `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total
        FROM transactions
        WHERE workspace_id = ? AND date >= ? AND date <= ?
-         AND status = 'completed' AND kind = 'expense' AND is_excluded = 0`
+         AND status = 'completed' AND kind = 'expense' AND is_excluded = 0`,
     )
     .get(workspaceId, from, to) as { total: number };
   return {
@@ -43,7 +42,7 @@ export function getCashFlow(
 
 export function getHistoricalTrend(
   workspaceId: number,
-  monthsBack: number
+  monthsBack: number,
 ): HomeHistoricalTrendPoint[] {
   const db = getDb();
   const now = new Date();
@@ -66,7 +65,7 @@ export function getHistoricalTrend(
     `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total
      FROM transactions
      WHERE workspace_id = ? AND date >= ? AND date <= ?
-       AND status = 'completed' AND kind = 'expense' AND is_excluded = 0`
+       AND status = 'completed' AND kind = 'expense' AND is_excluded = 0`,
   );
 
   return months.map((m) => {
@@ -82,7 +81,7 @@ export function getHistoricalTrend(
 
 export function getRecentTransactionsForHome(
   workspaceId: number,
-  limit: number
+  limit: number,
 ): HomeRecentTransaction[] {
   const rows = getDb()
     .prepare(
@@ -94,7 +93,7 @@ export function getRecentTransactionsForHome(
        WHERE t.workspace_id = ? AND t.status = 'completed' AND t.kind != 'transfer'
          AND t.is_excluded = 0
        ORDER BY t.date DESC, t.id DESC
-       LIMIT ?`
+       LIMIT ?`,
     )
     .all(workspaceId, limit) as Array<{
     id: number;
@@ -109,28 +108,26 @@ export function getRecentTransactionsForHome(
   return rows;
 }
 
-export function getNeedsAttentionCounts(
-  workspaceId: number
-): HomeNeedsAttention {
+export function getNeedsAttentionCounts(workspaceId: number): HomeNeedsAttention {
   const db = getDb();
   const uncategorized = db
     .prepare(
       `SELECT COUNT(*) as count FROM transactions
        WHERE workspace_id = ? AND category_id IS NULL AND kind = 'expense' AND status = 'completed'
-         AND is_excluded = 0`
+         AND is_excluded = 0`,
     )
     .get(workspaceId) as { count: number };
   const lowConfidence = db
     .prepare(
       `SELECT COUNT(*) as count FROM transactions
        WHERE workspace_id = ? AND ai_confidence IS NOT NULL AND ai_confidence < 0.5
-         AND category_source = 'ai' AND status = 'completed' AND is_excluded = 0`
+         AND category_source = 'ai' AND status = 'completed' AND is_excluded = 0`,
     )
     .get(workspaceId) as { count: number };
   const flagged = db
     .prepare(
       `SELECT COUNT(*) as count FROM transactions
-       WHERE workspace_id = ? AND needs_review = 1 AND status = 'completed' AND is_excluded = 0`
+       WHERE workspace_id = ? AND needs_review = 1 AND status = 'completed' AND is_excluded = 0`,
     )
     .get(workspaceId) as { count: number };
   return {
@@ -141,26 +138,29 @@ export function getNeedsAttentionCounts(
 }
 
 export function getBankHealth(workspaceId: number): HomeBankHealthItem[] {
-  const db = getDb();
-  const creds = db
-    .prepare(
-      `SELECT provider FROM bank_credentials WHERE workspace_id = ? ORDER BY provider`
-    )
-    .all(workspaceId) as { provider: string }[];
-
-  const latestRunStmt = db.prepare(
-    `SELECT status, completed_at, error_message FROM sync_runs
-     WHERE workspace_id = ? AND provider = ?
-     ORDER BY started_at DESC LIMIT 1`
-  );
+  const orm = getOrm();
+  const creds = orm
+    .select({ provider: bankCredentials.provider })
+    .from(bankCredentials)
+    .where(eq(bankCredentials.workspaceId, workspaceId))
+    .orderBy(asc(bankCredentials.provider))
+    .all();
 
   const staleThresholdMs = 24 * 60 * 60 * 1000;
   const now = Date.now();
 
   return creds.map(({ provider }) => {
-    const latest = latestRunStmt.get(workspaceId, provider) as
-      | { status: string; completed_at: string | null; error_message: string | null }
-      | undefined;
+    const latest = orm
+      .select({
+        status: syncRuns.status,
+        completedAt: syncRuns.completedAt,
+        errorMessage: syncRuns.errorMessage,
+      })
+      .from(syncRuns)
+      .where(and(eq(syncRuns.workspaceId, workspaceId), eq(syncRuns.provider, provider)))
+      .orderBy(desc(syncRuns.startedAt))
+      .limit(1)
+      .get();
     const providerInfo = BANK_PROVIDERS.find((p) => p.id === provider);
     const providerName = providerInfo?.name ?? provider;
 
@@ -178,13 +178,13 @@ export function getBankHealth(workspaceId: number): HomeBankHealthItem[] {
       return {
         provider,
         providerName,
-        lastSyncAt: latest.completed_at,
+        lastSyncAt: latest.completedAt,
         status: "error",
-        errorMessage: latest.error_message,
+        errorMessage: latest.errorMessage,
       };
     }
 
-    if (!latest.completed_at) {
+    if (!latest.completedAt) {
       return {
         provider,
         providerName,
@@ -194,12 +194,12 @@ export function getBankHealth(workspaceId: number): HomeBankHealthItem[] {
       };
     }
 
-    const ageMs = now - new Date(latest.completed_at + "Z").getTime();
+    const ageMs = now - new Date(`${latest.completedAt}Z`).getTime();
     const status: "ok" | "stale" = ageMs > staleThresholdMs ? "stale" : "ok";
     return {
       provider,
       providerName,
-      lastSyncAt: latest.completed_at,
+      lastSyncAt: latest.completedAt,
       status,
       errorMessage: null,
     };
@@ -210,44 +210,45 @@ export function getCategorySnapshot(
   workspaceId: number,
   from: string,
   to: string,
-  limit: number
+  limit: number,
 ): HomeCategorySnapshotItem[] {
-  const db = getDb();
+  const orm = getOrm();
 
-  const categories = db
-    .prepare(
-      `SELECT id, parent_id as parentId, name, color
-       FROM categories WHERE workspace_id = ? AND kind = 'expense'`
-    )
-    .all(workspaceId) as Array<{
-    id: number;
-    parentId: number | null;
-    name: string;
-    color: string;
-  }>;
+  const categoryRows = orm
+    .select({
+      id: categories.id,
+      parentId: categories.parentId,
+      name: categories.name,
+      color: categories.color,
+    })
+    .from(categories)
+    .where(and(eq(categories.workspaceId, workspaceId), eq(categories.kind, "expense")))
+    .all();
 
   const parentIds = new Set<number>();
-  for (const c of categories) {
+  for (const c of categoryRows) {
     if (c.parentId != null) parentIds.add(c.parentId);
   }
 
-  const spendRows = db
+  const spendRows = getDb()
     .prepare(
       `SELECT category_id as categoryId, SUM(ABS(charged_amount)) as amount
        FROM transactions
        WHERE workspace_id = ? AND date >= ? AND date <= ?
          AND status = 'completed' AND kind = 'expense'
          AND category_id IS NOT NULL AND is_excluded = 0
-       GROUP BY category_id`
+       GROUP BY category_id`,
     )
     .all(workspaceId, from, to) as Array<{ categoryId: number; amount: number }>;
 
-  const budgetRows = db
-    .prepare(
-      `SELECT category_id as categoryId, monthly_amount as monthlyAmount
-       FROM budgets WHERE workspace_id = ?`
-    )
-    .all(workspaceId) as Array<{ categoryId: number; monthlyAmount: number }>;
+  const budgetRows = orm
+    .select({
+      categoryId: budgets.categoryId,
+      monthlyAmount: budgets.monthlyAmount,
+    })
+    .from(budgets)
+    .where(eq(budgets.workspaceId, workspaceId))
+    .all();
 
   const budgetByCategory = new Map<number, number>();
   for (const b of budgetRows) budgetByCategory.set(b.categoryId, b.monthlyAmount);
@@ -256,7 +257,7 @@ export function getCategorySnapshot(
   const rolledSpend = new Map<number, number>();
   const rolledBudget = new Map<number, number>();
 
-  const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const categoryById = new Map(categoryRows.map((c) => [c.id, c]));
 
   for (const row of spendRows) {
     const cat = categoryById.get(row.categoryId);
@@ -267,7 +268,7 @@ export function getCategorySnapshot(
 
   // Roll up budgets the same way. Parent's explicit budget takes precedence
   // over the sum of children when it exists.
-  for (const cat of categories) {
+  for (const cat of categoryRows) {
     const explicit = budgetByCategory.get(cat.id);
     if (explicit == null) continue;
     const key = cat.parentId ?? cat.id;
@@ -276,8 +277,7 @@ export function getCategorySnapshot(
       rolledBudget.set(key, explicit);
     } else {
       // Leaf budget: only add if parent doesn't have its own explicit budget.
-      const parentHasOwnBudget =
-        cat.parentId != null && budgetByCategory.has(cat.parentId);
+      const parentHasOwnBudget = cat.parentId != null && budgetByCategory.has(cat.parentId);
       if (parentHasOwnBudget) continue;
       rolledBudget.set(key, (rolledBudget.get(key) ?? 0) + explicit);
     }

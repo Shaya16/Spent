@@ -64,7 +64,7 @@ sandbox on.
 
 ## CSRF defense
 
-Next.js middleware (`src/middleware.ts`) rejects any mutating API
+Next.js proxy (`src/proxy.ts`) rejects any mutating API
 request (POST/PUT/PATCH/DELETE) whose `Origin` or `Referer` header
 doesn't match the app's own host. This prevents a malicious tab in
 your browser from triggering syncs / category changes against your
@@ -140,64 +140,42 @@ defense.
   key only exposes one credential at a time.
 - **Audit log** of every API mutation with timestamps.
 
-## Always-on service
+## Running it always-on
 
-If you install Spent as a background service (`npm run service:install`),
-the server runs from login to logout (or from boot to shutdown). This
-changes how some surfaces look. The guarantees:
+Spent does not ship a service installer. You run the server yourself with
+`bun start` and, if you want it always-on, wrap that command in your own
+service manager (a macOS LaunchAgent, a systemd user unit, a Windows
+scheduled task, `tmux`, etc.). Whatever you use, these properties hold:
 
-**The server still binds only to `127.0.0.1`.** The `npm run start`
-script hardcodes `-H 127.0.0.1 -p 41234`, and every per-OS template
-(LaunchAgent plist, systemd unit, Task Scheduler XML) invokes it with
-those flags. The installer runs a post-install check and refuses to
-finish if it detects the server listening on a non-loopback address.
-
-**No new daemon runs as root or SYSTEM.** The installer refuses to run
-as root. The LaunchAgent and systemd user unit run under your user.
-The Windows scheduled task uses `LeastPrivilege` and runs as the
-installing user, not as `SYSTEM`.
-
-**The hostname is loopback-only.** Spent uses `spent.localhost`, which
-RFC 6761 reserves as loopback. macOS and Linux resolve `*.localhost`
-to `127.0.0.1` natively through the system resolver, so no hosts file
-edit is needed there. On Windows, `npm run service:install` appends
-`127.0.0.1 spent.localhost` to the hosts file as a compatibility
-fallback (the only step that requires elevation, and it prompts
-interactively). The block is bracketed with markers and removed
-cleanly by `npm run service:uninstall`. No mDNS / Bonjour service is
-ever registered, and the loopback address never resolves from another
-device on your network.
+**The server binds only to `127.0.0.1`.** The `bun start` script hardcodes
+`-H 127.0.0.1 -p 2412`, so the dashboard is reachable from your machine
+only — never from your LAN or the internet. Do not change the host flag to
+a non-loopback address. Run your service manager under your own user, not
+as root / SYSTEM.
 
 **The health endpoint discloses minimum information.** `GET /api/health`
 returns `{ok, version, hasDb}` and nothing else. No transaction counts,
 no provider names, no setup status. Add to it only if you have thought
 carefully about what a local cross-app attacker could learn.
 
-**The macOS menu bar app has no network entitlements beyond loopback.**
-`Spent.app` ships with an `NSAppTransportSecurity > NSExceptionDomains`
-entry whitelisting `127.0.0.1` and nothing else. It cannot reach the
-internet even if its code were modified to try, without re-signing the
-bundle with a different Info.plist.
+**Logs do not leak credentials.** The app avoids logging credentials (see
+"What's protected at rest" above). If you redirect `bun start` output to a
+file, store it somewhere only your user can read (e.g. directory mode
+`0700`).
 
-**Logs do not leak credentials.** macOS LaunchAgent stdout/stderr go to
-`~/Library/Logs/Spent/{out,err}.log` (directory mode `0700`). Linux
-systemd writes to `~/.local/state/spent/log/`. The app itself already
-avoids logging credentials (see "What's protected at rest" above);
-the always-on service does not change that.
-
-**The encryption key file's permissions are now asserted at startup.**
+**The encryption key file's permissions are asserted at startup.**
 `src/server/lib/encryption.ts` reads `data/.encryption-key` and refuses
 to start if the file mode is not `0600` (POSIX only; Windows relies on
 the user profile ACL). If you ever `chmod 644` the key file by accident,
 the server will fail loudly with the fix command.
 
-**What the always-on service does not protect against:**
+**What running always-on does not protect against:**
 
 - A local attacker who can already run code as your user. They can read
-  the DB and key file with or without the service running.
+  the DB and key file with or without the server running.
 - A malicious browser tab on your machine doing a CSRF against
-  `127.0.0.1:41234`. The same-origin middleware in
-  `src/middleware.ts` already blocks this on every mutating request,
+  `127.0.0.1:2412`. The same-origin proxy in
+  `src/proxy.ts` already blocks this on every mutating request,
   and that protection works the same whether the server runs on demand
   or always-on.
 

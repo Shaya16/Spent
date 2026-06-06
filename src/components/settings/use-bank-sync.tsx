@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { startSync, type SyncProgressEvent } from "@/lib/api";
+import { type SyncProgressEvent, startSync } from "@/lib/api";
 
 export interface SyncState {
   syncing: boolean;
@@ -12,19 +13,20 @@ export interface SyncState {
 
 export function useBankSync() {
   const queryClient = useQueryClient();
+  const t = useTranslations("settings.bank");
   const [state, setState] = useState<Record<number, SyncState>>({});
 
   const start = useCallback(
     (credentialId: number) => {
       setState((prev) => ({
         ...prev,
-        [credentialId]: { syncing: true, stage: "Connecting…" },
+        [credentialId]: { syncing: true, stage: t("stageConnecting") },
       }));
       const { cancel } = startSync(credentialId, (event: SyncProgressEvent) => {
         if (event.type === "provider-start") {
           setState((prev) => ({
             ...prev,
-            [credentialId]: { syncing: true, stage: "Pulling transactions…" },
+            [credentialId]: { syncing: true, stage: t("stagePulling") },
           }));
         } else if (event.type === "provider-2fa-needed") {
           cancel();
@@ -35,17 +37,16 @@ export function useBankSync() {
           const label =
             (event.data.label as string | undefined) ??
             (event.data.provider as string | undefined) ??
-            "Bank";
-          toast.warning(`${label} needs a 2FA code`, {
-            description:
-              "Use the global Sync button on the dashboard to enter the one-time code. Spent will remember the token for future syncs.",
+            t("twoFaFallbackBank");
+          toast.warning(t("twoFaNeededTitle", { bank: label }), {
+            description: t("twoFaNeededDescription"),
             duration: 12000,
             closeButton: true,
           });
         } else if (event.type === "provider-2fa-manual") {
           setState((prev) => ({
             ...prev,
-            [credentialId]: { syncing: true, stage: "Solve 2FA in popup…" },
+            [credentialId]: { syncing: true, stage: t("stageSolve2fa") },
           }));
         } else if (event.type === "stage") {
           const s = event.data.stage as string;
@@ -53,7 +54,7 @@ export function useBankSync() {
             ...prev,
             [credentialId]: {
               syncing: true,
-              stage: s === "categorizing" ? "Categorizing…" : "Working…",
+              stage: s === "categorizing" ? t("stageCategorizing") : t("stageWorking"),
             },
           }));
         } else if (event.type === "complete") {
@@ -67,7 +68,11 @@ export function useBankSync() {
             categorized: number;
           };
           toast.success(
-            `Sync complete: ${data.added} new, ${data.updated} updated, ${data.categorized} categorized`
+            t("syncDone", {
+              added: data.added,
+              updated: data.updated,
+              categorized: data.categorized,
+            }),
           );
           queryClient.invalidateQueries({ queryKey: ["integrations"] });
           queryClient.invalidateQueries({ queryKey: ["summary"] });
@@ -77,14 +82,14 @@ export function useBankSync() {
             ...prev,
             [credentialId]: { syncing: false, stage: "" },
           }));
-          toast.error((event.data.message as string) ?? "Sync failed", {
+          toast.error((event.data.message as string) ?? t("syncFailed"), {
             duration: Infinity,
             closeButton: true,
           });
         }
       });
     },
-    [queryClient]
+    [queryClient, t],
   );
 
   const stateFor = (credentialId: number): SyncState =>

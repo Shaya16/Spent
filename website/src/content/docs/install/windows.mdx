@@ -39,7 +39,7 @@ When the installer asks *"Automatically install the necessary tools"* near the e
 Open **PowerShell** (as Administrator) and clone:
 
 ```powershell
-git clone https://github.com/Shaya16/Spent.git $env:USERPROFILE\Spent
+git clone https://github.com/alon710/Spent.git $env:USERPROFILE\Spent
 cd $env:USERPROFILE\Spent
 ```
 
@@ -65,7 +65,7 @@ npm run setup
 </Callout>
 
 <Callout variant="gotcha">
-**Not running as Administrator?** Setup will continue, but skip the hosts entry. `http://127.0.0.1:41234` still works; `http://spent.local:41234` won't resolve. Re-run setup from an elevated shell later to add the friendly hostname.
+**Not running as Administrator?** Setup will continue, but skip the hosts entry. `http://127.0.0.1:2412` still works; `http://spent.local:2412` won't resolve. Re-run setup from an elevated shell later to add the friendly hostname.
 </Callout>
 
 <ForDevelopers summary="What `npm run setup` actually does">
@@ -74,7 +74,7 @@ On Windows, in order:
 
 1. **Builds the Next.js app** (`npm run build`).
 2. **Adds `127.0.0.1 spent.local` to `C:\Windows\System32\drivers\etc\hosts`** (skipped if not elevated).
-3. **Registers a Task Scheduler logon trigger** that runs `next start -H 127.0.0.1 -p 41234` whenever you log in. Server is only reachable from loopback.
+3. **Registers a Task Scheduler logon trigger** that runs `next start -H 127.0.0.1 -p 2412` whenever you log in. Server is only reachable from loopback.
 4. **Builds `Spent.exe`** from `menubar/windows/` (C#, .NET 8). Auto-installs the SDK via `winget install Microsoft.DotNet.SDK.8` if missing.
 5. **Copies `Spent.exe` to `%LOCALAPPDATA%\Programs\Spent\`** and drops a `.lnk` in `shell:startup` so the tray app shows up after reboot.
 6. **Polls `/api/health`** until ready, then opens the browser.

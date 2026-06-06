@@ -12,7 +12,7 @@ interface TransactionSourceCellProps {
 
 export function getAccountDisplayLabel(
   providerName: string,
-  accountLabel: string | null
+  accountLabel: string | null,
 ): { primary: string; secondary: string | null } {
   const labelDistinct =
     accountLabel != null &&
@@ -24,17 +24,10 @@ export function getAccountDisplayLabel(
   };
 }
 
-export function TransactionSourceCell({
-  provider,
-  accountLabel,
-}: TransactionSourceCellProps) {
+export function TransactionSourceCell({ provider, accountLabel }: TransactionSourceCellProps) {
   const tBanks = useTranslations("banks");
   const info = BANK_PROVIDERS.find((b) => b.id === provider);
-  const providerName = translateProviderName(
-    provider,
-    info?.name ?? provider,
-    tBanks
-  );
+  const providerName = translateProviderName(provider, info?.name ?? provider, tBanks);
 
   const { primary, secondary } = getAccountDisplayLabel(providerName, accountLabel);
   const tooltip = secondary ? `${primary} · ${secondary}` : primary;

@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
+import { NextResponse } from "next/server";
 import pkg from "../../../../package.json";
 
 const DB_PATH = path.join(process.cwd(), "data", "spent.db");

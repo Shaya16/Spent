@@ -1,6 +1,6 @@
 import "server-only";
 
-import { spawn, type ChildProcess } from "child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 
 declare global {
   var _ollamaProcess: ChildProcess | undefined;
@@ -18,10 +18,7 @@ async function isReachable(url: string, timeoutMs = 1500): Promise<boolean> {
   }
 }
 
-async function waitForReachable(
-  url: string,
-  maxWaitMs: number
-): Promise<boolean> {
+async function waitForReachable(url: string, maxWaitMs: number): Promise<boolean> {
   const deadline = Date.now() + maxWaitMs;
   while (Date.now() < deadline) {
     if (await isReachable(url)) return true;
@@ -56,17 +53,14 @@ export async function listOllamaModels(url: string): Promise<string[]> {
   }
 }
 
-export async function isModelInstalled(
-  url: string,
-  model: string
-): Promise<boolean> {
+export async function isModelInstalled(url: string, model: string): Promise<boolean> {
   const installed = await listOllamaModels(url);
   return installed.includes(model);
 }
 
 export async function* pullOllamaModel(
   url: string,
-  model: string
+  model: string,
 ): AsyncGenerator<OllamaPullProgress, void, unknown> {
   const res = await fetch(`${url}/api/pull`, {
     method: "POST",
@@ -111,9 +105,7 @@ export async function* pullOllamaModel(
   }
 }
 
-export async function ensureOllamaRunning(
-  url: string
-): Promise<OllamaCheckResult> {
+export async function ensureOllamaRunning(url: string): Promise<OllamaCheckResult> {
   if (await isReachable(url)) {
     return { ok: true };
   }
@@ -145,22 +137,19 @@ export async function ensureOllamaRunning(
 
     globalThis._ollamaProcess = proc;
 
-    const errorOnSpawn = await new Promise<NodeJS.ErrnoException | null>(
-      (resolve) => {
-        const timer = setTimeout(() => resolve(null), 200);
-        proc.once("error", (err) => {
-          clearTimeout(timer);
-          resolve(err as NodeJS.ErrnoException);
-        });
-      }
-    );
+    const errorOnSpawn = await new Promise<NodeJS.ErrnoException | null>((resolve) => {
+      const timer = setTimeout(() => resolve(null), 200);
+      proc.once("error", (err) => {
+        clearTimeout(timer);
+        resolve(err as NodeJS.ErrnoException);
+      });
+    });
 
     if (errorOnSpawn) {
       if (errorOnSpawn.code === "ENOENT") {
         return {
           ok: false,
-          error:
-            "Ollama is not installed. Install it from https://ollama.com, then try again.",
+          error: "Ollama is not installed. Install it from https://ollama.com, then try again.",
         };
       }
       return {

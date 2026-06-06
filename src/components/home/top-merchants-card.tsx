@@ -1,9 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { CardShell } from "./card-shell";
 import { formatCurrency } from "@/lib/formatters";
 import type { HomeTopMerchant } from "@/lib/types";
+import { CardShell } from "./card-shell";
 
 interface Props {
   items: HomeTopMerchant[];
@@ -32,16 +32,11 @@ export function TopMerchantsCard({ items }: Props) {
             <li key={`${m.name}-${i}`} className="space-y-1">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="truncate text-sm font-medium">{m.name}</span>
-                <span className="shrink-0 tabular-nums text-sm">
-                  {formatCurrency(m.total)}
-                </span>
+                <span className="shrink-0 tabular-nums text-sm">{formatCurrency(m.total)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full bg-foreground/70"
-                    style={{ width: `${widthPct}%` }}
-                  />
+                  <div className="h-full bg-foreground/70" style={{ width: `${widthPct}%` }} />
                 </div>
                 <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
                   {m.count} {m.count === 1 ? t("txnsOne") : t("txnsOther")}

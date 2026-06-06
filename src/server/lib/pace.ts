@@ -13,11 +13,7 @@ export function daysInMonth(year: number, monthZeroBased: number): number {
  * Day number (1-based) within the given month "today" maps to.
  * Clamps to [1, daysInMonth] if today is outside that month.
  */
-export function dayWithinMonth(
-  today: Date,
-  year: number,
-  monthZeroBased: number
-): number {
+export function dayWithinMonth(today: Date, year: number, monthZeroBased: number): number {
   const total = daysInMonth(year, monthZeroBased);
   if (today.getFullYear() !== year || today.getMonth() !== monthZeroBased) {
     if (
@@ -61,7 +57,7 @@ export function daysUntil(date: Date, from: Date = new Date()): number {
 export function computeStatus(
   spent: number,
   budget: number,
-  timeElapsedPercent: number
+  timeElapsedPercent: number,
 ): BudgetStatus {
   if (budget <= 0) return "on-track";
   const pctSpent = (spent / budget) * 100;
@@ -70,45 +66,4 @@ export function computeStatus(
   if (delta >= 20) return "heads-up";
   if (delta <= -30) return "plenty-left";
   return "on-track";
-}
-
-/**
- * Conversational sentence for the hero card.
- *
- * `displaySpent` is the amount shown to the user (total period spend).
- * `budgetedSpent` is the amount used for pace calculation (spend in
- * categories that have a budget). They differ when some categories are in
- * tracking-only mode.
- */
-export function pacePhrase(
-  displaySpent: number,
-  budgetedSpent: number,
-  totalBudget: number,
-  timeElapsedPercent: number,
-  monthLabel: string
-): string {
-  if (totalBudget <= 0) {
-    return `You've spent ${formatILS(displaySpent)} this ${monthLabel}.`;
-  }
-  const pctSpent = (budgetedSpent / totalBudget) * 100;
-  const delta = pctSpent - timeElapsedPercent;
-  const lead = `You've spent ${formatILS(budgetedSpent)} of your ${formatILS(totalBudget)} ${monthLabel} target`;
-
-  if (pctSpent > 100) {
-    return `${lead} — over budget, time to slow down.`;
-  }
-  if (delta >= 25) {
-    return `${lead} — a touch over schedule, but easy to recover.`;
-  }
-  if (delta <= -25) {
-    return `${lead} — well under schedule.`;
-  }
-  if (delta <= -10) {
-    return `${lead} — ahead of schedule.`;
-  }
-  return `${lead} — on schedule.`;
-}
-
-function formatILS(amount: number): string {
-  return `₪${Math.round(amount).toLocaleString("en-IL")}`;
 }

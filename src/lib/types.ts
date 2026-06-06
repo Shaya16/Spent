@@ -6,6 +6,16 @@ export interface Workspace {
   updatedAt: string;
 }
 
+export interface ChatSession {
+  id: string;
+  workspaceId: number;
+  title: string;
+  titleSource: "auto" | "manual";
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Transaction {
   id: number;
   accountNumber: string;
@@ -31,6 +41,10 @@ export interface Transaction {
   syncRunId: number;
   kind: "expense" | "income" | "transfer";
   needsReview: boolean;
+  /** Set when this row is the grouping leg of a financial event. */
+  eventId: number | null;
+  eventRole: EventRole | null;
+  matchConfidence: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -39,6 +53,78 @@ export interface TransactionWithCategory extends Transaction {
   categoryName: string | null;
   categoryColor: string | null;
   isExcluded: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Financial Events: the cross-account deduplication layer. The same real-world
+// money movement (a transfer, a credit card bill payment, an ATM withdrawal)
+// shows up as N transaction rows once several accounts are aggregated; an event
+// groups those rows so spend is counted exactly once. See
+// docs/transaction-deduplication-design.md.
+// ---------------------------------------------------------------------------
+
+export type EventType =
+  | "internal_transfer"
+  | "credit_card_payment"
+  | "credit_card_statement"
+  | "atm_withdrawal"
+  | "loan_repayment"
+  | "investment_transfer"
+  | "refund_reversal"
+  | "fee"
+  | "duplicate";
+
+export type EventRole = "debit" | "credit" | "bill_payment" | "purchase" | "fee" | "reversal";
+
+export type EventStatus = "suggested" | "confirmed" | "rejected";
+
+export type EventSource = "heuristic" | "rule" | "user" | "ai";
+
+export interface FinancialEvent {
+  id: number;
+  workspaceId: number;
+  eventType: EventType;
+  canonicalTransactionId: number | null;
+  status: EventStatus;
+  source: EventSource;
+  confidence: number;
+  reasons: string[];
+  eventKey: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventMember {
+  id: number;
+  workspaceId: number;
+  eventId: number;
+  transactionId: number;
+  role: EventRole;
+  priorKind: Transaction["kind"] | null;
+  matchConfidence: number | null;
+  createdAt: string;
+}
+
+/** A financial event plus the transaction rows it groups, for review and display. */
+export interface FinancialEventWithMembers extends FinancialEvent {
+  members: (EventMember & {
+    description: string;
+    date: string;
+    chargedAmount: number;
+    chargedCurrency: string | null;
+    provider: string;
+    accountLabel: string | null;
+  })[];
+}
+
+export interface MatchSettings {
+  eventType: EventType;
+  epsilon: number;
+  dayWindow: number;
+  minScore: number;
+  autoScore: number;
+  requireKeyword: boolean;
+  enabled: boolean;
 }
 
 export type CategoryKind = "expense" | "income";
@@ -92,11 +178,7 @@ export interface CategoryBreakdown {
   count: number;
 }
 
-export type BudgetStatus =
-  | "plenty-left"
-  | "on-track"
-  | "heads-up"
-  | "over";
+export type BudgetStatus = "plenty-left" | "on-track" | "heads-up" | "over";
 
 export interface CategoryWithData {
   categoryId: number;
@@ -138,7 +220,6 @@ export interface DashboardSummary {
   paydayDay: number;
   todayLabel: string;
   monthLabel: string;
-  pacePhrase: string;
   typicalMonthly: number | null;
 }
 
@@ -162,7 +243,6 @@ export interface HomeThisMonth {
   spent: number;
   budget: number;
   deltaVsLastMonth: number | null;
-  pacePhrase: string;
   daysUntilPayday: number;
   timeElapsedPercent: number;
   monthLabel: string;
@@ -280,7 +360,8 @@ export interface SetupStatus {
 
 export interface AppSettings {
   monthsToSync: number;
-  aiProvider: "claude" | "ollama" | "none";
+  aiProvider: "claude" | "gemini" | "ollama" | "none";
+  geminiModel: string;
   ollamaUrl: string;
   ollamaModel: string;
   showBrowser: boolean;
@@ -288,7 +369,7 @@ export interface AppSettings {
   monthlyTarget: number | null;
   autoSyncEnabled: boolean;
   autoSyncTime: string;
-  language: "en" | "he";
+  treatAtmAsTransfers: boolean;
 }
 
 export type BankProvider =
@@ -371,6 +452,36 @@ export const RECOMMENDED_OLLAMA_MODELS: OllamaModelInfo[] = [
     name: "qwen2.5:3b",
     sizeGb: 1.9,
     description: "Alternative 3B model from Alibaba.",
+  },
+];
+
+export interface GeminiModelInfo {
+  name: string;
+  description: string;
+  recommended?: boolean;
+}
+
+export const RECOMMENDED_GEMINI_MODELS: GeminiModelInfo[] = [
+  {
+    name: "gemini-3.5-flash",
+    description: "Latest stable Flash model. Best default for categorization.",
+    recommended: true,
+  },
+  {
+    name: "gemini-3.1-flash-lite",
+    description: "Stable low-latency option with lower cost.",
+  },
+  {
+    name: "gemini-2.5-flash",
+    description: "Stable balanced model for high-volume tasks.",
+  },
+  {
+    name: "gemini-2.5-flash-lite",
+    description: "Stable fastest and most budget-friendly 2.5 model.",
+  },
+  {
+    name: "gemini-2.5-pro",
+    description: "Stable higher-quality model for more complex categorization.",
   },
 ];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { NextIntlClientProvider, type IntlError, IntlErrorCode } from "next-intl";
+import { type IntlError, IntlErrorCode, NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 
 interface Props {

@@ -48,10 +48,7 @@ const HIERARCHY_RULE =
 function renderCorrections(corrections: PastCorrection[]): string {
   if (corrections.length === 0) return "";
   const lines = corrections
-    .map(
-      (c) =>
-        `- "${c.description}" → wrong: ${c.wrongCategory}, correct: ${c.correctCategory}`
-    )
+    .map((c) => `- "${c.description}" → wrong: ${c.wrongCategory}, correct: ${c.correctCategory}`)
     .join("\n");
   return `
 Past corrections (the AI miscategorized these before — apply the lesson to similar merchants):
@@ -69,7 +66,7 @@ export function buildCategorizationPrompt(
   transactions: TransactionForCategorization[],
   categories: CategoryForCategorization[],
   allowProposals = false,
-  pastCorrections: PastCorrection[] = []
+  pastCorrections: PastCorrection[] = [],
 ): string {
   const categoriesBlock = renderCategories(categories);
   const correctionsBlock = renderCorrections(pastCorrections);
@@ -77,7 +74,7 @@ export function buildCategorizationPrompt(
   const transactionLines = transactions
     .map(
       (t, i) =>
-        `${i}: "${t.description}" | ${t.currency} ${Math.abs(t.amount).toFixed(2)}${t.memo ? ` | memo: "${t.memo}"` : ""}`
+        `${i}: "${t.description}" | ${t.currency} ${Math.abs(t.amount).toFixed(2)}${t.memo ? ` | memo: "${t.memo}"` : ""}`,
     )
     .join("\n");
 

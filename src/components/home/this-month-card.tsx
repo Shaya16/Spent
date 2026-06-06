@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { useTranslations } from "next-intl";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { CardShell, CardAction } from "./card-shell";
+import { useTranslations } from "next-intl";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { Link } from "@/i18n/navigation";
 import { formatCurrency } from "@/lib/formatters";
 import type { HomeThisMonth } from "@/lib/types";
+import { CardAction, CardShell } from "./card-shell";
 
 interface Props {
   data: HomeThisMonth;
@@ -13,14 +14,7 @@ interface Props {
 
 export function ThisMonthCard({ data }: Props) {
   const t = useTranslations("home");
-  const {
-    spent,
-    budget,
-    deltaVsLastMonth,
-    daysUntilPayday,
-    timeElapsedPercent,
-    monthLabel,
-  } = data;
+  const { spent, budget, deltaVsLastMonth, daysUntilPayday, timeElapsedPercent, monthLabel } = data;
   const hasBudget = budget > 0;
   const percentSpent = hasBudget ? Math.min(100, (spent / budget) * 100) : 0;
   const pctSpent = hasBudget ? (spent / budget) * 100 : 0;
@@ -34,16 +28,16 @@ export function ThisMonthCard({ data }: Props) {
   if (hasBudget) {
     if (isOver) {
       verdict = t("verdictOver", { amount: formatCurrency(spent - budget) });
-      verdictClass = "text-[var(--status-over)]";
+      verdictClass = "text-status-over";
     } else if (isHeadsUp) {
       verdict = t("verdictABitOver");
-      verdictClass = "text-[var(--status-over)]";
+      verdictClass = "text-status-over";
     } else if (isAhead) {
       verdict = t("verdictAhead");
-      verdictClass = "text-[var(--status-on-track)]";
+      verdictClass = "text-status-on-track";
     } else {
       verdict = t("verdictOnSchedule");
-      verdictClass = "text-[var(--status-on-track)]";
+      verdictClass = "text-status-on-track";
     }
   }
 
@@ -63,9 +57,7 @@ export function ThisMonthCard({ data }: Props) {
             </span>
             <span className={`mt-2 text-sm ${verdictClass}`}>{verdict}</span>
           </div>
-          {deltaVsLastMonth != null && (
-            <DeltaPill value={deltaVsLastMonth} />
-          )}
+          {deltaVsLastMonth != null && <DeltaPill value={deltaVsLastMonth} />}
         </div>
 
         {hasBudget && (
@@ -73,7 +65,7 @@ export function ThisMonthCard({ data }: Props) {
             <ProgressBar
               percent={percentSpent}
               markPercent={timeElapsedPercent}
-              isOver={isOver}
+              tone={isOver ? "over" : "on-track"}
             />
             <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
               <span>
@@ -106,8 +98,8 @@ function DeltaPill({ value }: { value: number }) {
   const cls = isFlat
     ? "text-muted-foreground bg-muted/60"
     : isUp
-      ? "text-[var(--status-over)] bg-[var(--status-over)]/10"
-      : "text-[var(--status-on-track)] bg-[var(--status-on-track)]/10";
+      ? "text-status-over bg-status-over/10"
+      : "text-status-on-track bg-status-on-track/10";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums ${cls}`}
@@ -116,32 +108,5 @@ function DeltaPill({ value }: { value: number }) {
       {!isFlat && <Icon className="h-3 w-3" />}
       {t("vsLastMonth", { percent: Math.abs(rounded) })}
     </span>
-  );
-}
-
-function ProgressBar({
-  percent,
-  markPercent,
-  isOver,
-}: {
-  percent: number;
-  markPercent: number;
-  isOver: boolean;
-}) {
-  const fillClass = isOver
-    ? "bg-[var(--status-over)]"
-    : "bg-[var(--status-on-track)]";
-  return (
-    <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
-      <div
-        className={`h-full ${fillClass}`}
-        style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
-      />
-      <div
-        className="absolute top-0 bottom-0 w-px bg-foreground/40"
-        style={{ insetInlineStart: `${Math.min(100, Math.max(0, markPercent))}%` }}
-        aria-hidden
-      />
-    </div>
   );
 }

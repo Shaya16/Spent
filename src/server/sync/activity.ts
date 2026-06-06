@@ -1,7 +1,7 @@
 import "server-only";
 
-import { getNextRunAt } from "@/server/sync/scheduler";
 import type { ActivitySnapshot, SyncKind } from "@/lib/types";
+import { getNextRunAt } from "@/server/sync/scheduler";
 
 interface ActivityState {
   syncStartedAt: number | null;
@@ -57,9 +57,7 @@ export function getActivitySnapshot(): ActivitySnapshot {
   const state = getState();
   const active = state.syncDepth > 0;
   const stale =
-    active &&
-    state.lastHeartbeatAt != null &&
-    Date.now() - state.lastHeartbeatAt > STALE_MS;
+    active && state.lastHeartbeatAt != null && Date.now() - state.lastHeartbeatAt > STALE_MS;
 
   const nextRunAt = getNextRunAt();
 
@@ -69,9 +67,7 @@ export function getActivitySnapshot(): ActivitySnapshot {
   return {
     sync: {
       active,
-      since: state.syncStartedAt
-        ? new Date(state.syncStartedAt).toISOString()
-        : null,
+      since: state.syncStartedAt ? new Date(state.syncStartedAt).toISOString() : null,
       kind: state.syncKind,
       stale,
     },

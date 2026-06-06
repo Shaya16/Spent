@@ -1,10 +1,11 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
-import { formatCurrency } from "@/lib/formatters";
-import type { TransactionsSummary } from "@/lib/api";
+import { useLocale, useTranslations } from "next-intl";
+import { CardLabel } from "@/components/ui/card-label";
 import type { Locale } from "@/i18n/routing";
+import type { TransactionsSummary } from "@/lib/api";
+import { formatCurrency } from "@/lib/formatters";
 
 interface KpiCardsProps {
   summary?: TransactionsSummary;
@@ -96,22 +97,11 @@ interface KpiCardProps {
   locale: Locale;
 }
 
-function KpiCard({
-  label,
-  amount,
-  meta,
-  icon,
-  color,
-  iconBg,
-  loading,
-  locale,
-}: KpiCardProps) {
+function KpiCard({ label, amount, meta, icon, color, iconBg, loading, locale }: KpiCardProps) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
-          {label}
-        </div>
+        <CardLabel>{label}</CardLabel>
         <div
           className="flex h-7 w-7 items-center justify-center rounded-full"
           style={{ backgroundColor: iconBg, color }}
@@ -119,10 +109,7 @@ function KpiCard({
           {icon}
         </div>
       </div>
-      <div
-        className="mt-2 font-serif text-3xl tabular-nums"
-        style={{ color }}
-      >
+      <div className="mt-2 font-serif text-3xl tabular-nums" style={{ color }}>
         {loading ? (
           <span className="text-muted-foreground">—</span>
         ) : (

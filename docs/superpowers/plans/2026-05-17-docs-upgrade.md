@@ -1777,7 +1777,7 @@ A Next.js app + a SQLite file + a headless Chromium tab that drives your bank's 
 
 ## Status
 
-**Beta.** Built by [Shay Avivi](https://github.com/Shaya16) for personal use first and then released. MIT licensed. Issues and PRs welcome on [GitHub](https://github.com/Shaya16/Spent).
+**Beta.** Built by [Shay Avivi](https://github.com/Shaya16) for personal use first and then released. MIT licensed. Issues and PRs welcome on [GitHub](https://github.com/alon710/Spent).
 
 Things that work today: Isracard, Hapoalim, Max, Visa Cal, Leumi, Mizrahi, Discount, FIBI group, Yahav, One Zero (with OTP), Beyahad Bishvilha. Light + dark themes. Hebrew + English UI.
 
@@ -1851,11 +1851,11 @@ brew install node@20
 Open **Terminal** (in *Applications → Utilities*) and clone the repo:
 
 ```sh
-git clone https://github.com/Shaya16/Spent.git ~/Applications/Spent
+git clone https://github.com/alon710/Spent.git ~/Applications/Spent
 cd ~/Applications/Spent
 ```
 
-No Git? Download the [latest source as a zip](https://github.com/Shaya16/Spent/releases) and unzip it to `~/Applications/Spent`. Then in Terminal: `cd ~/Applications/Spent`.
+No Git? Download the [latest source as a zip](https://github.com/alon710/Spent/releases) and unzip it to `~/Applications/Spent`. Then in Terminal: `cd ~/Applications/Spent`.
 
 </StepItem>
 
@@ -1987,11 +1987,11 @@ When the installer asks *"Automatically install the necessary tools"* near the e
 Open **PowerShell** (as Administrator) and clone:
 
 ```powershell
-git clone https://github.com/Shaya16/Spent.git $env:USERPROFILE\Spent
+git clone https://github.com/alon710/Spent.git $env:USERPROFILE\Spent
 cd $env:USERPROFILE\Spent
 ```
 
-No Git? Download the [latest source zip](https://github.com/Shaya16/Spent/releases), right-click → *Extract All* into `%USERPROFILE%\Spent`, then `cd` there.
+No Git? Download the [latest source zip](https://github.com/alon710/Spent/releases), right-click → *Extract All* into `%USERPROFILE%\Spent`, then `cd` there.
 
 </StepItem>
 
@@ -2132,7 +2132,7 @@ sudo dnf install nodejs
 <StepItem i={2} title="Get Spent">
 
 ```sh
-git clone https://github.com/Shaya16/Spent.git ~/.local/share/spent
+git clone https://github.com/alon710/Spent.git ~/.local/share/spent
 cd ~/.local/share/spent
 ```
 
@@ -2745,7 +2745,7 @@ The transaction list mixes scripts naturally: Hebrew merchants like "ארומה"
 - Charts (Recharts) don't fully mirror — the y-axis stays on the left.
 - Date inputs in some browsers still pop their picker in LTR.
 
-If any of these block you, please file an issue on [GitHub](https://github.com/Shaya16/Spent/issues).
+If any of these block you, please file an issue on [GitHub](https://github.com/alon710/Spent/issues).
 
 <NextStepCard href="/Spent/troubleshooting" title="Troubleshooting" />
 ```
@@ -2923,7 +2923,7 @@ Or copy the `.db`, `.db-wal`, and `.db-shm` files together while the service is 
 
 ## Still stuck?
 
-Open an issue on [GitHub](https://github.com/Shaya16/Spent/issues) with:
+Open an issue on [GitHub](https://github.com/alon710/Spent/issues) with:
 
 - Your operating system and version
 - What you were doing when it broke
@@ -3023,7 +3023,7 @@ In practice, this is rare for read-only scraping that happens infrequently. But 
 
 If you find a security issue, please **don't** open a public issue. Email the maintainer (address in `SECURITY.md` in the repo). We'll respond within 72 hours.
 
-For non-security bugs, [GitHub Issues](https://github.com/Shaya16/Spent/issues) is the right place.
+For non-security bugs, [GitHub Issues](https://github.com/alon710/Spent/issues) is the right place.
 
 ## Auditing the code yourself
 
@@ -3119,11 +3119,11 @@ You are responsible for the security of your own machine.
 
 ## Open source license
 
-Spent is licensed under the **MIT License**. Use, modify, and redistribute it freely, subject to the license terms. See the [LICENSE](https://github.com/Shaya16/Spent/blob/main/LICENSE) file in the repository.
+Spent is licensed under the **MIT License**. Use, modify, and redistribute it freely, subject to the license terms. See the [LICENSE](https://github.com/alon710/Spent/blob/main/LICENSE) file in the repository.
 
 ## Questions
 
-If anything on this page is unclear, please open an issue at [github.com/Shaya16/Spent/issues](https://github.com/Shaya16/Spent/issues) so we can clarify it for everyone.
+If anything on this page is unclear, please open an issue at [github.com/alon710/Spent/issues](https://github.com/alon710/Spent/issues) so we can clarify it for everyone.
 
 <Callout variant="gotcha">
 **By installing Spent and connecting a bank account, you confirm that you have read this disclaimer and accept the terms above.**

@@ -55,53 +55,53 @@
 
 :root {
   /* Buttercream light theme - brighter warm cream that lifts white cards */
-  --background: #FCF7ED;
-  --foreground: #2C2A27;
+  --background: #fcf7ed;
+  --foreground: #2c2a27;
   --card: oklch(1 0 0);
-  --card-foreground: #2C2A27;
+  --card-foreground: #2c2a27;
   --popover: oklch(1 0 0);
-  --popover-foreground: #2C2A27;
-  --primary: oklch(0.55 0.10 145);
+  --popover-foreground: #2c2a27;
+  --primary: oklch(0.55 0.1 145);
   --primary-foreground: oklch(0.98 0.012 90);
   --secondary: oklch(0.94 0.03 85);
-  --secondary-foreground: #2C2A27;
+  --secondary-foreground: #2c2a27;
   --muted: oklch(0.95 0.022 85);
-  --muted-foreground: oklch(0.50 0.02 75);
+  --muted-foreground: oklch(0.5 0.02 75);
   --accent: oklch(0.94 0.03 85);
-  --accent-foreground: #2C2A27;
+  --accent-foreground: #2c2a27;
   --destructive: oklch(0.58 0.18 30);
-  --border: #ECE3D2;
-  --input: #ECE3D2;
-  --ring: oklch(0.55 0.10 145);
+  --border: #ece3d2;
+  --input: #ece3d2;
+  --ring: oklch(0.55 0.1 145);
   /* Pastel chart palette - bumped chroma to match the L2 category lift */
-  --chart-1: oklch(0.72 0.10 145); /* sage green - groceries */
-  --chart-2: oklch(0.76 0.11 40);  /* coral - dining */
-  --chart-3: oklch(0.80 0.10 80);  /* sand/amber - shopping */
-  --chart-4: oklch(0.76 0.10 10);  /* rose - fun */
-  --chart-5: oklch(0.74 0.10 230); /* sky - transport */
+  --chart-1: oklch(0.72 0.1 145); /* sage green - groceries */
+  --chart-2: oklch(0.76 0.11 40); /* coral - dining */
+  --chart-3: oklch(0.8 0.1 80); /* sand/amber - shopping */
+  --chart-4: oklch(0.76 0.1 10); /* rose - fun */
+  --chart-5: oklch(0.74 0.1 230); /* sky - transport */
   /* Status colors */
-  --status-on-track: oklch(0.68 0.10 145);
+  --status-on-track: oklch(0.68 0.1 145);
   --status-heads-up: oklch(0.72 0.13 85);
   --status-over: oklch(0.62 0.16 30);
   --status-plenty-left: oklch(0.72 0.08 220);
   --radius: 0.875rem;
   --sidebar: oklch(0.95 0.025 85);
-  --sidebar-foreground: #2C2A27;
-  --sidebar-primary: oklch(0.55 0.10 145);
+  --sidebar-foreground: #2c2a27;
+  --sidebar-primary: oklch(0.55 0.1 145);
   --sidebar-primary-foreground: oklch(0.98 0.012 90);
   --sidebar-accent: oklch(0.94 0.03 85);
-  --sidebar-accent-foreground: #2C2A27;
-  --sidebar-border: #ECE3D2;
-  --sidebar-ring: oklch(0.55 0.10 145);
+  --sidebar-accent-foreground: #2c2a27;
+  --sidebar-border: #ece3d2;
+  --sidebar-ring: oklch(0.55 0.1 145);
 }
 
 .dark {
   /* Warm dark theme */
   --background: oklch(0.18 0.008 60);
   --foreground: oklch(0.94 0.018 85);
-  --card: oklch(0.22 0.010 60);
+  --card: oklch(0.22 0.01 60);
   --card-foreground: oklch(0.94 0.018 85);
-  --popover: oklch(0.22 0.010 60);
+  --popover: oklch(0.22 0.01 60);
   --popover-foreground: oklch(0.94 0.018 85);
   --primary: oklch(0.72 0.08 145);
   --primary-foreground: oklch(0.18 0.012 60);
@@ -115,16 +115,16 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.72 0.08 145);
-  --chart-1: oklch(0.75 0.10 145);
+  --chart-1: oklch(0.75 0.1 145);
   --chart-2: oklch(0.74 0.14 35);
-  --chart-3: oklch(0.78 0.10 85);
-  --chart-4: oklch(0.76 0.10 5);
-  --chart-5: oklch(0.74 0.10 240);
+  --chart-3: oklch(0.78 0.1 85);
+  --chart-4: oklch(0.76 0.1 5);
+  --chart-5: oklch(0.74 0.1 240);
   --status-on-track: oklch(0.74 0.12 145);
   --status-heads-up: oklch(0.76 0.14 85);
-  --status-over: oklch(0.70 0.17 30);
-  --status-plenty-left: oklch(0.74 0.10 220);
-  --sidebar: oklch(0.22 0.010 60);
+  --status-over: oklch(0.7 0.17 30);
+  --status-plenty-left: oklch(0.74 0.1 220);
+  --sidebar: oklch(0.22 0.01 60);
   --sidebar-foreground: oklch(0.94 0.018 85);
   --sidebar-primary: oklch(0.72 0.08 145);
   --sidebar-primary-foreground: oklch(0.18 0.012 60);
@@ -137,8 +137,12 @@
 /* Hebrew: use San Francisco everywhere (sans, serif headings, and mono).
    Higher specificity than next/font's class-based variable definitions. */
 html[lang="he"] {
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Hebrew", "Helvetica Neue", "Arial Hebrew", Arial, sans-serif;
-  --font-serif: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Hebrew", "Helvetica Neue", "Arial Hebrew", Arial, sans-serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Hebrew",
+    "Helvetica Neue", "Arial Hebrew", Arial, sans-serif;
+  --font-serif:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Hebrew", "Helvetica Neue",
+    "Arial Hebrew", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "SF Hebrew", Menlo, monospace;
 }
 
@@ -169,28 +173,62 @@ html[lang="he"] {
 }
 
 @keyframes dotPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.85); opacity: 0.55; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.85);
+    opacity: 0.55;
+  }
 }
 
 @keyframes checkPop {
-  0% { transform: scale(0.3); opacity: 0; }
-  60% { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes pop {
-  0% { transform: scale(0.95); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes fadeIn {
-  0% { opacity: 0; transform: translateY(4px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes countIn {
-  0% { opacity: 0; transform: translateY(8px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import {
   deleteBankCredentials,
-  getBankCredentials,
   getBankCredentialMeta,
+  getBankCredentials,
   getRequiresManualTwoFactor,
   setRequiresManualTwoFactor,
   updateCredentialField,
@@ -15,10 +15,7 @@ function parseCredentialId(id: string): number | null {
   return credentialId;
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const { id } = await params;
   const credentialId = parseCredentialId(id);
@@ -54,18 +51,12 @@ export async function GET(
     credentials: userFacing,
     label: meta.label,
     provider: meta.provider,
-    requiresManualTwoFactor: getRequiresManualTwoFactor(
-      workspaceId,
-      credentialId
-    ),
+    requiresManualTwoFactor: getRequiresManualTwoFactor(workspaceId, credentialId),
     hasTwoFactorToken: Boolean(otpLongTermToken),
   });
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const { id } = await params;
   const credentialId = parseCredentialId(id);
@@ -84,35 +75,20 @@ export async function PATCH(
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return NextResponse.json(
-      { success: false, message: "Invalid JSON body." },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, message: "Invalid JSON body." }, { status: 400 });
   }
 
   if (typeof body.requiresManualTwoFactor === "boolean") {
-    setRequiresManualTwoFactor(
-      workspaceId,
-      credentialId,
-      body.requiresManualTwoFactor
-    );
+    setRequiresManualTwoFactor(workspaceId, credentialId, body.requiresManualTwoFactor);
   }
   if (body.resetTwoFactorToken === true) {
-    updateCredentialField(
-      workspaceId,
-      credentialId,
-      "otpLongTermToken",
-      null
-    );
+    updateCredentialField(workspaceId, credentialId, "otpLongTermToken", null);
   }
 
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const { id } = await params;
   const credentialId = parseCredentialId(id);

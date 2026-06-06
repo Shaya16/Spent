@@ -1,20 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+import { ProviderBadge } from "@/components/setup/provider-badge";
+import { TwoFactorSection } from "@/components/setup/two-factor-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ProviderBadge } from "@/components/setup/provider-badge";
-import { BANK_PROVIDERS, type BankProviderInfo, type Integration } from "@/lib/types";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   deleteIntegration,
   getIntegrationCredentials,
@@ -22,8 +24,21 @@ import {
   testBankConnection,
   updateIntegrationSettings,
 } from "@/lib/api";
-import { TwoFactorSection } from "@/components/setup/two-factor-section";
-import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
+import { type FormatLastSyncLabels, formatLastSync } from "@/lib/formatters";
+import { BANK_PROVIDERS, type BankProviderInfo, type Integration } from "@/lib/types";
+
+function useLastSyncLabels(): FormatLastSyncLabels {
+  const t = useTranslations("settings.bank");
+  return {
+    never: t("neverSynced"),
+    justNow: t("justNow"),
+    minute: (n) => t("minutesAgo", { count: n }),
+    hour: (n) => t("hoursAgo", { count: n }),
+    day: (n) => t("daysAgo", { count: n }),
+    week: (n) => t("weeksAgo", { count: n }),
+    monthAgo: (n) => t("monthsAgo", { count: n }),
+  };
+}
 
 export interface BankDetailSheetProps {
   open: boolean;
@@ -42,9 +57,7 @@ export function BankDetailSheet({
   connected,
   onClose,
 }: BankDetailSheetProps) {
-  const info = providerId
-    ? BANK_PROVIDERS.find((b) => b.id === providerId) ?? null
-    : null;
+  const info = providerId ? (BANK_PROVIDERS.find((b) => b.id === providerId) ?? null) : null;
   return (
     <Sheet
       open={open}
@@ -52,10 +65,7 @@ export function BankDetailSheet({
         if (!o) onClose();
       }}
     >
-      <SheetContent
-        side="right"
-        className="w-full p-0 sm:max-w-md! md:max-w-lg!"
-      >
+      <SheetContent side="right" className="w-full p-0 sm:max-w-md! md:max-w-lg!">
         {info ? (
           <SheetBody
             info={info}
@@ -83,6 +93,7 @@ function SheetBody({
   connected: Integration | null;
   onClose: () => void;
 }) {
+  const t = useTranslations("settings.bank");
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <SheetHeader className="gap-3 border-b border-border/40 p-6">
@@ -98,9 +109,12 @@ function SheetBody({
             <SheetTitle>{connected?.label ?? info.name}</SheetTitle>
             <SheetDescription className="mt-0.5">
               {mode === "add"
-                ? "Connect this bank to sync transactions."
+                ? t("connectPrompt")
                 : connected
-                  ? `${info.name} · ${connected.transactionCount} transactions`
+                  ? t("detailSubtitle", {
+                      name: info.name,
+                      count: connected.transactionCount,
+                    })
                   : info.blurb}
             </SheetDescription>
           </div>
@@ -146,11 +160,11 @@ function CredentialsForm({
   initialLabel: string;
   onSaved: () => void;
 }) {
+  const t = useTranslations("settings.bank");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const [label, setLabel] = useState(initialLabel);
-  const [savedCredentialId, setSavedCredentialId] = useState<number | null>(
-    credentialId
-  );
+  const [savedCredentialId, setSavedCredentialId] = useState<number | null>(credentialId);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(!isEdit);
   const [testing, setTesting] = useState(false);
@@ -220,11 +234,7 @@ function CredentialsForm({
       const existingId = savedCredentialId;
       let testId = existingId;
       if (existingId != null) {
-        const saved = await saveBankCredentials(
-          info.id,
-          credentials,
-          saveOptions(existingId)
-        );
+        const saved = await saveBankCredentials(info.id, credentials, saveOptions(existingId));
         testId = saved.credentialId;
         setSavedCredentialId(testId);
       }
@@ -235,7 +245,7 @@ function CredentialsForm({
     } catch (err) {
       setResult({
         success: false,
-        message: parseApiError(err, "Connection test failed."),
+        message: parseApiError(err, t("connectionTestFailed")),
       });
     } finally {
       setTesting(false);
@@ -245,21 +255,16 @@ function CredentialsForm({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const saved = await saveBankCredentials(
-        info.id,
-        credentials,
-        saveOptions(savedCredentialId)
-      );
+      const saved = await saveBankCredentials(info.id, credentials, saveOptions(savedCredentialId));
       setSavedCredentialId(saved.credentialId);
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
       queryClient.invalidateQueries({ queryKey: ["setupStatus"] });
-      toast.success(`${info.name} credentials saved`);
+      toast.success(t("credentialsSaved", { name: info.name }));
       onSaved();
     } catch (err) {
-      setResult({
-        success: false,
-        message: parseApiError(err, "Failed to save credentials."),
-      });
+      const message = parseApiError(err, t("failedToSaveCredentials"));
+      setResult({ success: false, message });
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -274,11 +279,9 @@ function CredentialsForm({
       });
       setHasTwoFactorToken(false);
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
-      toast.success(
-        `Saved 2FA token cleared. Your next ${info.name} sync will ask for a fresh code.`
-      );
+      toast.success(t("twoFactorTokenCleared", { name: info.name }));
     } catch {
-      toast.error("Could not reset the 2FA token.");
+      toast.error(t("twoFactorResetFailed"));
     } finally {
       setResetPending(false);
     }
@@ -288,7 +291,7 @@ function CredentialsForm({
     return (
       <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Loading current values…
+        {tc("loadingValues")}
       </div>
     );
   }
@@ -296,28 +299,23 @@ function CredentialsForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor={`${info.id}-label`}>Account label</Label>
+        <Label htmlFor={`${info.id}-label`}>{t("accountLabel")}</Label>
         <Input
           id={`${info.id}-label`}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder={`e.g. Personal card, ${info.name} (2)`}
+          placeholder={t("accountLabelPlaceholder", { name: info.name })}
         />
-        <p className="text-xs text-muted-foreground">
-          Shown in your bank list. Use a distinct label when you connect the same
-          bank more than once.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("accountLabelHint")}</p>
       </div>
 
       <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        Credentials
+        {t("credentialsHeading")}
       </div>
       {info.credentialFields.map((field) => {
         const value = credentials[field.key] ?? "";
         const tooShort =
-          field.exactLength != null &&
-          value.length > 0 &&
-          value.length !== field.exactLength;
+          field.exactLength != null && value.length > 0 && value.length !== field.exactLength;
         const placeholder = field.placeholder ?? field.label;
         const hint = field.hint;
         return (
@@ -343,7 +341,7 @@ function CredentialsForm({
             {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
             {tooShort && (
               <p className="text-xs text-destructive">
-                Must be exactly {field.exactLength} digits.
+                {t("exactLengthError", { count: field.exactLength ?? 0 })}
               </p>
             )}
           </div>
@@ -364,7 +362,7 @@ function CredentialsForm({
         <div
           className={`rounded-md p-3 text-sm ${
             result.success
-              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              ? "bg-status-on-track/10 text-status-on-track"
               : "bg-destructive/10 text-destructive"
           }`}
         >
@@ -373,15 +371,11 @@ function CredentialsForm({
       )}
 
       <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-        <Button
-          variant="outline"
-          onClick={handleTest}
-          disabled={!allValid || testing || saving}
-        >
-          {testing ? "Testing…" : "Test connection"}
+        <Button variant="outline" onClick={handleTest} disabled={!allValid || testing || saving}>
+          {testing ? t("testing") : t("testConnection")}
         </Button>
         <Button onClick={handleSave} disabled={!allValid || saving || testing}>
-          {saving ? "Saving…" : "Save"}
+          {saving ? tc("saving") : tc("save")}
         </Button>
       </div>
     </div>
@@ -395,32 +389,28 @@ function RecentSyncCard({
   lastSyncAt: string | null;
   transactionCount: number;
 }) {
+  const t = useTranslations("settings.bank");
+  const labels = useLastSyncLabels();
   return (
     <div>
       <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        Recent sync
+        {t("recentSync")}
       </div>
       <div className="mt-2 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm">
-        <div className="font-medium">
-          {transactionCount} transaction{transactionCount === 1 ? "" : "s"}
-        </div>
+        <div className="font-medium">{t("transactionsPlural", { count: transactionCount })}</div>
         <div className="mt-0.5 text-xs text-muted-foreground">
           {lastSyncAt
-            ? `Last synced ${formatRelative(lastSyncAt)}`
-            : "Never synced"}
+            ? t("lastSynced", { time: formatLastSync(lastSyncAt, labels) })
+            : labels.never}
         </div>
       </div>
     </div>
   );
 }
 
-function DangerZone({
-  credentialId,
-  onRemoved,
-}: {
-  credentialId: number;
-  onRemoved: () => void;
-}) {
+function DangerZone({ credentialId, onRemoved }: { credentialId: number; onRemoved: () => void }) {
+  const t = useTranslations("settings.bank");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const mutation = useMutation({
@@ -428,8 +418,11 @@ function DangerZone({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
       queryClient.invalidateQueries({ queryKey: ["setupStatus"] });
-      toast.success("Bank disconnected");
+      toast.success(t("bankDisconnected"));
       onRemoved();
+    },
+    onError: () => {
+      toast.error(t("disconnectFailed"));
     },
   });
 
@@ -438,10 +431,8 @@ function DangerZone({
       <div className="flex items-start gap-3">
         <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium">Disconnect this bank</div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Removes credentials. Existing transactions stay.
-          </p>
+          <div className="text-sm font-medium">{t("disconnectTitle")}</div>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("disconnectHint")}</p>
           {!confirming ? (
             <Button
               variant="outline"
@@ -450,16 +441,12 @@ function DangerZone({
               onClick={() => setConfirming(true)}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Disconnect
+              {t("disconnect")}
             </Button>
           ) : (
             <div className="mt-3 flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirming(false)}
-              >
-                Cancel
+              <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+                {tc("cancel")}
               </Button>
               <Button
                 size="sm"
@@ -467,7 +454,7 @@ function DangerZone({
                 onClick={() => mutation.mutate()}
                 disabled={mutation.isPending}
               >
-                {mutation.isPending ? "Disconnecting…" : "Confirm disconnect"}
+                {mutation.isPending ? t("disconnecting") : t("confirmDisconnect")}
               </Button>
             </div>
           )}
@@ -475,14 +462,4 @@ function DangerZone({
       </div>
     </div>
   );
-}
-
-function formatRelative(iso: string): string {
-  const then = new Date(iso.replace(" ", "T") + "Z");
-  const diffSec = (Date.now() - then.getTime()) / 1000;
-  if (diffSec < 60) return "just now";
-  if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
-  if (diffSec < 86400) return `${Math.round(diffSec / 3600)}h ago`;
-  if (diffSec < 86400 * 7) return `${Math.round(diffSec / 86400)}d ago`;
-  return then.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

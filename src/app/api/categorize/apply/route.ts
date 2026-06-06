@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  batchUpdateCategories,
-} from "@/server/db/queries/transactions";
-import {
-  ensureCategory,
-  getCategoryByName,
-  getParentIds,
-} from "@/server/db/queries/categories";
 import type { CategoryKind } from "@/lib/types";
+import { ensureCategory, getCategoryByName, getParentIds } from "@/server/db/queries/categories";
+import { batchUpdateCategories } from "@/server/db/queries/transactions";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 interface ApplyBody {
@@ -37,9 +31,7 @@ interface ApplyBody {
 export async function POST(request: Request) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const body = (await request.json()) as ApplyBody;
-  const approved = new Set(
-    (body.approvedNewCategoryNames ?? []).map((n) => n.toLowerCase())
-  );
+  const approved = new Set((body.approvedNewCategoryNames ?? []).map((n) => n.toLowerCase()));
   const fallbacks = body.rejectionFallbacks ?? {};
 
   // Resolve every assignment to a concrete category id.
@@ -66,12 +58,7 @@ export async function POST(request: Request) {
         } else {
           // Check if it already exists before creating
           const wasExisting = getCategoryByName(workspaceId, a.categoryName);
-          const cat = ensureCategory(
-            workspaceId,
-            a.categoryName,
-            undefined,
-            a.kind ?? "expense"
-          );
+          const cat = ensureCategory(workspaceId, a.categoryName, undefined, a.kind ?? "expense");
           if (!wasExisting) createdCount++;
           newCategoryCache.set(a.categoryName.toLowerCase(), cat.id);
           updates.push({ id: a.transactionId, categoryId: cat.id });

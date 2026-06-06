@@ -1,8 +1,8 @@
 import "server-only";
 
+import fs from "node:fs";
+import path from "node:path";
 import type Database from "better-sqlite3";
-import fs from "fs";
-import path from "path";
 
 const MIGRATIONS_DIR = path.join(__dirname, "migrations");
 
@@ -19,7 +19,7 @@ export function runMigrations(db: Database.Database): void {
     db
       .prepare("SELECT name FROM _migrations")
       .all()
-      .map((row) => (row as { name: string }).name)
+      .map((row) => (row as { name: string }).name),
   );
 
   let migrationDir = MIGRATIONS_DIR;
@@ -56,7 +56,7 @@ export function runMigrations(db: Database.Database): void {
       const violations = db.pragma("foreign_key_check") as unknown[];
       if (violations.length > 0) {
         throw new Error(
-          `Foreign key violations after migration ${file}: ${JSON.stringify(violations)}`
+          `Foreign key violations after migration ${file}: ${JSON.stringify(violations)}`,
         );
       }
     } finally {

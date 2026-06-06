@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { CardShell } from "./card-shell";
+import { useState } from "react";
 import { formatCurrency } from "@/lib/formatters";
 import type { HomeHistoricalTrendPoint } from "@/lib/types";
+import { CardShell } from "./card-shell";
 
 interface Props {
   data: HomeHistoricalTrendPoint[];
@@ -33,9 +33,7 @@ export function HistoricalTrendCard({ data }: Props) {
       <div className="flex flex-1 flex-col justify-between gap-4">
         <div>
           <div className="flex items-baseline gap-2">
-            <span className="font-serif text-2xl tabular-nums">
-              {formatCurrency(active.total)}
-            </span>
+            <span className="font-serif text-2xl tabular-nums">{formatCurrency(active.total)}</span>
             <span className="text-xs text-muted-foreground">
               {active.label}
               {active.isCurrent ? ` ${t("soFar")}` : ""}
@@ -43,12 +41,7 @@ export function HistoricalTrendCard({ data }: Props) {
           </div>
         </div>
 
-        <BarChart
-          data={data}
-          max={max}
-          hoverIdx={hoverIdx}
-          onHover={setHoverIdx}
-        />
+        <BarChart data={data} max={max} hoverIdx={hoverIdx} onHover={setHoverIdx} />
       </div>
     </CardShell>
   );
@@ -73,19 +66,13 @@ function BarChart({
 
   return (
     <div className="flex flex-col gap-2" onMouseLeave={() => onHover(null)}>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-        className="h-24 w-full"
-      >
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-24 w-full">
         {data.map((d, i) => {
           const h = max > 0 ? (d.total / max) * (height - 2) : 0;
           const x = i * barWidth + barGap;
           const y = height - h;
           const isHovered = hoverIdx === i;
-          const opacity = hoverIdx == null
-            ? d.isCurrent ? 1 : 0.55
-            : isHovered ? 1 : 0.3;
+          const opacity = hoverIdx == null ? (d.isCurrent ? 1 : 0.55) : isHovered ? 1 : 0.3;
           return (
             <rect
               key={d.month}
@@ -104,10 +91,7 @@ function BarChart({
       </svg>
       <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
         {data.map((d) => (
-          <span
-            key={d.month}
-            className={d.isCurrent ? "font-medium text-foreground" : ""}
-          >
+          <span key={d.month} className={d.isCurrent ? "font-medium text-foreground" : ""}>
             {d.label}
           </span>
         ))}
