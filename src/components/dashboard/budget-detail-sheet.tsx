@@ -1,90 +1,38 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from "recharts";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+import { Check, ChevronDown, HelpCircle, Pencil, Plus } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { toast } from "sonner";
+import { getCategoryIcon } from "@/components/category-icon";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Plus,
-  HelpCircle,
-  Check,
-  ChevronDown,
-  Pencil,
-  type LucideIcon,
-  CircleDot,
-} from "lucide-react";
-import {
-  ShoppingBasket,
-  UtensilsCrossed,
-  TramFront,
-  ShoppingBag,
-  Ticket,
-  HeartPulse,
-  GraduationCap,
-  Receipt,
-  RefreshCw,
-  Plane,
-  Banknote,
-  ArrowLeftRight,
-  Shield,
-  Home,
-  Sparkles,
-  Briefcase,
-} from "lucide-react";
+import { QueryError } from "@/components/ui/query-error";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import type { Locale } from "@/i18n/routing";
+import type { CategoryChildBreakdown } from "@/lib/api";
 import {
   approveTransactionCategory,
+  type CategoryDetail,
   getCategories,
   getCategoryDetail,
   updateBudget,
   updateCategoryBudgetMode,
   updateTransactionCategory,
-  type CategoryDetail,
 } from "@/lib/api";
+import { shade, tint } from "@/lib/colors";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { Switch } from "@/components/ui/switch";
 import type { Category, TransactionWithCategory } from "@/lib/types";
-import type { CategoryChildBreakdown } from "@/lib/api";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  "shopping-basket": ShoppingBasket,
-  "utensils-crossed": UtensilsCrossed,
-  "tram-front": TramFront,
-  "shopping-bag": ShoppingBag,
-  ticket: Ticket,
-  "heart-pulse": HeartPulse,
-  "graduation-cap": GraduationCap,
-  receipt: Receipt,
-  "refresh-cw": RefreshCw,
-  plane: Plane,
-  banknote: Banknote,
-  "arrow-left-right": ArrowLeftRight,
-  shield: Shield,
-  home: Home,
-  sparkles: Sparkles,
-  "circle-dot": CircleDot,
-  briefcase: Briefcase,
-};
 
 interface BudgetDetailSheetProps {
   categoryId: number | null;
@@ -93,12 +41,7 @@ interface BudgetDetailSheetProps {
   onClose: () => void;
 }
 
-export function BudgetDetailSheet({
-  categoryId,
-  from,
-  to,
-  onClose,
-}: BudgetDetailSheetProps) {
+export function BudgetDetailSheet({ categoryId, from, to, onClose }: BudgetDetailSheetProps) {
   const open = categoryId !== null;
 
   const detailQuery = useQuery({
@@ -114,11 +57,12 @@ export function BudgetDetailSheet({
         if (!o) onClose();
       }}
     >
-      <SheetContent
-        side="right"
-        className="w-full p-0 sm:max-w-xl! md:max-w-2xl! lg:max-w-[35vw]!"
-      >
-        {detailQuery.isLoading || !detailQuery.data ? (
+      <SheetContent side="right" className="w-full p-0 sm:max-w-xl! md:max-w-2xl! lg:max-w-[35vw]!">
+        {detailQuery.isError && !detailQuery.data ? (
+          <div className="p-6">
+            <QueryError onRetry={() => detailQuery.refetch()} />
+          </div>
+        ) : detailQuery.isLoading || !detailQuery.data ? (
           <DetailSkeleton />
         ) : (
           <DetailContent data={detailQuery.data} />
@@ -140,6 +84,9 @@ function DetailSkeleton() {
 }
 
 function DetailContent({ data }: { data: CategoryDetail }) {
+  const t = useTranslations("budgetDetail");
+  const tc = useTranslations("common");
+  const locale = useLocale() as Locale;
   const queryClient = useQueryClient();
   const sameKindCategoriesQuery = useQuery({
     queryKey: ["categories", data.category.kind],
@@ -154,28 +101,42 @@ function DetailContent({ data }: { data: CategoryDetail }) {
   };
 
   const handleApprove = async (id: number) => {
-    await approveTransactionCategory(id);
-    invalidate();
+    try {
+      await approveTransactionCategory(id);
+      invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : tc("saveFailed"));
+    }
   };
   const handleChangeCategory = async (id: number, categoryId: number) => {
-    await updateTransactionCategory(id, categoryId);
-    invalidate();
+    try {
+      await updateTransactionCategory(id, categoryId);
+      invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : tc("saveFailed"));
+    }
   };
 
   const handleToggleMode = async (checked: boolean) => {
-    await updateCategoryBudgetMode(
-      data.category.id,
-      checked ? "budgeted" : "tracking"
-    );
-    invalidate();
+    try {
+      await updateCategoryBudgetMode(data.category.id, checked ? "budgeted" : "tracking");
+      invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : tc("saveFailed"));
+    }
   };
 
   const handleSaveBudget = async (amount: number | null) => {
-    await updateBudget(data.category.id, amount);
-    invalidate();
+    try {
+      await updateBudget(data.category.id, amount);
+      invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : tc("saveFailed"));
+      throw err;
+    }
   };
 
-  const Icon = ICON_MAP[data.category.icon ?? "circle-dot"] ?? CircleDot;
+  const Icon = getCategoryIcon(data.category.icon);
   const iconColor = shade(data.category.color);
   const pct = Math.min(100, Math.round(data.percentSpent));
   const isTracking = data.category.budgetMode === "tracking";
@@ -187,7 +148,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
         amount: d.amount,
         date: d.date,
       })),
-    [data.dailySpend]
+    [data.dailySpend],
   );
 
   return (
@@ -197,16 +158,12 @@ function DetailContent({ data }: { data: CategoryDetail }) {
         style={{ background: tint(data.category.color, 0.22) }}
       >
         <div className="flex items-center gap-3">
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background/70"
-          >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background/70">
             <Icon className="h-5 w-5" style={{ color: iconColor }} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-              {data.category.kind === "income"
-                ? "Income category"
-                : "Expense category"}
+              {data.category.kind === "income" ? t("incomeCategory") : t("expenseCategory")}
             </div>
             <SheetTitle className="truncate font-serif text-2xl font-normal">
               {data.category.name}
@@ -214,29 +171,28 @@ function DetailContent({ data }: { data: CategoryDetail }) {
           </div>
           {data.category.kind !== "income" && (
             <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-              <span>Budget</span>
-              <Switch
-                size="sm"
-                checked={!isTracking}
-                onCheckedChange={handleToggleMode}
-              />
+              <span>{t("budget")}</span>
+              <Switch size="sm" checked={!isTracking} onCheckedChange={handleToggleMode} />
             </label>
           )}
         </div>
 
         {isTracking ? (
           <div className="mt-2 grid grid-cols-2 gap-3">
-            <Stat label="Spent" value={formatCurrency(data.spent)} />
+            <Stat label={t("spent")} value={formatCurrency(data.spent, "ILS", locale)} />
             <Stat
-              label="Typical / month"
+              label={t("typicalPerMonth")}
               value={
                 data.vsTypical && data.vsTypical.typical > 0
-                  ? formatCurrency(data.vsTypical.typical)
+                  ? formatCurrency(data.vsTypical.typical, "ILS", locale)
                   : "—"
               }
               sublabel={
                 data.vsTypical && data.vsTypical.typical > 0
-                  ? `${Math.round(data.vsTypical.percentDiff) >= 0 ? "+" : ""}${Math.round(data.vsTypical.percentDiff)}% this month`
+                  ? t("percentThisMonth", {
+                      percent: Math.abs(Math.round(data.vsTypical.percentDiff)),
+                      sign: Math.round(data.vsTypical.percentDiff) >= 0 ? "up" : "down",
+                    })
                   : undefined
               }
             />
@@ -244,15 +200,15 @@ function DetailContent({ data }: { data: CategoryDetail }) {
         ) : (
           <>
             <div className="mt-2 grid grid-cols-3 gap-3">
-              <Stat label="Spent" value={formatCurrency(data.spent)} />
+              <Stat label={t("spent")} value={formatCurrency(data.spent, "ILS", locale)} />
               <BudgetStat
                 amount={data.budget}
                 isAuto={data.isAutoBudget}
                 onSave={handleSaveBudget}
               />
               <Stat
-                label="Left"
-                value={formatCurrency(Math.max(0, data.budget - data.spent))}
+                label={t("left")}
+                value={formatCurrency(Math.max(0, data.budget - data.spent), "ILS", locale)}
               />
             </div>
 
@@ -291,50 +247,49 @@ function DetailContent({ data }: { data: CategoryDetail }) {
 
         <div className="grid grid-cols-2 gap-3">
           <Card>
-            <CardLabel>VS. LAST MONTH</CardLabel>
+            <CardLabel>{t("vsLastMonthLabel")}</CardLabel>
             <div className="mt-1 font-serif text-2xl tabular-nums">
               {data.prevSpent > 0
-                ? `${data.spent - data.prevSpent >= 0 ? "+" : "-"}${formatCurrency(Math.abs(data.spent - data.prevSpent))}`
+                ? `${data.spent - data.prevSpent >= 0 ? "+" : "-"}${formatCurrency(Math.abs(data.spent - data.prevSpent), "ILS", locale)}`
                 : "—"}
             </div>
             <div className="mt-0.5 text-xs text-muted-foreground">
               {data.prevSpent > 0 ? (
                 <>
-                  {data.prevPeriodLabel}: {formatCurrency(data.prevSpent)}
+                  {data.prevPeriodLabel}: {formatCurrency(data.prevSpent, "ILS", locale)}
                   {data.vsLastMonth != null && (
                     <>
                       {" · "}
-                      {Math.abs(Math.round(data.vsLastMonth))}%{" "}
-                      {data.vsLastMonth < 0 ? "lower" : "higher"}
+                      {data.vsLastMonth < 0
+                        ? t("vsLastMonthLower", { percent: Math.abs(Math.round(data.vsLastMonth)) })
+                        : t("vsLastMonthHigher", {
+                            percent: Math.abs(Math.round(data.vsLastMonth)),
+                          })}
                     </>
                   )}
                 </>
               ) : (
-                "No spending last period"
+                t("noSpendingLastPeriod")
               )}
             </div>
           </Card>
 
           <Card>
-            <CardLabel>AVG / TRANSACTION</CardLabel>
+            <CardLabel>{t("avgPerTransactionLabel")}</CardLabel>
             <div className="mt-1 font-serif text-2xl tabular-nums">
-              {formatCurrency(data.avgPerTransaction)}
+              {formatCurrency(data.avgPerTransaction, "ILS", locale)}
             </div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              {data.transactionCount} transaction
-              {data.transactionCount === 1 ? "" : "s"} this period
+              {t("transactionsThisPeriod", { count: data.transactionCount })}
             </div>
           </Card>
         </div>
 
         <Card>
-          <CardLabel>DAILY SPEND THIS PERIOD</CardLabel>
+          <CardLabel>{t("dailySpendThisPeriod")}</CardLabel>
           <div className="mt-2 h-32">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ top: 8, right: 0, bottom: 4, left: 0 }}
-              >
+              <BarChart data={chartData} margin={{ top: 8, right: 0, bottom: 4, left: 0 }}>
                 <XAxis
                   dataKey="day"
                   tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
@@ -354,9 +309,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
                     };
                     return (
                       <div className="rounded-md border bg-popover px-2 py-1 text-xs shadow-md">
-                        <div className="font-medium">
-                          {formatDate(p.date)}
-                        </div>
+                        <div className="font-medium">{formatDate(p.date)}</div>
                         <div className="tabular-nums text-muted-foreground">
                           {formatCurrency(p.amount)}
                         </div>
@@ -384,36 +337,31 @@ function DetailContent({ data }: { data: CategoryDetail }) {
         <div>
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-medium">
-              Transactions · {data.transactionCount}
+              {t("transactionsHeading", { count: data.transactionCount })}
             </h3>
             <Button
               size="sm"
               variant="ghost"
               className="h-7 gap-1 text-xs"
               disabled
-              title="Manual transaction entry not available yet"
+              title={t("addTransactionUnavailable")}
             >
-              <Plus className="h-3.5 w-3.5" /> Add
+              <Plus className="h-3.5 w-3.5" /> {tc("add")}
             </Button>
           </div>
           <div className="overflow-hidden rounded-2xl border bg-card">
             {data.transactions.length === 0 ? (
               <div className="p-6 text-center text-sm text-muted-foreground">
-                No transactions in this category for this period.
+                {t("noTransactionsInPeriod")}
               </div>
             ) : (
               <ul className="divide-y">
-                {data.transactions.map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between gap-3 px-4 py-2.5"
-                  >
+                {data.transactions.map((txn) => (
+                  <li key={txn.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <div className="min-w-0 flex-1">
-                      <div className="break-words text-sm font-medium">
-                        {t.description}
-                      </div>
+                      <div className="break-words text-sm font-medium">{txn.description}</div>
                       <div className="text-xs text-muted-foreground tabular-nums">
-                        {formatDate(t.date)}
+                        {formatDate(txn.date)}
                       </div>
                     </div>
                     <DropdownMenu>
@@ -421,9 +369,9 @@ function DetailContent({ data }: { data: CategoryDetail }) {
                         <Badge
                           variant="outline"
                           className="border-none p-0"
-                          style={{ color: t.categoryColor ?? undefined }}
+                          style={{ color: txn.categoryColor ?? undefined }}
                         >
-                          {t.categoryName ?? "Uncategorized"}
+                          {txn.categoryName ?? t("uncategorized")}
                         </Badge>
                         <ChevronDown className="h-3 w-3 text-muted-foreground" />
                       </DropdownMenuTrigger>
@@ -431,7 +379,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
                         {(sameKindCategoriesQuery.data ?? []).map((cat) => (
                           <DropdownMenuItem
                             key={cat.id}
-                            onClick={() => handleChangeCategory(t.id, cat.id)}
+                            onClick={() => handleChangeCategory(txn.id, cat.id)}
                           >
                             <div
                               className="me-2 h-2 w-2 rounded-full"
@@ -443,7 +391,7 @@ function DetailContent({ data }: { data: CategoryDetail }) {
                       </DropdownMenuContent>
                     </DropdownMenu>
                     <div className="shrink-0 text-sm font-medium tabular-nums">
-                      {formatCurrency(t.chargedAmount)}
+                      {formatCurrency(txn.chargedAmount, txn.chargedCurrency ?? "ILS", locale)}
                     </div>
                   </li>
                 ))}
@@ -465,21 +413,17 @@ function ChildrenBreakdownSection({
   budgetSource: "own" | "rollup" | "leaf";
   color: string;
 }) {
-  const banner =
-    budgetSource === "own"
-      ? "Budget set on this parent. Children's budgets are tracked individually but don't roll up here."
-      : "Budget rolled up from sub-categories. Set a budget on this parent to override.";
+  const t = useTranslations("budgetDetail");
+  const locale = useLocale() as Locale;
+  const banner = budgetSource === "own" ? t("childrenBannerOwn") : t("childrenBannerRollup");
   return (
-    <div
-      className="space-y-3 rounded-2xl p-4"
-      style={{ background: tint(color, 0.12) }}
-    >
+    <div className="space-y-3 rounded-2xl p-4" style={{ background: tint(color, 0.12) }}>
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-sm font-medium">
-          Sub-categories · {children.length}
+          {t("subcategoriesHeading", { count: children.length })}
         </h3>
         <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          {budgetSource === "own" ? "Own budget" : "Rolled up"}
+          {budgetSource === "own" ? t("ownBudget") : t("rolledUp")}
         </span>
       </div>
       <p className="text-xs text-muted-foreground">{banner}</p>
@@ -500,13 +444,13 @@ function ChildrenBreakdownSection({
               </div>
               <div className="flex shrink-0 items-center gap-3 text-xs tabular-nums">
                 <div className="text-end">
-                  <div className="font-medium">{formatCurrency(c.spent)}</div>
+                  <div className="font-medium">{formatCurrency(c.spent, "ILS", locale)}</div>
                   <div className="text-[10px] text-muted-foreground">
                     {c.budget > 0
-                      ? `of ${formatCurrency(c.budget)}`
+                      ? t("ofBudget", { amount: formatCurrency(c.budget, "ILS", locale) })
                       : c.budgetMode === "tracking"
-                        ? "tracking"
-                        : "no budget"}
+                        ? t("tracking")
+                        : t("noBudget")}
                   </div>
                 </div>
                 {c.budget > 0 && (
@@ -542,60 +486,47 @@ function NeedsReviewSection({
   onChange: (id: number, categoryId: number) => void;
   color: string;
 }) {
+  const t = useTranslations("budgetDetail");
+  const locale = useLocale() as Locale;
   return (
-    <div
-      className="space-y-2 rounded-2xl p-4"
-      style={{ background: tint(color, 0.12) }}
-    >
+    <div className="space-y-2 rounded-2xl p-4" style={{ background: tint(color, 0.12) }}>
       <div className="flex items-center gap-2">
-        <HelpCircle
-          className="h-4 w-4"
-          style={{ color: "var(--status-heads-up)" }}
-        />
+        <HelpCircle className="h-4 w-4" style={{ color: "var(--status-heads-up)" }} />
         <h3 className="text-sm font-medium">
-          Needs review · {transactions.length}
+          {t("needsReviewHeading", { count: transactions.length })}
         </h3>
       </div>
-      <p className="text-xs text-muted-foreground">
-        The AI wasn&apos;t sure about these. Approve to keep, or pick a different
-        category. Either way, the choice is remembered for next time.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("needsReviewBody")}</p>
       <ul className="mt-2 space-y-2">
-        {transactions.map((t) => (
+        {transactions.map((txn) => (
           <li
-            key={t.id}
+            key={txn.id}
             className="flex items-center justify-between gap-3 rounded-xl bg-background/70 p-3"
           >
             <div className="min-w-0 flex-1">
-              <div className="break-words text-sm font-medium">
-                {t.description}
-              </div>
+              <div className="break-words text-sm font-medium">{txn.description}</div>
               <div className="text-xs text-muted-foreground tabular-nums">
-                {formatDate(t.date)} · {formatCurrency(t.chargedAmount)}
+                {formatDate(txn.date)} ·{" "}
+                {formatCurrency(txn.chargedAmount, txn.chargedCurrency ?? "ILS", locale)}
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <DropdownMenu>
-                <DropdownMenuTrigger
-                  className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-accent"
-                >
+                <DropdownMenuTrigger className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-accent">
                   <Badge
                     variant="outline"
                     className="border-none p-0"
                     style={{
-                      color: t.categoryColor ?? undefined,
+                      color: txn.categoryColor ?? undefined,
                     }}
                   >
-                    {t.categoryName ?? "Uncategorized"}
+                    {txn.categoryName ?? t("uncategorized")}
                   </Badge>
                   <ChevronDown className="h-3 w-3 text-muted-foreground" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {categories.map((cat) => (
-                    <DropdownMenuItem
-                      key={cat.id}
-                      onClick={() => onChange(t.id, cat.id)}
-                    >
+                    <DropdownMenuItem key={cat.id} onClick={() => onChange(txn.id, cat.id)}>
                       <div
                         className="me-2 h-2 w-2 rounded-full"
                         style={{ backgroundColor: cat.color }}
@@ -608,10 +539,10 @@ function NeedsReviewSection({
               <Button
                 size="sm"
                 className="h-7 gap-1 px-2 text-xs"
-                onClick={() => onApprove(t.id)}
+                onClick={() => onApprove(txn.id)}
               >
                 <Check className="h-3.5 w-3.5" />
-                Approve
+                {t("approve")}
               </Button>
             </div>
           </li>
@@ -621,15 +552,7 @@ function NeedsReviewSection({
   );
 }
 
-function Stat({
-  label,
-  value,
-  sublabel,
-}: {
-  label: string;
-  value: string;
-  sublabel?: string;
-}) {
+function Stat({ label, value, sublabel }: { label: string; value: string; sublabel?: string }) {
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
@@ -637,9 +560,7 @@ function Stat({
       </div>
       <div className="mt-0.5 font-serif text-xl tabular-nums">{value}</div>
       {sublabel && (
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          {sublabel}
-        </div>
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{sublabel}</div>
       )}
     </div>
   );
@@ -654,6 +575,8 @@ function BudgetStat({
   isAuto: boolean;
   onSave: (amount: number | null) => Promise<void> | void;
 }) {
+  const t = useTranslations("budgetDetail");
+  const locale = useLocale() as Locale;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -694,6 +617,9 @@ function BudgetStat({
     try {
       await onSave(next);
       setEditing(false);
+    } catch {
+      // onSave already surfaced the failure via a toast; keep the editor open
+      // so the user can retry without losing their input.
     } finally {
       setSaving(false);
     }
@@ -702,7 +628,7 @@ function BudgetStat({
   return (
     <div>
       <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-        Budget
+        {t("budget")}
       </div>
       {editing ? (
         <input
@@ -725,24 +651,24 @@ function BudgetStat({
             }
           }}
           className="mt-0.5 w-full rounded-md border border-border bg-background/70 px-1.5 py-0.5 font-serif text-xl tabular-nums outline-none focus:border-foreground/40 disabled:opacity-60"
-          placeholder="auto"
+          placeholder={t("autoPlaceholder")}
         />
       ) : (
         <button
           type="button"
           onClick={startEdit}
           className="group mt-0.5 flex w-full cursor-pointer items-center gap-1.5 rounded-md text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label="Edit budget amount"
+          aria-label={t("editBudgetAmount")}
         >
           <span className="font-serif text-xl tabular-nums">
-            {amount > 0 ? formatCurrency(amount) : "—"}
+            {amount > 0 ? formatCurrency(amount, "ILS", locale) : "—"}
           </span>
           <Pencil className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
         </button>
       )}
       {!editing && isAuto && amount > 0 && (
         <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          auto
+          {t("autoLabel")}
         </div>
       )}
     </div>
@@ -760,24 +686,3 @@ function CardLabel({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-function tint(hex: string, opacity: number): string {
-  const { r, g, b } = parseHex(hex);
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-}
-
-function shade(hex: string): string {
-  const { r, g, b } = parseHex(hex);
-  const factor = 0.78;
-  return `rgb(${Math.round(r * factor)}, ${Math.round(g * factor)}, ${Math.round(b * factor)})`;
-}
-
-function parseHex(hex: string): { r: number; g: number; b: number } {
-  const clean = hex.replace("#", "");
-  return {
-    r: parseInt(clean.slice(0, 2), 16),
-    g: parseInt(clean.slice(2, 4), 16),
-    b: parseInt(clean.slice(4, 6), 16),
-  };
-}
-

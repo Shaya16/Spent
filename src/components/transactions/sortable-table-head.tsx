@@ -2,8 +2,8 @@
 
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { TableHead } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import type { SortOrder, TransactionSortField } from "@/lib/transaction-sort";
+import { cn } from "@/lib/utils";
 
 interface SortableTableHeadProps {
   label: string;
@@ -29,32 +29,19 @@ export function SortableTableHead({
   sortDescLabel,
 }: SortableTableHeadProps) {
   const active = activeField === field;
-  const ariaSort = active
-    ? activeOrder === "asc"
-      ? "ascending"
-      : "descending"
-    : "none";
+  const ariaSort = active ? (activeOrder === "asc" ? "ascending" : "descending") : "none";
 
   return (
-    <TableHead
-      className={cn(align === "end" && "text-end", className)}
-      aria-sort={ariaSort}
-    >
+    <TableHead className={cn(align === "end" && "text-end", className)} aria-sort={ariaSort}>
       <button
         type="button"
         onClick={() => onSort(field)}
         className={cn(
           "inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
           align === "end" && "ms-auto",
-          active && "text-foreground"
+          active && "text-foreground",
         )}
-        title={
-          active
-            ? activeOrder === "asc"
-              ? sortAscLabel
-              : sortDescLabel
-            : label
-        }
+        title={active ? (activeOrder === "asc" ? sortAscLabel : sortDescLabel) : label}
       >
         <span>{label}</span>
         {active ? (

@@ -1,49 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { toast } from "sonner";
-import { BankStep } from "@/components/setup/bank-step";
 import { AIStep } from "@/components/setup/ai-step";
-import { MonthlyTargetStep } from "@/components/setup/monthly-target-step";
+import { BankStep } from "@/components/setup/bank-step";
 import { BudgetsStep } from "@/components/setup/budgets-step";
 import { CompleteStep } from "@/components/setup/complete-step";
+import { MonthlyTargetStep } from "@/components/setup/monthly-target-step";
 import { WorkspaceNameStep } from "@/components/setup/workspace-name-step";
+import { useRouter } from "@/i18n/navigation";
 import { createWorkspace } from "@/lib/api";
+import { GITHUB_REPO_URL } from "@/lib/constants";
 import { setActiveWorkspaceId } from "@/lib/workspace-store";
-import { useQueryClient } from "@tanstack/react-query";
 
 export type SetupMode = "first-run" | "new-workspace";
 
 type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
 
 const FIRST_RUN_STEPS = [
-  { n: 1 as const, label: "Connect" },
-  { n: 2 as const, label: "AI" },
-  { n: 5 as const, label: "Target" },
-  { n: 3 as const, label: "Budgets" },
-  { n: 4 as const, label: "Done" },
+  { n: 1 as const, labelKey: "stepConnect" },
+  { n: 2 as const, labelKey: "stepAi" },
+  { n: 5 as const, labelKey: "stepTarget" },
+  { n: 3 as const, labelKey: "stepBudgets" },
+  { n: 4 as const, labelKey: "stepDone" },
 ];
 
 const NEW_WORKSPACE_STEPS = [
-  { n: 0 as const, label: "Name" },
-  { n: 1 as const, label: "Connect" },
-  { n: 5 as const, label: "Target" },
-  { n: 3 as const, label: "Budgets" },
-  { n: 4 as const, label: "Done" },
+  { n: 0 as const, labelKey: "stepName" },
+  { n: 1 as const, labelKey: "stepConnect" },
+  { n: 5 as const, labelKey: "stepTarget" },
+  { n: 3 as const, labelKey: "stepBudgets" },
+  { n: 4 as const, labelKey: "stepDone" },
 ];
 
 export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
+  const t = useTranslations("setup");
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<WizardStep>(
-    mode === "new-workspace" ? 0 : 1
-  );
+  const [step, setStep] = useState<WizardStep>(mode === "new-workspace" ? 0 : 1);
   const [creating, setCreating] = useState(false);
 
-  const steps =
-    mode === "new-workspace" ? NEW_WORKSPACE_STEPS : FIRST_RUN_STEPS;
+  const steps = mode === "new-workspace" ? NEW_WORKSPACE_STEPS : FIRST_RUN_STEPS;
 
   async function handleNameSubmit(name: string) {
     setCreating(true);
@@ -53,9 +53,7 @@ export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
       queryClient.invalidateQueries();
       setStep(1);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to create workspace"
-      );
+      toast.error(err instanceof Error ? err.message : t("workspaceCreateFailed"));
     } finally {
       setCreating(false);
     }
@@ -72,12 +70,12 @@ export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
         <BrandMark />
         <DotStepper step={step} steps={steps} />
         <a
-          href="https://github.com/Shaya16/Spent"
+          href={GITHUB_REPO_URL}
           target="_blank"
           rel="noreferrer"
           className="hidden text-xs text-muted-foreground hover:text-foreground md:inline"
         >
-          Docs ↗
+          {t("docs")}
         </a>
       </header>
 
@@ -91,38 +89,19 @@ export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
             transition={{ duration: 0.28, ease: [0.2, 0.7, 0.3, 1] }}
           >
             {step === 0 && (
-              <WorkspaceNameStep
-                onComplete={handleNameSubmit}
-                submitting={creating}
-              />
+              <WorkspaceNameStep onComplete={handleNameSubmit} submitting={creating} />
             )}
             {step === 1 && (
-              <BankStep
-                onComplete={() =>
-                  setStep(mode === "new-workspace" ? 5 : 2)
-                }
-              />
+              <BankStep onComplete={() => setStep(mode === "new-workspace" ? 5 : 2)} />
             )}
-            {step === 2 && (
-              <AIStep
-                onComplete={() => setStep(5)}
-                onBack={() => setStep(1)}
-              />
-            )}
+            {step === 2 && <AIStep onComplete={() => setStep(5)} onBack={() => setStep(1)} />}
             {step === 5 && (
               <MonthlyTargetStep
                 onComplete={() => setStep(3)}
-                onBack={() =>
-                  setStep(mode === "new-workspace" ? 1 : 2)
-                }
+                onBack={() => setStep(mode === "new-workspace" ? 1 : 2)}
               />
             )}
-            {step === 3 && (
-              <BudgetsStep
-                onComplete={() => setStep(4)}
-                onBack={() => setStep(5)}
-              />
-            )}
+            {step === 3 && <BudgetsStep onComplete={() => setStep(4)} onBack={() => setStep(5)} />}
             {step === 4 && <CompleteStep onFinish={handleFinish} />}
           </motion.div>
         </AnimatePresence>
@@ -132,24 +111,15 @@ export function SetupWizard({ mode = "first-run" }: { mode?: SetupMode }) {
 }
 
 function BrandMark() {
+  const tNav = useTranslations("nav");
   return (
     <div className="flex items-center gap-2.5">
-      <img
-        src="/logo_lightmode.svg"
-        alt="Spent"
-        className="h-8 w-auto dark:hidden"
-      />
-      <img
-        src="/logo_darkmode.svg"
-        alt="Spent"
-        className="hidden h-8 w-auto dark:block"
-      />
+      <img src="/logo_lightmode.svg" alt="Spent" className="h-8 w-auto dark:hidden" />
+      <img src="/logo_darkmode.svg" alt="Spent" className="hidden h-8 w-auto dark:block" />
       <div>
-        <div className="font-serif text-lg font-semibold leading-none tracking-tight">
-          Spent
-        </div>
+        <div className="font-serif text-lg font-semibold leading-none tracking-tight">Spent</div>
         <div className="mt-1 text-[8px] font-bold tracking-[0.18em] text-muted-foreground">
-          YOUR MONEY · OPEN SOURCE
+          {tNav("brandTagline")}
         </div>
       </div>
     </div>
@@ -158,32 +128,23 @@ function BrandMark() {
 
 interface StepDef {
   n: WizardStep;
-  label: string;
+  labelKey: string;
 }
 
-function DotStepper({
-  step,
-  steps,
-}: {
-  step: WizardStep;
-  steps: ReadonlyArray<StepDef>;
-}) {
+function DotStepper({ step, steps }: { step: WizardStep; steps: ReadonlyArray<StepDef> }) {
+  const t = useTranslations("setup");
   const currentIdx = steps.findIndex((s) => s.n === step);
   return (
     <div className="flex items-center gap-2">
       {steps.map((s, i) => {
-        const state =
-          i < currentIdx ? "done" : i === currentIdx ? "active" : "todo";
+        const state = i < currentIdx ? "done" : i === currentIdx ? "active" : "todo";
         return (
           <div key={s.n} className="flex items-center gap-2">
-            <DotLabel label={s.label} state={state} />
+            <DotLabel label={t(s.labelKey)} state={state} />
             {i < steps.length - 1 && (
               <motion.div
                 animate={{
-                  background:
-                    i < currentIdx
-                      ? "var(--primary)"
-                      : "var(--border)",
+                  background: i < currentIdx ? "var(--primary)" : "var(--border)",
                 }}
                 transition={{ duration: 0.35 }}
                 className="h-px w-3.5 rounded-full"
@@ -196,13 +157,7 @@ function DotStepper({
   );
 }
 
-function DotLabel({
-  label,
-  state,
-}: {
-  label: string;
-  state: "todo" | "active" | "done";
-}) {
+function DotLabel({ label, state }: { label: string; state: "todo" | "active" | "done" }) {
   return (
     <div className="flex items-center gap-1.5">
       <motion.div

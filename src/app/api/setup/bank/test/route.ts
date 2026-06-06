@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
+import type { BankProvider } from "@/lib/types";
 import {
   getBankCredentials,
   getRequiresManualTwoFactor,
 } from "@/server/db/queries/bank-credentials";
-import { scrapeBank } from "@/server/scrapers";
-import type { BankProvider } from "@/lib/types";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
+import { scrapeBank } from "@/server/scrapers";
 
 export async function POST(request: Request) {
   const workspaceId = getWorkspaceIdFromRequest(request);
@@ -17,21 +17,17 @@ export async function POST(request: Request) {
 
   const credentials =
     body.credentials ??
-    (body.credentialId != null
-      ? getBankCredentials(workspaceId, body.credentialId)
-      : null);
+    (body.credentialId != null ? getBankCredentials(workspaceId, body.credentialId) : null);
 
   if (!credentials) {
     return NextResponse.json(
       { success: false, message: "No credentials found for this account" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   const manualTwoFactor =
-    body.credentialId != null
-      ? getRequiresManualTwoFactor(workspaceId, body.credentialId)
-      : false;
+    body.credentialId != null ? getRequiresManualTwoFactor(workspaceId, body.credentialId) : false;
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -41,7 +37,7 @@ export async function POST(request: Request) {
     body.provider as BankProvider,
     credentials,
     sevenDaysAgo,
-    { manualTwoFactor }
+    { manualTwoFactor },
   );
 
   if (!result.success) {

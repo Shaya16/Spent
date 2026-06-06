@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,12 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { applyCategorize, getCategories } from "@/lib/api";
-import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import type { CategorizePreview } from "@/lib/api";
+import { applyCategorize, getCategories } from "@/lib/api";
 
 interface CategorizeReviewDialogProps {
   preview: CategorizePreview;
@@ -28,14 +29,16 @@ export function CategorizeReviewDialog({
   onClose,
   onApplied,
 }: CategorizeReviewDialogProps) {
+  const t = useTranslations("categorizeReview");
+  const tc = useTranslations("common");
   const { data: existingCategories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: () => getCategories(),
   });
 
   // Track per-proposal state: approved (default true), or a fallback name.
-  const [approvedMap, setApprovedMap] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(preview.proposedCategories.map((p) => [p.name, true]))
+  const [approvedMap, setApprovedMap] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(preview.proposedCategories.map((p) => [p.name, true])),
   );
 
   const applyMutation = useMutation({
@@ -47,27 +50,27 @@ export function CategorizeReviewDialog({
           isNew: a.isNew,
           kind: a.kind,
         })),
-        approvedNewCategoryNames: Object.entries(approvedMap)
-          .filter(([, ok]) => ok)
-          .map(([name]) => name),
+        approvedNewCategoryNames: Object.entries(approvedMap).flatMap(([name, ok]) =>
+          ok ? [name] : [],
+        ),
       }),
     onSuccess: (data) => {
+      const applied = t("toastApplied", { count: data.appliedCount });
       toast.success(
-        `Applied to ${data.appliedCount} transaction${data.appliedCount === 1 ? "" : "s"}` +
-          (data.createdCategoriesCount > 0
-            ? ` · Added ${data.createdCategoriesCount} new categor${data.createdCategoriesCount === 1 ? "y" : "ies"}`
-            : "")
+        data.createdCategoriesCount > 0
+          ? `${applied} · ${t("toastAddedCategories", { count: data.createdCategoriesCount })}`
+          : applied,
       );
       onApplied();
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Apply failed");
+      toast.error(err instanceof Error ? err.message : t("toastApplyFailed"));
     },
   });
 
   const approvedCount = useMemo(
     () => Object.values(approvedMap).filter(Boolean).length,
-    [approvedMap]
+    [approvedMap],
   );
   const totalProposals = preview.proposedCategories.length;
 
@@ -92,23 +95,19 @@ export function CategorizeReviewDialog({
           name,
           count,
           color:
-            existingCategories.find((c) => c.name === name)?.color ?? "#B1AA9C",
+            existingCategories.find((c) => c.name === name)?.color ?? "var(--muted-foreground)",
         }))
         .sort((a, b) => b.count - a.count),
-    [preview.existingCategoryUsage, existingCategories]
+    [preview.existingCategoryUsage, existingCategories],
   );
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[85vh] max-w-2xl gap-0 overflow-hidden p-0">
         <DialogHeader className="px-6 pb-3 pt-6">
-          <DialogTitle className="font-serif text-2xl tracking-tight">
-            AI categorization
-          </DialogTitle>
+          <DialogTitle className="font-serif text-2xl tracking-tight">{t("title")}</DialogTitle>
           <DialogDescription>
-            Suggested categories for {preview.uncategorizedCount} uncategorized{" "}
-            {preview.uncategorizedCount === 1 ? "transaction" : "transactions"}.
-            Approve or reject any new categories before applying.
+            {t("description", { count: preview.uncategorizedCount })}
           </DialogDescription>
         </DialogHeader>
 
@@ -117,7 +116,7 @@ export function CategorizeReviewDialog({
             {sortedExistingUsage.length > 0 && (
               <section>
                 <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                  Using existing categories ({stats.toExisting})
+                  {t("usingExisting", { count: stats.toExisting })}
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
                   {sortedExistingUsage.map((c) => (
@@ -125,10 +124,7 @@ export function CategorizeReviewDialog({
                       key={c.name}
                       className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs"
                     >
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: c.color }}
-                      />
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />
                       <span className="font-medium">{c.name}</span>
                       <span className="text-muted-foreground">{c.count}</span>
                     </span>
@@ -141,39 +137,33 @@ export function CategorizeReviewDialog({
               <section>
                 <div className="mb-3 flex items-baseline justify-between">
                   <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                    Proposed new categories ({totalProposals})
+                    {t("proposedNew", { count: totalProposals })}
                   </h3>
                   <div className="flex gap-1.5">
                     <button
+                      type="button"
                       onClick={() =>
                         setApprovedMap(
-                          Object.fromEntries(
-                            preview.proposedCategories.map((p) => [
-                              p.name,
-                              true,
-                            ])
-                          )
+                          Object.fromEntries(preview.proposedCategories.map((p) => [p.name, true])),
                         )
                       }
                       className="text-xs text-muted-foreground hover:text-foreground"
                     >
-                      Approve all
+                      {t("approveAll")}
                     </button>
                     <span className="text-xs text-muted-foreground">·</span>
                     <button
+                      type="button"
                       onClick={() =>
                         setApprovedMap(
                           Object.fromEntries(
-                            preview.proposedCategories.map((p) => [
-                              p.name,
-                              false,
-                            ])
-                          )
+                            preview.proposedCategories.map((p) => [p.name, false]),
+                          ),
                         )
                       }
                       className="text-xs text-muted-foreground hover:text-foreground"
                     >
-                      Reject all
+                      {t("rejectAll")}
                     </button>
                   </div>
                 </div>
@@ -183,25 +173,18 @@ export function CategorizeReviewDialog({
                       key={p.name}
                       proposal={p}
                       approved={approvedMap[p.name] ?? false}
-                      onToggle={(v) =>
-                        setApprovedMap((prev) => ({ ...prev, [p.name]: v }))
-                      }
+                      onToggle={(v) => setApprovedMap((prev) => ({ ...prev, [p.name]: v }))}
                     />
                   ))}
                 </div>
               </section>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                The AI didn&apos;t propose any new categories. Everything fits in
-                your existing list.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("noProposals")}</p>
             )}
 
             {preview.errors && preview.errors.length > 0 && (
               <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                {preview.errors.length} batch
-                {preview.errors.length === 1 ? "" : "es"} failed during AI
-                categorization. Other transactions were still processed.
+                {t("batchErrors", { count: preview.errors.length })}
               </div>
             )}
           </div>
@@ -210,37 +193,35 @@ export function CategorizeReviewDialog({
         <DialogFooter className="border-t bg-muted/30 px-6 py-4">
           <div className="me-auto flex flex-col gap-0.5 text-xs text-muted-foreground">
             <div>
-              <span className="font-medium text-foreground">
-                {stats.toExisting + stats.toNew}
-              </span>{" "}
-              will be categorized
+              {t.rich("willBeCategorized", {
+                count: stats.toExisting + stats.toNew,
+                strong: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+              })}
               {stats.willStay > 0 && (
                 <>
-                  {" "}
-                  ·{" "}
-                  <span className="text-foreground">{stats.willStay}</span> will
-                  stay uncategorized
+                  {" · "}
+                  {t.rich("willStayUncategorized", {
+                    count: stats.willStay,
+                    strong: (chunks) => <span className="text-foreground">{chunks}</span>,
+                  })}
                 </>
               )}
             </div>
             {totalProposals > 0 && (
               <div>
-                <span className="font-medium text-foreground">
-                  {approvedCount}
-                </span>{" "}
-                of {totalProposals} new categor
-                {totalProposals === 1 ? "y" : "ies"} will be created
+                {t.rich("categoriesWillBeCreated", {
+                  approved: approvedCount,
+                  count: totalProposals,
+                  strong: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+                })}
               </div>
             )}
           </div>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <Button
-            onClick={() => applyMutation.mutate()}
-            disabled={applyMutation.isPending}
-          >
-            {applyMutation.isPending ? "Applying..." : "Apply"}
+          <Button onClick={() => applyMutation.mutate()} disabled={applyMutation.isPending}>
+            {applyMutation.isPending ? t("applying") : t("apply")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -257,6 +238,7 @@ function ProposalRow({
   approved: boolean;
   onToggle: (v: boolean) => void;
 }) {
+  const t = useTranslations("categorizeReview");
   return (
     <div
       className={`flex items-start justify-between gap-4 rounded-xl border p-3 transition-colors ${
@@ -265,12 +247,9 @@ function ProposalRow({
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-bold tracking-tight">
-            {proposal.name}
-          </span>
+          <span className="text-sm font-bold tracking-tight">{proposal.name}</span>
           <span className="text-[11px] text-muted-foreground">
-            {proposal.transactionIds.length} transaction
-            {proposal.transactionIds.length === 1 ? "" : "s"}
+            {t("proposalTransactionCount", { count: proposal.transactionIds.length })}
           </span>
         </div>
         <div className="mt-1 truncate text-xs text-muted-foreground">
@@ -280,7 +259,7 @@ function ProposalRow({
       <Switch
         checked={approved}
         onCheckedChange={onToggle}
-        aria-label={`Approve "${proposal.name}"`}
+        aria-label={t("approveProposal", { name: proposal.name })}
       />
     </div>
   );

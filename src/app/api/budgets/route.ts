@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  getAllBudgets,
-  setBudget,
-  deleteBudget,
-} from "@/server/db/queries/budgets";
+import { deleteBudget, getAllBudgets, setBudget } from "@/server/db/queries/budgets";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 export async function GET(request: Request) {
@@ -19,10 +15,7 @@ export async function PUT(request: Request) {
   };
 
   if (!body.categoryId) {
-    return NextResponse.json(
-      { error: "categoryId is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "categoryId is required" }, { status: 400 });
   }
 
   if (body.amount == null) {
@@ -31,10 +24,7 @@ export async function PUT(request: Request) {
   }
 
   if (body.amount < 0) {
-    return NextResponse.json(
-      { error: "amount must be non-negative" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "amount must be non-negative" }, { status: 400 });
   }
 
   setBudget(workspaceId, body.categoryId, body.amount, false);

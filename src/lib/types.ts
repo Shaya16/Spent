@@ -6,6 +6,16 @@ export interface Workspace {
   updatedAt: string;
 }
 
+export interface ChatSession {
+  id: string;
+  workspaceId: number;
+  title: string;
+  titleSource: "auto" | "manual";
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Transaction {
   id: number;
   accountNumber: string;
@@ -31,6 +41,10 @@ export interface Transaction {
   syncRunId: number;
   kind: "expense" | "income" | "transfer";
   needsReview: boolean;
+  /** Set when this row is the grouping leg of a financial event. */
+  eventId: number | null;
+  eventRole: EventRole | null;
+  matchConfidence: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -39,6 +53,78 @@ export interface TransactionWithCategory extends Transaction {
   categoryName: string | null;
   categoryColor: string | null;
   isExcluded: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Financial Events: the cross-account deduplication layer. The same real-world
+// money movement (a transfer, a credit card bill payment, an ATM withdrawal)
+// shows up as N transaction rows once several accounts are aggregated; an event
+// groups those rows so spend is counted exactly once. See
+// docs/transaction-deduplication-design.md.
+// ---------------------------------------------------------------------------
+
+export type EventType =
+  | "internal_transfer"
+  | "credit_card_payment"
+  | "credit_card_statement"
+  | "atm_withdrawal"
+  | "loan_repayment"
+  | "investment_transfer"
+  | "refund_reversal"
+  | "fee"
+  | "duplicate";
+
+export type EventRole = "debit" | "credit" | "bill_payment" | "purchase" | "fee" | "reversal";
+
+export type EventStatus = "suggested" | "confirmed" | "rejected";
+
+export type EventSource = "heuristic" | "rule" | "user" | "ai";
+
+export interface FinancialEvent {
+  id: number;
+  workspaceId: number;
+  eventType: EventType;
+  canonicalTransactionId: number | null;
+  status: EventStatus;
+  source: EventSource;
+  confidence: number;
+  reasons: string[];
+  eventKey: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventMember {
+  id: number;
+  workspaceId: number;
+  eventId: number;
+  transactionId: number;
+  role: EventRole;
+  priorKind: Transaction["kind"] | null;
+  matchConfidence: number | null;
+  createdAt: string;
+}
+
+/** A financial event plus the transaction rows it groups, for review and display. */
+export interface FinancialEventWithMembers extends FinancialEvent {
+  members: (EventMember & {
+    description: string;
+    date: string;
+    chargedAmount: number;
+    chargedCurrency: string | null;
+    provider: string;
+    accountLabel: string | null;
+  })[];
+}
+
+export interface MatchSettings {
+  eventType: EventType;
+  epsilon: number;
+  dayWindow: number;
+  minScore: number;
+  autoScore: number;
+  requireKeyword: boolean;
+  enabled: boolean;
 }
 
 export type CategoryKind = "expense" | "income";
@@ -92,11 +178,7 @@ export interface CategoryBreakdown {
   count: number;
 }
 
-export type BudgetStatus =
-  | "plenty-left"
-  | "on-track"
-  | "heads-up"
-  | "over";
+export type BudgetStatus = "plenty-left" | "on-track" | "heads-up" | "over";
 
 export interface CategoryWithData {
   categoryId: number;
@@ -138,7 +220,6 @@ export interface DashboardSummary {
   paydayDay: number;
   todayLabel: string;
   monthLabel: string;
-  pacePhrase: string;
   typicalMonthly: number | null;
 }
 
@@ -148,39 +229,10 @@ export interface Budget {
   isAuto: boolean;
 }
 
-export type HomeSection =
-  | "thisMonth"
-  | "cashFlow"
-  | "categorySnapshot"
-  | "historicalTrend"
-  | "recentTransactions"
-  | "topMerchants"
-  | "needsAttention"
-  | "bankHealth";
-
-export interface HomeThisMonth {
-  spent: number;
-  budget: number;
-  deltaVsLastMonth: number | null;
-  pacePhrase: string;
-  daysUntilPayday: number;
-  timeElapsedPercent: number;
-  monthLabel: string;
-}
-
 export interface HomeCashFlow {
   income: number;
   expenses: number;
   net: number;
-}
-
-export interface HomeCategorySnapshotItem {
-  categoryId: number;
-  name: string;
-  color: string;
-  spent: number;
-  budget: number;
-  percentSpent: number;
 }
 
 export interface HomeHistoricalTrendPoint {
@@ -201,12 +253,6 @@ export interface HomeRecentTransaction {
   categoryColor: string | null;
 }
 
-export interface HomeTopMerchant {
-  name: string;
-  total: number;
-  count: number;
-}
-
 export interface HomeNeedsAttention {
   uncategorized: number;
   lowConfidence: number;
@@ -221,22 +267,131 @@ export interface HomeBankHealthItem {
   errorMessage: string | null;
 }
 
-export interface HomeSectionError {
-  section: HomeSection;
+// ---------------------------------------------------------------------------
+// Insights: the single payload behind the redesigned Home. Every field exists
+// to answer one of the five questions: what did I spend on, what changed vs
+// last month, why, is it good or bad, what can I improve. All numbers are
+// computed deterministically server-side (see src/server/insights/).
+// ---------------------------------------------------------------------------
+
+/** How the month is projected to end relative to the user's own typical spend. */
+export type VerdictStatus = "under" | "on-track" | "over";
+
+export interface Verdict {
+  /** Spend so far this month (month-to-date). */
+  spent: number;
+  /** Straight-line projection of month-end spend from the current pace. */
+  projected: number;
+  monthLabel: string;
+  elapsedDays: number;
+  totalDays: number;
+  daysUntilPayday: number;
+  /** Spend over the same number of days last month (like-for-like). */
+  priorMtd: number;
+  /** spent - priorMtd (signed; positive means spending more than last month). */
+  deltaAmount: number;
+  /** Percent change vs the same window last month, or null when no baseline. */
+  deltaPercent: number | null;
+  /** Trailing 3-month average monthly spend, the honest baseline. */
+  typicalMonthly: number | null;
+  /** projected vs typicalMonthly, as a percent (signed), or null. */
+  vsTypicalPercent: number | null;
+  /** Verdict on the projected month-end vs the user's typical spend. */
+  projectedStatus: VerdictStatus;
+  /** Optional explicit monthly target the user set in Settings. */
+  monthlyTarget: number | null;
+  /** monthlyTarget - spent when a target exists, else null. */
+  remaining: number | null;
+}
+
+/** A category whose spend changed the most vs last month (ranked by magnitude). */
+export interface Mover {
+  categoryId: number;
+  name: string;
+  color: string;
+  icon: string | null;
+  /** Spend this month (month-to-date). */
+  current: number;
+  /** Spend across the whole prior month. */
+  prior: number;
+  /** current - prior (signed). */
+  deltaAmount: number;
+  deltaPercent: number | null;
+  direction: "up" | "down";
+  /** The merchant driving most of this category's spend, for the inline "why". */
+  topMerchant: string | null;
+  /** Monthly totals over the trailing window so the row can show creep. */
+  trend: number[];
+}
+
+export interface BreakdownItem {
+  categoryId: number;
+  name: string;
+  color: string;
+  icon: string | null;
+  amount: number;
+  percentOfTotal: number;
+  /** Percent change vs the whole prior month, or null. */
+  deltaPercent: number | null;
+}
+
+export type InsightType =
+  | "biggest-increase"
+  | "biggest-saving"
+  | "anomaly"
+  | "over-pace"
+  | "under-pace";
+
+export interface SpendInsight {
+  id: string;
+  type: InsightType;
+  tone: "positive" | "warning" | "neutral";
+  categoryId: number | null;
+  categoryName: string | null;
+  /** Primary money figure (a delta, an excess, or a projection gap). */
+  amount: number | null;
+  percent: number | null;
+  merchant: string | null;
+}
+
+export interface BurndownPayload {
+  /** Cumulative spend by day for the current month, up to today. */
+  current: number[];
+  /** Cumulative spend by day across the whole prior month (the baseline curve). */
+  prior: number[];
+  totalDays: number;
+}
+
+export type InsightSection =
+  | "verdict"
+  | "cashFlow"
+  | "movers"
+  | "breakdown"
+  | "insights"
+  | "trend"
+  | "burndown"
+  | "recentTransactions"
+  | "needsAttention"
+  | "bankHealth";
+
+export interface InsightSectionError {
+  section: InsightSection;
   message: string;
 }
 
-export interface HomePayload {
-  thisMonth: HomeThisMonth | null;
+export interface InsightPayload {
+  verdict: Verdict | null;
   cashFlow: HomeCashFlow | null;
-  categorySnapshot: HomeCategorySnapshotItem[] | null;
-  historicalTrend: HomeHistoricalTrendPoint[] | null;
+  movers: Mover[] | null;
+  breakdown: BreakdownItem[] | null;
+  insights: SpendInsight[] | null;
+  trend: HomeHistoricalTrendPoint[] | null;
+  burndown: BurndownPayload | null;
   recentTransactions: HomeRecentTransaction[] | null;
-  topMerchants: HomeTopMerchant[] | null;
   needsAttention: HomeNeedsAttention | null;
   bankHealth: HomeBankHealthItem[] | null;
   nextScheduledSync: string | null;
-  errors: HomeSectionError[];
+  errors: InsightSectionError[];
 }
 
 export type SyncKind = "manual" | "scheduled";
@@ -280,7 +435,8 @@ export interface SetupStatus {
 
 export interface AppSettings {
   monthsToSync: number;
-  aiProvider: "claude" | "ollama" | "none";
+  aiProvider: "claude" | "gemini" | "ollama" | "none";
+  geminiModel: string;
   ollamaUrl: string;
   ollamaModel: string;
   showBrowser: boolean;
@@ -288,7 +444,7 @@ export interface AppSettings {
   monthlyTarget: number | null;
   autoSyncEnabled: boolean;
   autoSyncTime: string;
-  language: "en" | "he";
+  treatAtmAsTransfers: boolean;
 }
 
 export type BankProvider =
@@ -371,6 +527,36 @@ export const RECOMMENDED_OLLAMA_MODELS: OllamaModelInfo[] = [
     name: "qwen2.5:3b",
     sizeGb: 1.9,
     description: "Alternative 3B model from Alibaba.",
+  },
+];
+
+export interface GeminiModelInfo {
+  name: string;
+  description: string;
+  recommended?: boolean;
+}
+
+export const RECOMMENDED_GEMINI_MODELS: GeminiModelInfo[] = [
+  {
+    name: "gemini-3.5-flash",
+    description: "Latest stable Flash model. Best default for categorization.",
+    recommended: true,
+  },
+  {
+    name: "gemini-3.1-flash-lite",
+    description: "Stable low-latency option with lower cost.",
+  },
+  {
+    name: "gemini-2.5-flash",
+    description: "Stable balanced model for high-volume tasks.",
+  },
+  {
+    name: "gemini-2.5-flash-lite",
+    description: "Stable fastest and most budget-friendly 2.5 model.",
+  },
+  {
+    name: "gemini-2.5-pro",
+    description: "Stable higher-quality model for more complex categorization.",
   },
 ];
 

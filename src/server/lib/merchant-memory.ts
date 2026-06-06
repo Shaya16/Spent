@@ -1,7 +1,9 @@
 import "server-only";
 
-import { getDb } from "../db/index";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { CategoryKind } from "@/lib/types";
+import { getOrm } from "../db/orm";
+import { merchantCategories } from "../db/schema";
 
 export function normalizeMerchant(description: string): string {
   return description
@@ -21,26 +23,28 @@ export interface MerchantMapping {
 
 export function lookupMerchantCategory(
   workspaceId: number,
-  description: string
+  description: string,
 ): MerchantMapping | null {
   const key = normalizeMerchant(description);
   if (!key) return null;
-  const row = getDb()
-    .prepare(
-      `SELECT merchant_key as merchantKey,
-              category_id as categoryId,
-              kind,
-              source
-       FROM merchant_categories
-       WHERE workspace_id = ? AND merchant_key = ?`
+  const row = getOrm()
+    .select({
+      merchantKey: merchantCategories.merchantKey,
+      categoryId: merchantCategories.categoryId,
+      kind: merchantCategories.kind,
+      source: merchantCategories.source,
+    })
+    .from(merchantCategories)
+    .where(
+      and(eq(merchantCategories.workspaceId, workspaceId), eq(merchantCategories.merchantKey, key)),
     )
-    .get(workspaceId, key) as MerchantMapping | undefined;
+    .get();
   return row ?? null;
 }
 
 export function lookupMerchantCategoriesBulk(
   workspaceId: number,
-  descriptions: string[]
+  descriptions: string[],
 ): Map<string, MerchantMapping> {
   if (descriptions.length === 0) return new Map();
   const keys = new Set<string>();
@@ -53,17 +57,21 @@ export function lookupMerchantCategoriesBulk(
     }
   }
   if (keys.size === 0) return new Map();
-  const placeholders = Array.from(keys).map(() => "?").join(",");
-  const rows = getDb()
-    .prepare(
-      `SELECT merchant_key as merchantKey,
-              category_id as categoryId,
-              kind,
-              source
-       FROM merchant_categories
-       WHERE workspace_id = ? AND merchant_key IN (${placeholders})`
+  const rows = getOrm()
+    .select({
+      merchantKey: merchantCategories.merchantKey,
+      categoryId: merchantCategories.categoryId,
+      kind: merchantCategories.kind,
+      source: merchantCategories.source,
+    })
+    .from(merchantCategories)
+    .where(
+      and(
+        eq(merchantCategories.workspaceId, workspaceId),
+        inArray(merchantCategories.merchantKey, Array.from(keys)),
+      ),
     )
-    .all(workspaceId, ...Array.from(keys)) as MerchantMapping[];
+    .all();
   const lookupByKey = new Map<string, MerchantMapping>();
   for (const r of rows) lookupByKey.set(r.merchantKey, r);
   const result = new Map<string, MerchantMapping>();
@@ -79,38 +87,43 @@ export function recordMerchantCategory(
   description: string,
   categoryId: number,
   kind: CategoryKind,
-  source: "user" | "approved-ai"
+  source: "user" | "approved-ai",
 ): void {
   const key = normalizeMerchant(description);
   if (!key) return;
-  getDb()
-    .prepare(
-      `INSERT INTO merchant_categories
-         (workspace_id, merchant_key, category_id, kind, source, hit_count)
-       VALUES (?, ?, ?, ?, ?, 0)
-       ON CONFLICT(workspace_id, merchant_key) DO UPDATE SET
-         category_id = excluded.category_id,
-         kind = excluded.kind,
-         source = CASE
-           WHEN merchant_categories.source = 'user' AND excluded.source = 'approved-ai'
+  getOrm()
+    .insert(merchantCategories)
+    .values({ workspaceId, merchantKey: key, categoryId, kind, source, hitCount: 0 })
+    .onConflictDoUpdate({
+      target: [merchantCategories.workspaceId, merchantCategories.merchantKey],
+      set: {
+        categoryId: sql`excluded.category_id`,
+        kind: sql`excluded.kind`,
+        source: sql`CASE
+           WHEN ${merchantCategories.source} = 'user' AND excluded.source = 'approved-ai'
              THEN 'user'
            ELSE excluded.source
-         END,
-         updated_at = datetime('now')`
-    )
-    .run(workspaceId, key, categoryId, kind, source);
+         END`,
+        updatedAt: sql`datetime('now')`,
+      },
+    })
+    .run();
 }
 
-export function incrementMerchantHits(
-  workspaceId: number,
-  merchantKeys: string[]
-): void {
+export function incrementMerchantHits(workspaceId: number, merchantKeys: string[]): void {
   if (merchantKeys.length === 0) return;
-  const db = getDb();
-  const stmt = db.prepare(
-    "UPDATE merchant_categories SET hit_count = hit_count + 1 WHERE workspace_id = ? AND merchant_key = ?"
-  );
-  db.transaction(() => {
-    for (const k of merchantKeys) stmt.run(workspaceId, k);
-  })();
+  const orm = getOrm();
+  orm.transaction((tx) => {
+    for (const k of merchantKeys) {
+      tx.update(merchantCategories)
+        .set({ hitCount: sql`${merchantCategories.hitCount} + 1` })
+        .where(
+          and(
+            eq(merchantCategories.workspaceId, workspaceId),
+            eq(merchantCategories.merchantKey, k),
+          ),
+        )
+        .run();
+    }
+  });
 }

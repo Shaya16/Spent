@@ -18,7 +18,7 @@ export async function PUT(request: Request) {
   ) {
     return NextResponse.json(
       { error: "budgetedIds must be an array of positive integers" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

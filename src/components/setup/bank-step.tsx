@@ -1,55 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  BANK_PROVIDERS,
-  type BankKind,
-  type BankProviderInfo,
-} from "@/lib/types";
-import {
+  deleteIntegration,
+  getIntegrationCredentials,
   listIntegrations,
   saveBankCredentials,
   testBankConnection,
-  getIntegrationCredentials,
-  deleteIntegration,
 } from "@/lib/api";
+import { GITHUB_ISSUES_URL } from "@/lib/constants";
+import { translateProviderBlurb, translateProviderName } from "@/lib/i18n-data";
+import { BANK_PROVIDERS, type BankKind, type BankProviderInfo } from "@/lib/types";
 import { ProviderBadge } from "./provider-badge";
 import { TwoFactorSection } from "./two-factor-section";
 
 type Sub = "pick" | "form" | "ready";
-
-const NUMBER_WORDS: Record<number, string> = {
-  1: "One",
-  2: "Two",
-  3: "Three",
-  4: "Four",
-  5: "Five",
-  6: "Six",
-  7: "Seven",
-  8: "Eight",
-  9: "Nine",
-  10: "Ten",
-};
 
 interface BankStepProps {
   onComplete: () => void;
 }
 
 export function BankStep({ onComplete }: BankStepProps) {
+  const t = useTranslations("setup");
+  const tc = useTranslations("common");
+  const tBanks = useTranslations("banks");
   const [filter, setFilter] = useState<"all" | BankKind>("all");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingCredentialId, setEditingCredentialId] = useState<number | null>(
-    null
-  );
+  const [editingCredentialId, setEditingCredentialId] = useState<number | null>(null);
   const [sub, setSub] = useState<Sub | null>(null);
 
-  const { data: integrations = [], isPending, refetch } = useQuery({
+  const {
+    data: integrations = [],
+    isPending,
+    refetch,
+  } = useQuery({
     queryKey: ["integrations"],
     queryFn: listIntegrations,
   });
@@ -61,18 +52,15 @@ export function BankStep({ onComplete }: BankStepProps) {
   }, [isPending, integrations.length, sub]);
 
   const connectedIds = new Set(integrations.map((i) => i.provider));
-  const selected = selectedId
-    ? (BANK_PROVIDERS.find((p) => p.id === selectedId) ?? null)
-    : null;
+  const selected = selectedId ? (BANK_PROVIDERS.find((p) => p.id === selectedId) ?? null) : null;
 
   const filteredProviders = BANK_PROVIDERS.filter((p) => {
     if (filter !== "all" && p.kind !== filter) return false;
-    if (
-      search &&
-      !p.name.toLowerCase().includes(search.toLowerCase()) &&
-      !p.blurb.toLowerCase().includes(search.toLowerCase())
-    ) {
-      return false;
+    if (search) {
+      const needle = search.toLowerCase();
+      const name = translateProviderName(p.id, p.name, tBanks).toLowerCase();
+      const blurb = translateProviderBlurb(p.id, p.blurb, tBanks).toLowerCase();
+      if (!name.includes(needle) && !blurb.includes(needle)) return false;
     }
     return true;
   });
@@ -106,13 +94,13 @@ export function BankStep({ onComplete }: BankStepProps) {
 
   const editingIntegration =
     editingCredentialId != null
-      ? integrations.find((i) => i.id === editingCredentialId) ?? null
+      ? (integrations.find((i) => i.id === editingCredentialId) ?? null)
       : null;
 
   function handleRemoved() {
     refetch();
     if (integrations.length <= 1) {
-      // last one being removed — drop back to picker
+      // last one being removed, drop back to picker
       setSub("pick");
     }
   }
@@ -121,195 +109,174 @@ export function BankStep({ onComplete }: BankStepProps) {
 
   const readyCountLabel =
     integrations.length === 1
-      ? "One account ready. Add another or move on."
-      : `${NUMBER_WORDS[integrations.length] ?? integrations.length} accounts ready. Add another or move on.`;
+      ? t("bankOneReady")
+      : t("bankManyReady", { count: integrations.length });
 
   return (
     <div className="mx-auto flex w-full max-w-[520px] flex-col gap-6">
       {sub === "pick" && (
-          <div
-            key="pick"
-            className="flex w-full flex-col gap-4"
-          >
-            {integrations.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSub("ready")}
-                className="self-start text-xs font-medium text-muted-foreground hover:text-foreground"
-              >
-                ← back to connected accounts
-              </button>
-            )}
-            <header className="space-y-2">
-              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Step 1 of 5 · Accounts
-              </div>
-              <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
-                Which accounts should Spent watch?
-              </h1>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Add every bank and card you want to track. Credentials are
-                encrypted with AES-256 and stored on this machine only, never
-                leaving your computer.
-              </p>
-            </header>
-
-            <PickerCard
-              providers={filteredProviders}
-              total={BANK_PROVIDERS.length}
-              connectedIds={connectedIds}
-              filter={filter}
-              onFilter={setFilter}
-              search={search}
-              onSearch={setSearch}
-              onPick={handlePick}
-            />
-
-            <p className="text-xs italic text-muted-foreground">
-              Don&apos;t see your bank?{" "}
-              <a
-                href="https://github.com/Shaya16/Spent/issues"
-                target="_blank"
-                rel="noreferrer"
-                className="text-foreground underline decoration-primary underline-offset-2"
-              >
-                Open an issue
-              </a>{" "}
-              and we&apos;ll add a scraper.
-            </p>
-          </div>
-        )}
-
-        {sub === "form" && selected && (
-          <div
-            key={`form-${selected.id}`}
-            className="flex w-full flex-col gap-4"
-          >
+        <div key="pick" className="flex w-full flex-col gap-4">
+          {integrations.length > 0 && (
             <button
               type="button"
-              onClick={handleCloseForm}
+              onClick={() => setSub("ready")}
               className="self-start text-xs font-medium text-muted-foreground hover:text-foreground"
             >
-              ← back to providers
+              {t("bankBackToConnected")}
             </button>
-            <header className="space-y-2">
-              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Step 1 of 5 · Connecting {selected.name}
-              </div>
-              <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
-                Sign in to {selected.name}
-              </h1>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Same credentials you use at{" "}
-                <span className="text-foreground">{selected.domain}</span>.
-                They&apos;re encrypted locally, nothing leaves this machine.
-              </p>
-            </header>
-
-            <CredentialForm
-              key={`${selected.id}-${editingCredentialId ?? "new"}`}
-              info={selected}
-              credentialId={editingCredentialId}
-              initialLabel={editingIntegration?.label ?? ""}
-              isEdit={editingCredentialId != null}
-              onClose={handleCloseForm}
-              onSaved={handleSaved}
-            />
-          </div>
-        )}
-
-        {sub === "ready" && integrations.length > 0 && (
-          <div
-            key="ready"
-            className="flex w-full flex-col gap-4"
-          >
-            <header className="space-y-2">
-              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Step 1 of 5 · Accounts
-              </div>
-              <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
-                {readyCountLabel}
-              </h1>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                You can always come back from Settings to add or remove accounts.
-              </p>
-            </header>
-
-            <div className="w-full space-y-2 text-start">
-              <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                Connected · {integrations.length}
-              </div>
-              <AnimatePresence initial={false}>
-                {integrations.map((integ) => {
-                  const info = BANK_PROVIDERS.find(
-                    (p) => p.id === integ.provider
-                  );
-                  if (!info) return null;
-                  return (
-                    <motion.div
-                      key={integ.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -16, height: 0 }}
-                      transition={{ duration: 0.22 }}
-                      className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
-                    >
-                      <ProviderBadge
-                        color={info.color}
-                        name={info.name}
-                        domain={info.domain}
-                        size={36}
-                        radius={9}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-bold tracking-tight">
-                          {integ.label}
-                        </div>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">
-                          {info.name}
-                        </div>
-                      </div>
-                      <span className="rounded-full bg-primary/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-primary">
-                        ✓ Ready
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleEditCredential(integ.id)}
-                        className="rounded-md px-2 py-1 text-xs font-medium hover:bg-accent"
-                      >
-                        Edit
-                      </button>
-                      <RemoveButton
-                        credentialId={integ.id}
-                        onRemoved={handleRemoved}
-                      />
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+          )}
+          <header className="space-y-2">
+            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              {t("bankStep")}
             </div>
+            <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
+              {t("bankTitleQuestion")}
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">{t("bankDescription")}</p>
+          </header>
 
-            <footer className="mt-2 flex items-center justify-between pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setSub("pick")}
-              >
-                + Add another account
-              </Button>
-              <Button
-                onClick={onComplete}
-                disabled={integrations.length === 0}
-              >
-                Continue to AI →
-              </Button>
-            </footer>
+          <PickerCard
+            providers={filteredProviders}
+            total={BANK_PROVIDERS.length}
+            connectedIds={connectedIds}
+            filter={filter}
+            onFilter={setFilter}
+            search={search}
+            onSearch={setSearch}
+            onPick={handlePick}
+          />
+
+          <p className="text-xs italic text-muted-foreground">
+            {t("bankDontSeeBankPrefix")}{" "}
+            <a
+              href={GITHUB_ISSUES_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-foreground underline decoration-primary underline-offset-2"
+            >
+              {t("bankOpenIssueLink")}
+            </a>{" "}
+            {t("bankDontSeeBankSuffix")}
+          </p>
+        </div>
+      )}
+
+      {sub === "form" && selected && (
+        <div key={`form-${selected.id}`} className="flex w-full flex-col gap-4">
+          <button
+            type="button"
+            onClick={handleCloseForm}
+            className="self-start text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            {t("bankBackToProviders")}
+          </button>
+          <header className="space-y-2">
+            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              {t("bankConnectingStep", {
+                name: translateProviderName(selected.id, selected.name, tBanks),
+              })}
+            </div>
+            <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">
+              {t("bankSignInTitle", {
+                name: translateProviderName(selected.id, selected.name, tBanks),
+              })}
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {t("bankSignInDescriptionPrefix")}{" "}
+              <span className="text-foreground">{selected.domain}</span>
+              {t("bankSignInDescriptionSuffix")}
+            </p>
+          </header>
+
+          <CredentialForm
+            key={`${selected.id}-${editingCredentialId ?? "new"}`}
+            info={selected}
+            credentialId={editingCredentialId}
+            initialLabel={editingIntegration?.label ?? ""}
+            isEdit={editingCredentialId != null}
+            onClose={handleCloseForm}
+            onSaved={handleSaved}
+          />
+        </div>
+      )}
+
+      {sub === "ready" && integrations.length > 0 && (
+        <div key="ready" className="flex w-full flex-col gap-4">
+          <header className="space-y-2">
+            <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              {t("bankStep")}
+            </div>
+            <h1 className="font-serif text-4xl leading-[1.08] tracking-tight">{readyCountLabel}</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {t("bankReadyDescription")}
+            </p>
+          </header>
+
+          <div className="w-full space-y-2 text-start">
+            <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              {t("bankConnectedHeading", { count: integrations.length })}
+            </div>
+            <AnimatePresence initial={false}>
+              {integrations.map((integ) => {
+                const info = BANK_PROVIDERS.find((p) => p.id === integ.provider);
+                if (!info) return null;
+                return (
+                  <motion.div
+                    key={integ.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -16, height: 0 }}
+                    transition={{ duration: 0.22 }}
+                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
+                  >
+                    <ProviderBadge
+                      color={info.color}
+                      name={translateProviderName(info.id, info.name, tBanks)}
+                      domain={info.domain}
+                      size={36}
+                      radius={9}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-bold tracking-tight">{integ.label}</div>
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">
+                        {translateProviderName(info.id, info.name, tBanks)}
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-primary/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-primary">
+                      {t("bankReadyBadge")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleEditCredential(integ.id)}
+                      className="rounded-md px-2 py-1 text-xs font-medium hover:bg-accent"
+                    >
+                      {tc("edit")}
+                    </button>
+                    <RemoveButton credentialId={integ.id} onRemoved={handleRemoved} />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
-        )}
+
+          <footer className="mt-2 flex items-center justify-between pt-2">
+            <Button variant="outline" onClick={() => setSub("pick")}>
+              {t("bankAddAnother")}
+            </Button>
+            <Button onClick={onComplete} disabled={integrations.length === 0}>
+              {t("bankContinueToAi")}
+            </Button>
+          </footer>
+        </div>
+      )}
 
       <div className="mt-2 flex w-full items-center justify-between text-[10px] text-muted-foreground/80">
-        <span>🔐 AES-256-GCM · stored locally</span>
+        <span>{t("bankEncryptedFooter")}</span>
         <span>
-          {integrations.length} of {BANK_PROVIDERS.length} providers connected
+          {t("bankProvidersConnected", {
+            connected: integrations.length,
+            total: BANK_PROVIDERS.length,
+          })}
         </span>
       </div>
     </div>
@@ -335,24 +302,26 @@ function PickerCard({
   onSearch: (v: string) => void;
   onPick: (id: string) => void;
 }) {
+  const t = useTranslations("setup");
+  const tBanks = useTranslations("banks");
   return (
     <div className="w-full rounded-2xl border border-border bg-card p-5 text-start shadow-sm">
       <div className="mb-3 flex items-baseline justify-between">
         <div className="text-[11px] font-bold tracking-tight">
-          Supported providers · {total}
+          {t("bankSupportedProviders", { count: total })}
         </div>
         <FilterPills value={filter} onChange={onFilter} />
       </div>
       <Input
         value={search}
         onChange={(e) => onSearch(e.target.value)}
-        placeholder="Search by name..."
+        placeholder={t("bankSearchPlaceholder")}
         className="mb-3"
       />
       <div className="flex flex-col gap-0.5">
         {providers.length === 0 ? (
           <div className="px-2 py-6 text-center text-xs text-muted-foreground">
-            No providers match.
+            {t("bankNoMatches")}
           </div>
         ) : (
           providers.map((p) => {
@@ -366,14 +335,12 @@ function PickerCard({
                 onClick={() => !isDisabled && onPick(p.id)}
                 whileHover={!isDisabled ? { x: 1 } : undefined}
                 className={`flex items-center gap-3 rounded-lg p-2.5 text-start transition-colors ${
-                  isDisabled
-                    ? "cursor-not-allowed opacity-50"
-                    : "cursor-pointer hover:bg-muted/40"
+                  isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-muted/40"
                 }`}
               >
                 <ProviderBadge
                   color={p.color}
-                  name={p.name}
+                  name={translateProviderName(p.id, p.name, tBanks)}
                   domain={p.domain}
                   size={36}
                   radius={9}
@@ -381,21 +348,16 @@ function PickerCard({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-sm font-bold tracking-tight">
-                      {p.name}
+                      {translateProviderName(p.id, p.name, tBanks)}
                     </span>
-                    {isConnected && (
-                      <span className="text-[10px] text-primary">✓</span>
-                    )}
+                    {isConnected && <span className="text-[10px] text-primary">✓</span>}
                   </div>
                   <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {p.blurb}
+                    {translateProviderBlurb(p.id, p.blurb, tBanks)}
                   </div>
                 </div>
                 <KindTag kind={p.kind} />
-                <span
-                  aria-hidden
-                  className="ms-1 text-base leading-none text-muted-foreground"
-                >
+                <span aria-hidden className="ms-1 text-base leading-none text-muted-foreground">
                   ›
                 </span>
               </motion.button>
@@ -408,6 +370,7 @@ function PickerCard({
 }
 
 function KindTag({ kind }: { kind: BankKind }) {
+  const t = useTranslations("setup");
   const cls =
     kind === "bank"
       ? "bg-[color-mix(in_oklch,var(--primary)_12%,transparent)] text-[color-mix(in_oklch,var(--primary)_70%,black)]"
@@ -416,7 +379,7 @@ function KindTag({ kind }: { kind: BankKind }) {
     <span
       className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${cls}`}
     >
-      {kind === "bank" ? "Bank" : "Card"}
+      {kind === "bank" ? t("bankKindBank") : t("bankKindCard")}
     </span>
   );
 }
@@ -428,10 +391,11 @@ function FilterPills({
   value: "all" | BankKind;
   onChange: (v: "all" | BankKind) => void;
 }) {
+  const t = useTranslations("setup");
   const options: { id: "all" | BankKind; label: string }[] = [
-    { id: "all", label: "All" },
-    { id: "bank", label: "Banks" },
-    { id: "card", label: "Cards" },
+    { id: "all", label: t("bankFilterAll") },
+    { id: "bank", label: t("bankFilterBanks") },
+    { id: "card", label: t("bankFilterCards") },
   ];
   return (
     <div className="flex gap-0.5 rounded-full border border-border bg-background p-0.5">
@@ -471,19 +435,18 @@ function CredentialForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useTranslations("setup");
+  const tc = useTranslations("common");
+  const tBanks = useTranslations("banks");
   const queryClient = useQueryClient();
   const [label, setLabel] = useState(initialLabel);
-  const [savedCredentialId, setSavedCredentialId] = useState<number | null>(
-    credentialId
-  );
+  const [savedCredentialId, setSavedCredentialId] = useState<number | null>(credentialId);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [requiresManualTwoFactor, setRequiresManualTwoFactor] = useState(false);
   const [loaded, setLoaded] = useState(!isEdit);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<
-    "idle" | "testing-ok" | "testing-fail" | "saved"
-  >("idle");
+  const [status, setStatus] = useState<"idle" | "testing-ok" | "testing-fail" | "saved">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -512,10 +475,10 @@ function CredentialForm({
   const valid =
     label.trim().length > 0 &&
     info.credentialFields.every((f) => {
-    const v = credentials[f.key]?.trim() ?? "";
-    if (!v) return false;
-    if (f.exactLength != null && v.length !== f.exactLength) return false;
-    return true;
+      const v = credentials[f.key]?.trim() ?? "";
+      if (!v) return false;
+      if (f.exactLength != null && v.length !== f.exactLength) return false;
+      return true;
     });
 
   const saveOptions = (id: number | null) => ({
@@ -532,11 +495,7 @@ function CredentialForm({
       const existingId = savedCredentialId;
       let testId = existingId;
       if (existingId != null) {
-        const saved = await saveBankCredentials(
-          info.id,
-          credentials,
-          saveOptions(existingId)
-        );
+        const saved = await saveBankCredentials(info.id, credentials, saveOptions(existingId));
         testId = saved.credentialId;
         setSavedCredentialId(testId);
       }
@@ -551,7 +510,7 @@ function CredentialForm({
       }
     } catch {
       setStatus("testing-fail");
-      setErrorMsg("Connection test failed.");
+      setErrorMsg(t("bankConnectionTestFailed"));
     } finally {
       setTesting(false);
     }
@@ -560,18 +519,14 @@ function CredentialForm({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const saved = await saveBankCredentials(
-        info.id,
-        credentials,
-        saveOptions(savedCredentialId)
-      );
+      const saved = await saveBankCredentials(info.id, credentials, saveOptions(savedCredentialId));
       setSavedCredentialId(saved.credentialId);
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
       setStatus("saved");
       setTimeout(onSaved, 500);
     } catch {
       setStatus("testing-fail");
-      setErrorMsg("Failed to save credentials.");
+      setErrorMsg(t("bankFailedToSaveCredentials"));
     } finally {
       setSaving(false);
     }
@@ -582,23 +537,23 @@ function CredentialForm({
       <div className="mb-5 flex items-center gap-3 border-b border-border/60 pb-4">
         <ProviderBadge
           color={info.color}
-          name={info.name}
+          name={translateProviderName(info.id, info.name, tBanks)}
           domain={info.domain}
           size={44}
           radius={11}
         />
         <div className="min-w-0 flex-1">
           <div className="font-serif text-xl leading-tight tracking-tight">
-            {info.name}
+            {translateProviderName(info.id, info.name, tBanks)}
           </div>
           <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            {info.kind === "bank" ? "Bank" : "Credit cards"}
+            {info.kind === "bank" ? t("bankKindBank") : t("bankKindCardPlural")}
           </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={tc("close")}
           className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
         >
           ✕
@@ -606,26 +561,24 @@ function CredentialForm({
       </div>
 
       {!loaded ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          Loading current values...
-        </div>
+        <div className="py-8 text-center text-sm text-muted-foreground">{tc("loadingValues")}</div>
       ) : (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor={`${info.id}-label`}>Account label</Label>
+            <Label htmlFor={`${info.id}-label`}>{t("bankAccountLabel")}</Label>
             <Input
               id={`${info.id}-label`}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder={`e.g. Personal card, ${info.name} (2)`}
+              placeholder={t("bankAccountLabelPlaceholder", {
+                name: translateProviderName(info.id, info.name, tBanks),
+              })}
             />
           </div>
           {info.credentialFields.map((field) => {
             const value = credentials[field.key] ?? "";
             const tooShort =
-              field.exactLength != null &&
-              value.length > 0 &&
-              value.length !== field.exactLength;
+              field.exactLength != null && value.length > 0 && value.length !== field.exactLength;
             return (
               <div key={field.key} className="space-y-1.5">
                 <div className="flex items-baseline justify-between">
@@ -637,7 +590,7 @@ function CredentialForm({
                   </Label>
                   {field.maxLength && (
                     <span className="text-[10px] text-muted-foreground">
-                      {value.length}/{field.maxLength}
+                      {t("bankCharCount", { current: value.length, max: field.maxLength })}
                     </span>
                   )}
                 </div>
@@ -651,8 +604,7 @@ function CredentialForm({
                   onChange={(e) => {
                     let next = e.target.value;
                     if (field.numeric) next = next.replace(/\D/g, "");
-                    if (field.exactLength)
-                      next = next.slice(0, field.exactLength);
+                    if (field.exactLength) next = next.slice(0, field.exactLength);
                     if (field.maxLength) next = next.slice(0, field.maxLength);
                     setCredentials((prev) => ({
                       ...prev,
@@ -662,14 +614,10 @@ function CredentialForm({
                   placeholder={field.placeholder ?? field.label}
                   className={field.numeric ? "font-mono" : undefined}
                 />
-                {field.hint && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {field.hint}
-                  </p>
-                )}
+                {field.hint && <p className="text-[11px] text-muted-foreground">{field.hint}</p>}
                 {tooShort && (
                   <p className="text-[11px] text-destructive">
-                    Must be exactly {field.exactLength} digits.
+                    {t("bankExactLengthError", { count: field.exactLength ?? 0 })}
                   </p>
                 )}
               </div>
@@ -690,7 +638,7 @@ function CredentialForm({
                 exit={{ opacity: 0 }}
                 className="rounded-md bg-primary/10 px-3 py-2 text-xs font-medium text-primary"
               >
-                ✓ Connection works. Click save to finish.
+                {t("bankConnectionWorks")}
               </motion.div>
             )}
             {status === "testing-fail" && (
@@ -710,7 +658,7 @@ function CredentialForm({
                 exit={{ opacity: 0 }}
                 className="rounded-md bg-primary/10 px-3 py-2 text-xs font-medium text-primary"
               >
-                ✓ Saved
+                {t("bankSavedFlash")}
               </motion.div>
             )}
           </AnimatePresence>
@@ -722,22 +670,20 @@ function CredentialForm({
               disabled={!valid || testing || saving}
               className="flex-1 rounded-full"
             >
-              {testing ? "Testing..." : "Test connection"}
+              {testing ? t("bankTesting") : t("bankTestConnection")}
             </Button>
             <Button
               onClick={handleSave}
               disabled={!valid || saving}
               className="flex-1 rounded-full"
             >
-              {saving ? "Saving..." : isEdit ? "Save changes" : "Save & continue"}
+              {saving ? tc("saving") : isEdit ? tc("saveChanges") : t("bankSaveAndContinue")}
             </Button>
           </div>
 
           <div className="mt-2 flex items-start gap-2 rounded-md bg-muted/40 p-2 text-[11px] text-muted-foreground">
             <span>🔐</span>
-            <span>
-              AES-256-GCM · stored on this machine only. Never sent to a server.
-            </span>
+            <span>{t("bankAesNote")}</span>
           </div>
         </div>
       )}
@@ -752,6 +698,7 @@ function RemoveButton({
   credentialId: number;
   onRemoved: () => void;
 }) {
+  const tc = useTranslations("common");
   const [confirming, setConfirming] = useState(false);
   const [removing, setRemoving] = useState(false);
 
@@ -762,7 +709,7 @@ function RemoveButton({
         onClick={() => setConfirming(true)}
         className="rounded-md px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
       >
-        Remove
+        {tc("remove")}
       </button>
     );
   }
@@ -774,7 +721,7 @@ function RemoveButton({
         onClick={() => setConfirming(false)}
         className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
       >
-        Cancel
+        {tc("cancel")}
       </button>
       <button
         type="button"
@@ -787,7 +734,7 @@ function RemoveButton({
         disabled={removing}
         className="rounded-md bg-destructive px-2 py-1 text-[11px] font-medium text-destructive-foreground"
       >
-        {removing ? "..." : "Confirm"}
+        {removing ? "..." : tc("confirm")}
       </button>
     </div>
   );

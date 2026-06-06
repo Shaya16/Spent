@@ -42,7 +42,7 @@ brew install node@20
 Open **Terminal** (in *Applications → Utilities*) and clone the repo:
 
 ```sh
-git clone https://github.com/Shaya16/Spent.git ~/Spent
+git clone https://github.com/alon710/Spent.git ~/Spent
 cd ~/Spent
 ```
 
@@ -72,8 +72,8 @@ npm run setup
 In order:
 
 1. **Builds the Next.js app** (`npm run build`).
-2. **Adds `127.0.0.1 spent.local` to `/etc/hosts`** so you can reach the dashboard at `http://spent.local:41234`. Asks for `sudo` once.
-3. **Registers a LaunchAgent** at `~/Library/LaunchAgents/io.spent.app.plist` that starts the server on login. Server binds to `127.0.0.1:41234` only.
+2. **Adds `127.0.0.1 spent.local` to `/etc/hosts`** so you can reach the dashboard at `http://spent.local:2412`. Asks for `sudo` once.
+3. **Registers a LaunchAgent** at `~/Library/LaunchAgents/io.spent.app.plist` that starts the server on login. Server binds to `127.0.0.1:2412` only.
 4. **Builds `Spent.app`** from `menubar/mac/` (Swift). Needs Xcode Command Line Tools (offered for install if missing).
 5. **Copies `Spent.app` to `~/Applications/`** and registers it as a Login Item so the menubar shows up after reboot.
 6. **Polls `/api/health`** until the server is ready, then opens the browser.

@@ -1,7 +1,10 @@
 import "server-only";
 
-import { getDb } from "../index";
+import { and, eq, sql } from "drizzle-orm";
 import { toLocalISODate } from "../../lib/date-utils";
+import { getDb } from "../index";
+import { getOrm } from "../orm";
+import { budgets } from "../schema";
 
 export interface BudgetRow {
   categoryId: number;
@@ -10,16 +13,15 @@ export interface BudgetRow {
 }
 
 export function getAllBudgets(workspaceId: number): BudgetRow[] {
-  const rows = getDb()
-    .prepare(
-      `SELECT category_id as categoryId, monthly_amount as monthlyAmount, is_auto as isAuto
-       FROM budgets WHERE workspace_id = ?`
-    )
-    .all(workspaceId) as {
-    categoryId: number;
-    monthlyAmount: number;
-    isAuto: number;
-  }[];
+  const rows = getOrm()
+    .select({
+      categoryId: budgets.categoryId,
+      monthlyAmount: budgets.monthlyAmount,
+      isAuto: budgets.isAuto,
+    })
+    .from(budgets)
+    .where(eq(budgets.workspaceId, workspaceId))
+    .all();
   return rows.map((r) => ({
     categoryId: r.categoryId,
     monthlyAmount: r.monthlyAmount,
@@ -27,18 +29,16 @@ export function getAllBudgets(workspaceId: number): BudgetRow[] {
   }));
 }
 
-export function getBudgetForCategory(
-  workspaceId: number,
-  categoryId: number
-): BudgetRow | null {
-  const row = getDb()
-    .prepare(
-      `SELECT category_id as categoryId, monthly_amount as monthlyAmount, is_auto as isAuto
-       FROM budgets WHERE workspace_id = ? AND category_id = ?`
-    )
-    .get(workspaceId, categoryId) as
-    | { categoryId: number; monthlyAmount: number; isAuto: number }
-    | undefined;
+export function getBudgetForCategory(workspaceId: number, categoryId: number): BudgetRow | null {
+  const row = getOrm()
+    .select({
+      categoryId: budgets.categoryId,
+      monthlyAmount: budgets.monthlyAmount,
+      isAuto: budgets.isAuto,
+    })
+    .from(budgets)
+    .where(and(eq(budgets.workspaceId, workspaceId), eq(budgets.categoryId, categoryId)))
+    .get();
   if (!row) return null;
   return {
     categoryId: row.categoryId,
@@ -51,24 +51,32 @@ export function setBudget(
   workspaceId: number,
   categoryId: number,
   amount: number,
-  isAuto = false
+  isAuto = false,
 ): void {
-  getDb()
-    .prepare(
-      `INSERT INTO budgets (workspace_id, category_id, monthly_amount, is_auto, updated_at)
-       VALUES (?, ?, ?, ?, datetime('now'))
-       ON CONFLICT(workspace_id, category_id) DO UPDATE SET
-         monthly_amount = excluded.monthly_amount,
-         is_auto = excluded.is_auto,
-         updated_at = excluded.updated_at`
-    )
-    .run(workspaceId, categoryId, amount, isAuto ? 1 : 0);
+  getOrm()
+    .insert(budgets)
+    .values({
+      workspaceId,
+      categoryId,
+      monthlyAmount: amount,
+      isAuto: isAuto ? 1 : 0,
+    })
+    .onConflictDoUpdate({
+      target: [budgets.workspaceId, budgets.categoryId],
+      set: {
+        monthlyAmount: amount,
+        isAuto: isAuto ? 1 : 0,
+        updatedAt: sql`datetime('now')`,
+      },
+    })
+    .run();
 }
 
 export function deleteBudget(workspaceId: number, categoryId: number): void {
-  getDb()
-    .prepare("DELETE FROM budgets WHERE workspace_id = ? AND category_id = ?")
-    .run(workspaceId, categoryId);
+  getOrm()
+    .delete(budgets)
+    .where(and(eq(budgets.workspaceId, workspaceId), eq(budgets.categoryId, categoryId)))
+    .run();
 }
 
 interface AutoSpend {
@@ -82,10 +90,7 @@ interface AutoSpend {
  * so a fresh DB with one month of history returns that month's spend, not
  * one-third of it.
  */
-export function getAutoBudgetAverage(
-  workspaceId: number,
-  monthsBack: number = 3
-): AutoSpend[] {
+export function getAutoBudgetAverage(workspaceId: number, monthsBack: number = 3): AutoSpend[] {
   const now = new Date();
   const periods: { from: string; to: string }[] = [];
   for (let i = 1; i <= monthsBack; i++) {
@@ -107,7 +112,7 @@ export function getAutoBudgetAverage(
         `SELECT category_id as categoryId, SUM(ABS(charged_amount)) as amount
          FROM transactions
          WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND category_id IS NOT NULL
-         GROUP BY category_id`
+         GROUP BY category_id`,
       )
       .all(workspaceId, from, to) as AutoSpend[];
 

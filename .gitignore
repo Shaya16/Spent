@@ -41,12 +41,6 @@ yarn-error.log*
 /.claude/
 /.superpowers/
 
-# menu bar app build outputs
-/menubar/.build/
-/menubar/build/
-/menubar/.swiftpm/
-/menubar/Package.resolved
-
 # vercel
 .vercel
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { Switch } from "@/components/ui/switch";
+import { ShieldCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import type { BankProviderInfo } from "@/lib/types";
 
 interface TwoFactorSectionProps {
@@ -29,35 +30,28 @@ export function TwoFactorSection({
   resetPending = false,
   showResetButton = false,
 }: TwoFactorSectionProps) {
+  const t = useTranslations("setup");
   const supportsProgrammatic = Boolean(info.supportsProgrammaticTwoFactor);
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         <ShieldCheck className="h-3.5 w-3.5" />
-        Two-factor authentication
+        {t("twoFaTitle")}
       </div>
 
       {supportsProgrammatic ? (
         <p className="text-xs text-muted-foreground">
-          {info.name} sends a one-time SMS code on first sync. Spent will save a
-          long-term token so future syncs don&apos;t need a fresh code.
-          {hasTwoFactorToken && " You already have a saved token."}
+          {t("twoFaProgrammaticHint", { bank: info.name })}
+          {hasTwoFactorToken && ` ${t("twoFaProgrammaticHintHasToken")}`}
         </p>
       ) : (
-        <p className="text-xs text-muted-foreground">
-          If you have 2FA enabled on {info.name}, turn this on so Spent opens a
-          browser window when syncing this account. Solve the challenge in the
-          popup and the sync will continue.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("twoFaManualHint", { bank: info.name })}</p>
       )}
 
       <div className="flex items-center justify-between gap-3">
-        <Label
-          htmlFor={`${info.id}-manual-2fa`}
-          className="text-sm font-medium"
-        >
-          This account requires 2FA
+        <Label htmlFor={`${info.id}-manual-2fa`} className="text-sm font-medium">
+          {t("twoFaAccountRequires")}
         </Label>
         <Switch
           id={`${info.id}-manual-2fa`}
@@ -68,25 +62,18 @@ export function TwoFactorSection({
       </div>
       {supportsProgrammatic ? (
         <p className="text-[11px] text-muted-foreground">
-          Not needed for {info.name} — 2FA is handled programmatically.
+          {t("twoFaProgrammaticNote", { bank: info.name })}
         </p>
       ) : null}
 
       {showResetButton && supportsProgrammatic && hasTwoFactorToken ? (
         <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
           <div>
-            <div className="text-sm font-medium">Saved 2FA token</div>
-            <div className="text-[11px] text-muted-foreground">
-              Removing it forces a fresh SMS code on the next sync.
-            </div>
+            <div className="text-sm font-medium">{t("twoFaSavedTokenTitle")}</div>
+            <div className="text-[11px] text-muted-foreground">{t("twoFaSavedTokenHint")}</div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onResetToken}
-            disabled={resetPending}
-          >
-            {resetPending ? "Resetting…" : "Reset 2FA"}
+          <Button variant="outline" size="sm" onClick={onResetToken} disabled={resetPending}>
+            {resetPending ? t("twoFaResetting") : t("twoFaResetButton")}
           </Button>
         </div>
       ) : null}

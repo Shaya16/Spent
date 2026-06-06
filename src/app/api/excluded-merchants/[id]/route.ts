@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { deleteExcludedMerchant } from "@/server/db/queries/excluded-merchants";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const { id } = await params;
   const numericId = Number(id);

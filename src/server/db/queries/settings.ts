@@ -1,59 +1,57 @@
 import "server-only";
 
-import { getDb } from "../index";
-import type { AppSettings } from "@/lib/types";
+import { and, eq, sql } from "drizzle-orm";
+import { type AppSettings, RECOMMENDED_GEMINI_MODELS } from "@/lib/types";
+import { getOrm } from "../orm";
+import { settings, workspaceSettings } from "../schema";
 
 // Global settings live in the `settings` table and apply to every workspace.
-// Currently: ai_provider, ai_ollama_url, ai_ollama_model, plus the encrypted
-// Claude API key triple (ai_api_key_encrypted/iv/auth_tag).
+// Currently: ai_provider, ai_ollama_url, ai_ollama_model, ai_gemini_model,
+// plus encrypted Claude/Gemini API key triples.
 export function getGlobalSetting(key: string): string | null {
-  const row = getDb()
-    .prepare("SELECT value FROM settings WHERE key = ?")
-    .get(key) as { value: string } | undefined;
+  const row = getOrm()
+    .select({ value: settings.value })
+    .from(settings)
+    .where(eq(settings.key, key))
+    .get();
   return row?.value ?? null;
 }
 
 export function setGlobalSetting(key: string, value: string): void {
-  getDb()
-    .prepare(
-      `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
-    )
-    .run(key, value);
+  getOrm()
+    .insert(settings)
+    .values({ key, value, updatedAt: sql`datetime('now')` })
+    .onConflictDoUpdate({
+      target: settings.key,
+      set: { value, updatedAt: sql`datetime('now')` },
+    })
+    .run();
 }
 
 export function deleteGlobalSetting(key: string): void {
-  getDb().prepare("DELETE FROM settings WHERE key = ?").run(key);
+  getOrm().delete(settings).where(eq(settings.key, key)).run();
 }
 
 // Per-workspace settings live in `workspace_settings`.
 // Currently: months_to_sync, payday_day, scraper_show_browser.
-export function getWorkspaceSetting(
-  workspaceId: number,
-  key: string
-): string | null {
-  const row = getDb()
-    .prepare(
-      "SELECT value FROM workspace_settings WHERE workspace_id = ? AND key = ?"
-    )
-    .get(workspaceId, key) as { value: string } | undefined;
+export function getWorkspaceSetting(workspaceId: number, key: string): string | null {
+  const row = getOrm()
+    .select({ value: workspaceSettings.value })
+    .from(workspaceSettings)
+    .where(and(eq(workspaceSettings.workspaceId, workspaceId), eq(workspaceSettings.key, key)))
+    .get();
   return row?.value ?? null;
 }
 
-export function setWorkspaceSetting(
-  workspaceId: number,
-  key: string,
-  value: string
-): void {
-  getDb()
-    .prepare(
-      `INSERT INTO workspace_settings (workspace_id, key, value, updated_at)
-       VALUES (?, ?, ?, datetime('now'))
-       ON CONFLICT(workspace_id, key) DO UPDATE SET
-         value = excluded.value,
-         updated_at = excluded.updated_at`
-    )
-    .run(workspaceId, key, value);
+export function setWorkspaceSetting(workspaceId: number, key: string, value: string): void {
+  getOrm()
+    .insert(workspaceSettings)
+    .values({ workspaceId, key, value, updatedAt: sql`datetime('now')` })
+    .onConflictDoUpdate({
+      target: [workspaceSettings.workspaceId, workspaceSettings.key],
+      set: { value, updatedAt: sql`datetime('now')` },
+    })
+    .run();
 }
 
 // Back-compat aliases so existing call sites that store the Claude API key
@@ -62,87 +60,88 @@ export const getSetting = getGlobalSetting;
 export const setSetting = setGlobalSetting;
 
 const AUTO_SYNC_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DEFAULT_GEMINI_MODEL = RECOMMENDED_GEMINI_MODELS[0].name;
 
 export function getAppSettings(workspaceId: number): AppSettings {
   const targetRaw = getWorkspaceSetting(workspaceId, "monthly_target");
   const target = targetRaw != null ? Number(targetRaw) : NaN;
   const storedTime = getGlobalSetting("auto_sync_time");
-  const storedLang = getGlobalSetting("language");
   return {
     monthsToSync: Number(getWorkspaceSetting(workspaceId, "months_to_sync") ?? "3"),
     aiProvider: (getGlobalSetting("ai_provider") ?? "none") as AppSettings["aiProvider"],
+    geminiModel: getGlobalSetting("ai_gemini_model") ?? DEFAULT_GEMINI_MODEL,
     ollamaUrl: getGlobalSetting("ai_ollama_url") ?? "http://localhost:11434",
     ollamaModel: getGlobalSetting("ai_ollama_model") ?? "llama3.2:3b",
     showBrowser: getWorkspaceSetting(workspaceId, "scraper_show_browser") === "true",
     paydayDay: Number(getWorkspaceSetting(workspaceId, "payday_day") ?? "1"),
     monthlyTarget: Number.isFinite(target) && target > 0 ? target : null,
     autoSyncEnabled: getGlobalSetting("auto_sync_enabled") === "true",
-    autoSyncTime:
-      storedTime && AUTO_SYNC_TIME_RE.test(storedTime) ? storedTime : "06:00",
-    language: storedLang === "he" ? "he" : "en",
+    autoSyncTime: storedTime && AUTO_SYNC_TIME_RE.test(storedTime) ? storedTime : "06:00",
+    treatAtmAsTransfers: getGlobalSetting("treat_atm_as_transfers") === "true",
   };
 }
 
 export function updateAppSettings(
   workspaceId: number,
-  settings: Partial<AppSettings>
+  settingsToApply: Partial<AppSettings>,
 ): AppSettings {
-  const db = getDb();
-  const update = db.transaction(() => {
-    if (settings.monthsToSync !== undefined) {
-      setWorkspaceSetting(workspaceId, "months_to_sync", String(settings.monthsToSync));
+  getOrm().transaction((tx) => {
+    if (settingsToApply.monthsToSync !== undefined) {
+      setWorkspaceSetting(workspaceId, "months_to_sync", String(settingsToApply.monthsToSync));
     }
-    if (settings.aiProvider !== undefined) {
-      setGlobalSetting("ai_provider", settings.aiProvider);
+    if (settingsToApply.aiProvider !== undefined) {
+      setGlobalSetting("ai_provider", settingsToApply.aiProvider);
     }
-    if (settings.ollamaUrl !== undefined) {
-      setGlobalSetting("ai_ollama_url", settings.ollamaUrl);
+    if (settingsToApply.ollamaUrl !== undefined) {
+      setGlobalSetting("ai_ollama_url", settingsToApply.ollamaUrl);
     }
-    if (settings.ollamaModel !== undefined) {
-      setGlobalSetting("ai_ollama_model", settings.ollamaModel);
+    if (settingsToApply.ollamaModel !== undefined) {
+      setGlobalSetting("ai_ollama_model", settingsToApply.ollamaModel);
     }
-    if (settings.showBrowser !== undefined) {
+    if (settingsToApply.geminiModel !== undefined) {
+      setGlobalSetting("ai_gemini_model", settingsToApply.geminiModel);
+    }
+    if (settingsToApply.showBrowser !== undefined) {
       setWorkspaceSetting(
         workspaceId,
         "scraper_show_browser",
-        settings.showBrowser ? "true" : "false"
+        settingsToApply.showBrowser ? "true" : "false",
       );
     }
-    if (settings.paydayDay !== undefined) {
-      const clamped = Math.max(1, Math.min(28, Math.round(settings.paydayDay)));
+    if (settingsToApply.paydayDay !== undefined) {
+      const clamped = Math.max(1, Math.min(28, Math.round(settingsToApply.paydayDay)));
       setWorkspaceSetting(workspaceId, "payday_day", String(clamped));
     }
-    if (settings.monthlyTarget !== undefined) {
-      const t = settings.monthlyTarget;
+    if (settingsToApply.monthlyTarget !== undefined) {
+      const t = settingsToApply.monthlyTarget;
       if (t == null || !Number.isFinite(t) || t <= 0) {
-        getDb()
-          .prepare(
-            "DELETE FROM workspace_settings WHERE workspace_id = ? AND key = ?"
+        tx.delete(workspaceSettings)
+          .where(
+            and(
+              eq(workspaceSettings.workspaceId, workspaceId),
+              eq(workspaceSettings.key, "monthly_target"),
+            ),
           )
-          .run(workspaceId, "monthly_target");
+          .run();
       } else {
         setWorkspaceSetting(workspaceId, "monthly_target", String(Math.round(t)));
       }
     }
-    if (settings.autoSyncEnabled !== undefined) {
-      setGlobalSetting(
-        "auto_sync_enabled",
-        settings.autoSyncEnabled ? "true" : "false"
-      );
+    if (settingsToApply.autoSyncEnabled !== undefined) {
+      setGlobalSetting("auto_sync_enabled", settingsToApply.autoSyncEnabled ? "true" : "false");
     }
-    if (settings.autoSyncTime !== undefined) {
-      if (!AUTO_SYNC_TIME_RE.test(settings.autoSyncTime)) {
+    if (settingsToApply.autoSyncTime !== undefined) {
+      if (!AUTO_SYNC_TIME_RE.test(settingsToApply.autoSyncTime)) {
         throw new Error("autoSyncTime must be HH:MM 24-hour");
       }
-      setGlobalSetting("auto_sync_time", settings.autoSyncTime);
+      setGlobalSetting("auto_sync_time", settingsToApply.autoSyncTime);
     }
-    if (settings.language !== undefined) {
-      if (settings.language !== "en" && settings.language !== "he") {
-        throw new Error("language must be 'en' or 'he'");
-      }
-      setGlobalSetting("language", settings.language);
+    if (settingsToApply.treatAtmAsTransfers !== undefined) {
+      setGlobalSetting(
+        "treat_atm_as_transfers",
+        settingsToApply.treatAtmAsTransfers ? "true" : "false",
+      );
     }
   });
-  update();
   return getAppSettings(workspaceId);
 }

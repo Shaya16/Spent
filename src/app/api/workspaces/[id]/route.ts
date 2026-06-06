@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  deleteWorkspace,
-  getWorkspace,
-  updateWorkspace,
-} from "@/server/db/queries/workspaces";
+import { deleteWorkspace, getWorkspace, updateWorkspace } from "@/server/db/queries/workspaces";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const numericId = Number(id);
   if (!Number.isInteger(numericId) || numericId <= 0) {
@@ -23,15 +16,10 @@ export async function PATCH(
   }
 
   const name =
-    typeof (body as { name?: unknown })?.name === "string"
-      ? ((body as { name: string }).name)
-      : "";
+    typeof (body as { name?: unknown })?.name === "string" ? (body as { name: string }).name : "";
 
   if (!name.trim()) {
-    return NextResponse.json(
-      { error: "name is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
   if (!getWorkspace(numericId)) {
@@ -44,15 +32,12 @@ export async function PATCH(
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to update workspace" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const numericId = Number(id);
   if (!Number.isInteger(numericId) || numericId <= 0) {
@@ -69,7 +54,7 @@ export async function DELETE(
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to delete workspace" },
-      { status: 409 }
+      { status: 409 },
     );
   }
 }

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Conductor scratch directory (gitignored, not part of the source tree).
+    ".context/**",
   ]),
 ]);
 

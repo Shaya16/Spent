@@ -1,16 +1,17 @@
+import type { UIMessage } from "ai";
 import type {
-  SetupStatus,
+  ActivitySnapshot,
   AppSettings,
-  TransactionWithCategory,
-  DashboardSummary,
-  Category,
-  SyncRun,
   Budget,
   BudgetMode,
+  Category,
+  ChatSession,
+  DashboardSummary,
+  InsightPayload,
   Integration,
+  SetupStatus,
+  TransactionWithCategory,
   Workspace,
-  HomePayload,
-  ActivitySnapshot,
 } from "./types";
 import { getActiveWorkspaceIdSync } from "./workspace-store";
 
@@ -71,7 +72,7 @@ export function saveBankCredentials(
     label?: string;
     credentialId?: number;
     requiresManualTwoFactor?: boolean;
-  }
+  },
 ) {
   return fetchJSON<{ success: boolean; credentialId: number }>("/api/setup/bank", {
     method: "POST",
@@ -80,9 +81,7 @@ export function saveBankCredentials(
       provider,
       credentials,
       ...(options?.label !== undefined ? { label: options.label } : {}),
-      ...(options?.credentialId !== undefined
-        ? { credentialId: options.credentialId }
-        : {}),
+      ...(options?.credentialId !== undefined ? { credentialId: options.credentialId } : {}),
       ...(options?.requiresManualTwoFactor !== undefined
         ? { requiresManualTwoFactor: options.requiresManualTwoFactor }
         : {}),
@@ -92,7 +91,7 @@ export function saveBankCredentials(
 
 export function updateIntegrationSettings(
   credentialId: number,
-  updates: { requiresManualTwoFactor?: boolean; resetTwoFactorToken?: boolean }
+  updates: { requiresManualTwoFactor?: boolean; resetTwoFactorToken?: boolean },
 ) {
   return fetchJSON<{ success: boolean }>(`/api/integrations/${credentialId}`, {
     method: "PATCH",
@@ -111,7 +110,7 @@ export function submitSyncOtp(syncRunId: number, code: string) {
 
 export function testBankConnection(
   provider: string,
-  options?: { credentialId?: number; credentials?: Record<string, string> }
+  options?: { credentialId?: number; credentials?: Record<string, string> },
 ) {
   return fetchJSON<{
     success: boolean;
@@ -122,19 +121,17 @@ export function testBankConnection(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       provider,
-      ...(options?.credentialId !== undefined
-        ? { credentialId: options.credentialId }
-        : {}),
-      ...(options?.credentials !== undefined
-        ? { credentials: options.credentials }
-        : {}),
+      ...(options?.credentialId !== undefined ? { credentialId: options.credentialId } : {}),
+      ...(options?.credentials !== undefined ? { credentials: options.credentials } : {}),
     }),
   });
 }
 
 export function saveAIConfig(config: {
-  provider: "claude" | "ollama" | "none";
-  apiKey?: string;
+  provider: "claude" | "gemini" | "ollama" | "none";
+  claudeApiKey?: string;
+  geminiApiKey?: string;
+  geminiModel?: string;
   ollamaUrl?: string;
   ollamaModel?: string;
 }) {
@@ -147,6 +144,30 @@ export function saveAIConfig(config: {
 
 export function getSettings() {
   return fetchJSON<AppSettings>("/api/settings");
+}
+
+export function listChatSessions() {
+  return fetchJSON<ChatSession[]>("/api/chat/sessions");
+}
+
+export function getChatSession(id: string) {
+  return fetchJSON<{ session: ChatSession; messages: UIMessage[] }>(
+    `/api/chat/sessions/${encodeURIComponent(id)}`,
+  );
+}
+
+export function renameChatSession(id: string, title: string) {
+  return fetchJSON<ChatSession>(`/api/chat/sessions/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+}
+
+export function deleteChatSession(id: string) {
+  return fetchJSON<{ success: boolean }>(`/api/chat/sessions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }
 
 export function updateSettings(settings: Partial<AppSettings>) {
@@ -208,17 +229,14 @@ export function getTransactions(params: {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined) return;
-    if (
-      (key === "categoryIds" || key === "credentialIds") &&
-      Array.isArray(value)
-    ) {
+    if ((key === "categoryIds" || key === "credentialIds") && Array.isArray(value)) {
       for (const id of value) searchParams.append(key, String(id));
       return;
     }
     searchParams.set(key, String(value));
   });
   return fetchJSON<{ transactions: TransactionWithCategory[]; total: number }>(
-    `/api/transactions?${searchParams}`
+    `/api/transactions?${searchParams}`,
   );
 }
 
@@ -238,11 +256,7 @@ export function approveTransactionCategory(id: number) {
   });
 }
 
-export function setTransactionExcluded(
-  id: number,
-  excluded: boolean,
-  alwaysForMerchant = false,
-) {
+export function setTransactionExcluded(id: number, excluded: boolean, alwaysForMerchant = false) {
   return fetchJSON<{ success: boolean }>(`/api/transactions/${id}/exclude`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -258,9 +272,7 @@ export interface ExcludedMerchantRule {
 }
 
 export function listExcludedMerchants() {
-  return fetchJSON<{ rules: ExcludedMerchantRule[] }>(
-    `/api/excluded-merchants`,
-  );
+  return fetchJSON<{ rules: ExcludedMerchantRule[] }>(`/api/excluded-merchants`);
 }
 
 export function deleteExcludedMerchantRule(id: number) {
@@ -269,11 +281,7 @@ export function deleteExcludedMerchantRule(id: number) {
   });
 }
 
-export function getSummary(params: {
-  from: string;
-  to: string;
-  months?: number;
-}) {
+export function getSummary(params: { from: string; to: string; months?: number }) {
   const searchParams = new URLSearchParams({
     from: params.from,
     to: params.to,
@@ -282,8 +290,8 @@ export function getSummary(params: {
   return fetchJSON<DashboardSummary>(`/api/summary?${searchParams}`);
 }
 
-export function getHome() {
-  return fetchJSON<HomePayload>(`/api/home`);
+export function getInsights() {
+  return fetchJSON<InsightPayload>(`/api/insights`);
 }
 
 export function getActivity() {
@@ -347,10 +355,7 @@ export interface CategoryDetail {
   children: CategoryChildBreakdown[] | null;
 }
 
-export function getCategoryDetail(
-  id: number,
-  params: { from: string; to: string }
-) {
+export function getCategoryDetail(id: number, params: { from: string; to: string }) {
   const sp = new URLSearchParams({ from: params.from, to: params.to });
   return fetchJSON<CategoryDetail>(`/api/categories/${id}/detail?${sp}`);
 }
@@ -367,10 +372,7 @@ export function updateBudget(categoryId: number, amount: number | null) {
   });
 }
 
-export function updateCategoryBudgetMode(
-  categoryId: number,
-  mode: BudgetMode
-) {
+export function updateCategoryBudgetMode(categoryId: number, mode: BudgetMode) {
   return fetchJSON<{ success: boolean }>(`/api/categories/${categoryId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -378,10 +380,7 @@ export function updateCategoryBudgetMode(
   });
 }
 
-export function updateCategoryDescription(
-  categoryId: number,
-  description: string | null
-) {
+export function updateCategoryDescription(categoryId: number, description: string | null) {
   return fetchJSON<{ success: boolean }>(`/api/categories/${categoryId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -389,10 +388,7 @@ export function updateCategoryDescription(
   });
 }
 
-export function setCategoryParent(
-  categoryId: number,
-  parentId: number | null
-) {
+export function setCategoryParent(categoryId: number, parentId: number | null) {
   return fetchJSON<{ success: boolean }>(`/api/categories/${categoryId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -529,9 +525,47 @@ export interface SyncProgressEvent {
   data: Record<string, unknown>;
 }
 
+/**
+ * Reads a server-sent event stream, invoking `onMessage` for each
+ * `event:`/`data:` pair. Malformed JSON payloads are skipped.
+ */
+async function readSSE(
+  res: Response,
+  onMessage: (event: string, data: unknown) => void,
+): Promise<void> {
+  const reader = res.body?.getReader();
+  if (!reader) return;
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let currentEvent = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (line.startsWith("event: ")) {
+        currentEvent = line.slice(7).trim();
+      } else if (line.startsWith("data: ") && currentEvent) {
+        try {
+          onMessage(currentEvent, JSON.parse(line.slice(6)));
+        } catch {
+          // skip malformed JSON
+        }
+        currentEvent = "";
+      }
+    }
+  }
+}
+
 export function startSync(
   credentialId: number | undefined,
-  onEvent: (event: SyncProgressEvent) => void
+  onEvent: (event: SyncProgressEvent) => void,
 ): { cancel: () => void } {
   const controller = new AbortController();
 
@@ -542,42 +576,16 @@ export function startSync(
         withWorkspaceHeader({
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            credentialId != null ? { credentialId } : {}
-          ),
+          body: JSON.stringify(credentialId != null ? { credentialId } : {}),
           signal: controller.signal,
-        })
+        }),
       );
-
-      const reader = res.body?.getReader();
-      if (!reader) return;
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        let currentEvent = "";
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith("data: ") && currentEvent) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              onEvent({ type: currentEvent as SyncProgressEvent["type"], data });
-            } catch {
-              // skip malformed JSON
-            }
-            currentEvent = "";
-          }
-        }
-      }
+      await readSSE(res, (event, data) =>
+        onEvent({
+          type: event as SyncProgressEvent["type"],
+          data: data as Record<string, unknown>,
+        }),
+      );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       onEvent({
@@ -588,11 +596,6 @@ export function startSync(
   })();
 
   return { cancel: () => controller.abort() };
-}
-
-// Placeholder for last sync info
-export function getLastSync() {
-  return fetchJSON<SyncRun | null>("/api/sync/last").catch(() => null);
 }
 
 export interface PullProgress {
@@ -611,15 +614,13 @@ export interface PullEvent {
 
 export function listOllamaModels(url?: string) {
   const qs = url ? `?url=${encodeURIComponent(url)}` : "";
-  return fetchJSON<{ models: string[]; error?: string }>(
-    `/api/ai/ollama/models${qs}`
-  );
+  return fetchJSON<{ models: string[]; error?: string }>(`/api/ai/ollama/models${qs}`);
 }
 
 export function pullOllamaModel(
   model: string,
   url: string | undefined,
-  onEvent: (event: PullEvent) => void
+  onEvent: (event: PullEvent) => void,
 ): { cancel: () => void } {
   const controller = new AbortController();
 
@@ -632,38 +633,14 @@ export function pullOllamaModel(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ model, url }),
           signal: controller.signal,
-        })
+        }),
       );
-
-      const reader = res.body?.getReader();
-      if (!reader) return;
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        let currentEvent = "";
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith("data: ") && currentEvent) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              onEvent({ type: currentEvent as PullEvent["type"], data });
-            } catch {
-              // skip
-            }
-            currentEvent = "";
-          }
-        }
-      }
+      await readSSE(res, (event, data) =>
+        onEvent({
+          type: event as PullEvent["type"],
+          data: data as PullProgress & { message?: string },
+        }),
+      );
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       onEvent({

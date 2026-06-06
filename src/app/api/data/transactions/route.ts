@@ -1,10 +1,14 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/server/db/index";
+import { getOrm } from "@/server/db/orm";
+import { merchantCategories, syncRuns, transactions } from "@/server/db/schema";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
 export async function DELETE(request: Request) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const db = getDb();
+  const orm = getOrm();
 
   const result = db.transaction(() => {
     const txCount = (
@@ -25,11 +29,9 @@ export async function DELETE(request: Request) {
         .get(workspaceId) as { c: number }
     ).c;
 
-    db.prepare("DELETE FROM transactions WHERE workspace_id = ?").run(workspaceId);
-    db.prepare("DELETE FROM sync_runs WHERE workspace_id = ?").run(workspaceId);
-    db.prepare(
-      "DELETE FROM merchant_categories WHERE workspace_id = ?"
-    ).run(workspaceId);
+    orm.delete(transactions).where(eq(transactions.workspaceId, workspaceId)).run();
+    orm.delete(syncRuns).where(eq(syncRuns.workspaceId, workspaceId)).run();
+    orm.delete(merchantCategories).where(eq(merchantCategories.workspaceId, workspaceId)).run();
 
     return { txCount, syncCount, memoryCount };
   })();

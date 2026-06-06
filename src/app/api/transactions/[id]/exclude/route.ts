@@ -7,10 +7,7 @@ import {
 import { getTransactionContext } from "@/server/db/queries/transactions";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const workspaceId = getWorkspaceIdFromRequest(request);
   const { id } = await params;
   const numericId = Number(id);
@@ -24,10 +21,7 @@ export async function POST(
   };
 
   if (typeof body.excluded !== "boolean") {
-    return NextResponse.json(
-      { error: "body.excluded must be a boolean" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "body.excluded must be a boolean" }, { status: 400 });
   }
 
   const ctx = getTransactionContext(workspaceId, numericId);

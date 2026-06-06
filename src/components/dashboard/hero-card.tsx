@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "@/i18n/navigation";
+import type { Locale } from "@/i18n/routing";
 import { formatCurrency } from "@/lib/formatters";
 import { translateCategoryName } from "@/lib/i18n-data";
 import type { DashboardSummary } from "@/lib/types";
-import type { Locale } from "@/i18n/routing";
 
 interface HeroCardProps {
   data: DashboardSummary | undefined;
@@ -14,13 +14,7 @@ interface HeroCardProps {
   monthLabel: string;
 }
 
-type PaceVerdict =
-  | "overBudget"
-  | "headsUp"
-  | "wellUnder"
-  | "ahead"
-  | "onSchedule"
-  | "noBudget";
+type PaceVerdict = "overBudget" | "headsUp" | "wellUnder" | "ahead" | "onSchedule" | "noBudget";
 
 function computeVerdict(
   budgetedSpent: number,
@@ -44,7 +38,7 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
 
   if (loading || !data) {
     return (
-      <div className="rounded-3xl border border-border bg-card p-8">
+      <div className="rounded-2xl border border-border bg-card p-8">
         <Skeleton className="h-40 w-full" />
       </div>
     );
@@ -62,16 +56,14 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
   } = data;
   const hasBudget = totalBudget > 0;
 
-  const parentIdsWithRollup = new Set(
-    categoriesWithData.filter((c) => c.isParent).map((c) => c.categoryId)
-  );
+  const parentIdsWithRollup = new Set<number>();
+  for (const c of categoriesWithData) {
+    if (c.isParent) parentIdsWithRollup.add(c.categoryId);
+  }
   const sorted = [...categoriesWithData]
     .filter(
       (c) =>
-        c.spent > 0 &&
-        (c.isParent ||
-          c.parentId == null ||
-          !parentIdsWithRollup.has(c.parentId))
+        c.spent > 0 && (c.isParent || c.parentId == null || !parentIdsWithRollup.has(c.parentId)),
     )
     .sort((a, b) => b.spent - a.spent);
   const topFour = sorted.slice(0, 4);
@@ -90,7 +82,7 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
       ? [
           {
             name: t("moreCategories", { count: rest.length }),
-            color: "#B1AA9C",
+            color: "var(--muted-foreground)",
             amount: restTotal,
             pct: grandTotal > 0 ? (restTotal / grandTotal) * 100 : 0,
           },
@@ -114,8 +106,7 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
         {" · "}
         {t("youHavePaydayPrefix")}{" "}
         <span className="font-medium text-foreground">
-          {daysUntilPayday}{" "}
-          {daysUntilPayday === 1 ? t("daysOne") : t("daysOther")}
+          {daysUntilPayday} {daysUntilPayday === 1 ? t("daysOne") : t("daysOther")}
         </span>{" "}
         {t("untilPayday")}
       </p>
@@ -135,14 +126,10 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
             {legend.map((seg) => (
               <div key={seg.name} className="flex items-center gap-2">
-                <div
-                  className="h-2.5 w-2.5 rounded-sm"
-                  style={{ backgroundColor: seg.color }}
-                />
+                <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: seg.color }} />
                 <span className="font-medium">{seg.name}</span>
                 <span className="tabular-nums text-muted-foreground">
-                  {formatCurrency(seg.amount, "ILS", locale)} {"·"}{" "}
-                  {Math.round(seg.pct)}%
+                  {formatCurrency(seg.amount, "ILS", locale)} {"·"} {Math.round(seg.pct)}%
                 </span>
               </div>
             ))}
@@ -163,7 +150,7 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
   );
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8 lg:p-10">
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 md:p-8 lg:p-10">
       {hasBudget ? (
         <div className="grid gap-6 md:grid-cols-[200px_1fr] md:gap-10 lg:grid-cols-[240px_1fr]">
           <div className="flex flex-col items-center justify-center gap-2">
@@ -185,16 +172,25 @@ export function HeroCard({ data, loading, monthLabel }: HeroCardProps) {
   );
 }
 
+// Built once at module scope: rebuilding Intl formatters per render loads
+// locale-data tables and is wasteful. This helper runs after an early return
+// in HeroCard, so useMemo is not an option (it would break the Rules of Hooks).
+const TODAY_FORMAT_HE = new Intl.DateTimeFormat("he-IL", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+});
+const TODAY_FORMAT_EN = new Intl.DateTimeFormat("en-IL", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+});
+
 function useTodayPhrase(serverLabel: string, locale: Locale): string {
   // Re-format today's date in the current locale so Hebrew users see Hebrew.
   // The server passed a snapshot, but we re-derive from `new Date()` for the locale.
   try {
-    const fmt = new Intl.DateTimeFormat(locale === "he" ? "he-IL" : "en-IL", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    });
-    return fmt.format(new Date());
+    return (locale === "he" ? TODAY_FORMAT_HE : TODAY_FORMAT_EN).format(new Date());
   } catch {
     return serverLabel;
   }
@@ -247,16 +243,14 @@ function HeroPhrase({
             : t("wordOnSchedule");
 
   const toneClass =
-    verdict === "overBudget" || verdict === "headsUp"
-      ? "text-[var(--status-over)]"
-      : "text-[var(--status-on-track)]";
+    verdict === "overBudget" || verdict === "headsUp" ? "text-status-over" : "text-status-on-track";
 
   const leadParts = lead.split(amount);
   const renderLead =
     leadParts.length === 2 ? (
       <>
         {leadParts[0]}
-        <span className="text-[var(--status-on-track)]">{amount}</span>
+        <span className="text-status-on-track">{amount}</span>
         {leadParts[1]}
       </>
     ) : (
@@ -322,9 +316,7 @@ function PaceGauge({
   const isOver = isOverBudget || delta >= 25;
   const isAhead = delta <= -10;
   const ringColor = isOver ? "var(--status-over)" : "var(--status-on-track)";
-  const verdictClass = isOver
-    ? "text-[var(--status-over)]"
-    : "text-[var(--status-on-track)]";
+  const verdictClass = isOver ? "text-status-over" : "text-status-on-track";
 
   let verdictText: string;
   if (!hasBudget) {
@@ -360,14 +352,7 @@ function PaceGauge({
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={cx}
-          cy={cy}
-          r={radius}
-          fill="none"
-          stroke="var(--muted)"
-          strokeWidth={stroke}
-        />
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="var(--muted)" strokeWidth={stroke} />
         {hasBudget && (
           <circle
             cx={cx}
@@ -402,9 +387,7 @@ function PaceGauge({
             {t("ofBudget", { amount: formatCurrency(totalBudget, "ILS", locale) })}
           </div>
         )}
-        <div
-          className={`mt-1 text-xs ${hasBudget ? verdictClass : "text-muted-foreground"}`}
-        >
+        <div className={`mt-1 text-xs ${hasBudget ? verdictClass : "text-muted-foreground"}`}>
           {verdictText}
         </div>
       </div>
@@ -412,18 +395,11 @@ function PaceGauge({
   );
 }
 
-function StackedBar({
-  legend,
-}: {
-  legend: { name: string; color: string; pct: number }[];
-}) {
+function StackedBar({ legend }: { legend: { name: string; color: string; pct: number }[] }) {
   return (
     <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
       {legend.map((seg, i) => (
-        <div
-          key={i}
-          style={{ width: `${seg.pct}%`, backgroundColor: seg.color }}
-        />
+        <div key={i} style={{ width: `${seg.pct}%`, backgroundColor: seg.color }} />
       ))}
     </div>
   );

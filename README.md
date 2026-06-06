@@ -20,6 +20,7 @@ Encrypted. AI-categorized. Yours.
 [![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?logo=sqlite&logoColor=white&style=flat-square)](https://sqlite.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](#license)
 [![Status: Beta](https://img.shields.io/badge/Status-Beta-blueviolet?style=flat-square)](#features)
+[![CI](https://github.com/alon710/Spent/actions/workflows/ci.yml/badge.svg)](https://github.com/alon710/Spent/actions/workflows/ci.yml)
 
 </div>
 
@@ -36,7 +37,7 @@ Encrypted. AI-categorized. Yours.
 
 Israeli banks have terrible exports, YNAB doesn't speak ILS gracefully, and every "cloud finance" app wants you to hand over your bank password. Spent is the answer for people who'd rather just run something on their own laptop.
 
-Your transactions get pulled directly from your bank with [`israeli-bank-scrapers`](https://github.com/eshaham/israeli-bank-scrapers), stored in a local SQLite file you can `cp` and back up like any other file, and categorized by an AI provider you choose: paid Claude, free local Ollama, or nothing at all.
+Your transactions get pulled directly from your bank with [`israeli-bank-scrapers`](https://github.com/eshaham/israeli-bank-scrapers), stored in a local SQLite file you can `cp` and back up like any other file, and categorized by an AI provider you choose: paid Claude, Gemini, free local Ollama, or nothing at all.
 
 The trade-off is honest: you self-host, you trust the scraper, and you accept that banks may not love automation. In return you get a fast, beautiful, fully offline dashboard that never phones home.
 
@@ -47,13 +48,13 @@ The trade-off is honest: you self-host, you trust the scraper, and you accept th
 <td width="33%" valign="top">
 
 ### 🏦 Israeli bank integration
-Isracard, Bank Hapoalim, and Max work out of the box. Visa Cal and Bank Leumi are on the roadmap.
+18 banks and card issuers ship enabled out of the box, from Isracard, Hapoalim, Leumi, Mizrahi, and Cal to One Zero (with programmatic SMS 2FA).
 
 </td>
 <td width="33%" valign="top">
 
 ### 🤖 AI categorization
-Choose Claude (Anthropic) for best accuracy, Ollama for fully local LLMs, or skip and categorize manually.
+Choose Claude (Anthropic) for best accuracy, Gemini (Google) for a generous free tier, Ollama for fully local LLMs, or skip and categorize manually.
 
 </td>
 <td width="33%" valign="top">
@@ -78,8 +79,11 @@ Polished buttercream-and-sage palette in light mode, warm charcoal in dark. Syst
 </td>
 <td valign="top">
 
-### 🍎 Menu bar / tray app
-Native companion in your menu bar (macOS) or notification area (Windows). Status indicator, one-click open dashboard, sync, and start/stop/restart the service.
+### 🔒 Runs entirely on your machine
+No cloud, no account, no telemetry. The server binds to loopback only and your data never leaves `data/`.
+
+### 💬 Chat with your spending
+A built-in AI chat agent at `/chat` answers questions about your transactions, budgets, and categories. Uses the same provider you picked for categorization.
 
 </td>
 </tr>
@@ -152,11 +156,11 @@ Toggle between English (default) and עברית from **Settings → Appearance**
 
 ```mermaid
 flowchart LR
-    Bank["🏦 Israeli bank<br/>(Isracard / Hapoalim / Max)"]
+    Bank["🏦 Israeli bank<br/>(Isracard, Hapoalim, Leumi,<br/>Mizrahi, Cal, One Zero, …)"]
     Scraper["Puppeteer scraper<br/>(israeli-bank-scrapers)"]
     DB[("📦 SQLite<br/>data/spent.db<br/>(WAL mode)")]
-    AI{"🤖 AI provider<br/>Claude · Ollama · None"}
-    UI["🖥 Dashboard<br/>http://spent.localhost:41234"]
+    AI{"🤖 AI provider<br/>Claude · Gemini · Ollama · None"}
+    UI["🖥 Dashboard<br/>http://127.0.0.1:2412"]
 
     Bank -->|HTTPS<br/>credentials encrypted| Scraper
     Scraper -->|new transactions| DB
@@ -171,67 +175,77 @@ flowchart LR
     end
 ```
 
-Everything inside the dashed box stays on your laptop. The only outbound traffic is to your bank (for scraping) and optionally `api.anthropic.com` (if you chose Claude) or `localhost:11434` (if you chose Ollama).
+Everything inside the dashed box stays on your laptop. The only outbound traffic is to your bank (for scraping) and optionally `api.anthropic.com` (if you chose Claude), Google Gemini API endpoints (if you chose Gemini), or `localhost:11434` (if you chose Ollama).
 
 ## Supported banks
 
-| Bank | Type | Status |
+| Bank | Type | Notes |
 |---|---|---|
-| **Isracard** | Credit card | ✅ Supported |
-| **Bank Hapoalim** (incl. Poalim wallets) | Bank | ✅ Supported |
-| **Max** (formerly Leumi Card) | Credit card | ✅ Supported |
-| Visa Cal | Credit card | 🚧 Planned |
-| Bank Leumi | Bank | 🚧 Planned |
+| **Isracard** | Credit card | ID + last 6 of card + password |
+| **Visa Cal** | Credit card | Username + password |
+| **Max** (formerly Leumi Card) | Credit card | Username + password |
+| **American Express IL** | Credit card | Isracard-issued; ID + last 6 + password |
+| **Bank Hapoalim** (incl. Poalim wallets) | Bank | User code + password |
+| **Bank Leumi** | Bank | Username + password |
+| **Mizrahi Tefahot** | Bank | Username + password |
+| **Bank Discount** | Bank | ID + password + account number |
+| **Mercantile Discount** | Bank | ID + password + account number |
+| **First International (FIBI / Beinleumi)** | Bank | Username + password |
+| **Otsar Hahayal** | Bank | FIBI subsidiary; username + password |
+| **Bank Pagi** | Bank | Username + password |
+| **Bank Massad** | Bank | Username + password |
+| **Bank Yahav** | Bank | Username + ID + password — 6 months history only |
+| **Union Bank** | Bank | Merged into Mizrahi-Tefahot; legacy access |
+| **Beyahad Bishvilha** | Card | Histadrut benefits; ID + password |
+| **Behatsdaa** | Card | Histadrut subsidies; ID + password |
+| **One Zero** | Bank | Programmatic SMS 2FA; email + password + phone |
+
+All of the above are wired through [`israeli-bank-scrapers`](https://github.com/eshaham/israeli-bank-scrapers) and shipped enabled. **One Zero** is the only provider with programmatic 2FA — for the others, disable 2FA on the bank side or use the `showBrowser` manual-2FA fallback.
 
 Don't see your bank? Adding a scraper is a small wrapper around `israeli-bank-scrapers` — see [Contributing](#contributing).
 
 ## AI providers
 
-| | **Claude** (Anthropic) | **Ollama** (local) | **None** |
-|---|---|---|---|
-| Cost | ~₪0.004 per sync | Free | Free |
-| Accuracy | Best | Good (depends on model) | Manual |
-| Network | `api.anthropic.com` | `localhost:11434` | Offline |
-| Setup | API key | Install Ollama + pull a model | Nothing |
+| | **Claude** (Anthropic) | **Gemini** (Google) | **Ollama** (local) | **None** |
+|---|---|---|---|---|
+| Cost | ~₪0.004 per sync | Free tier available | Free | Free |
+| Accuracy | Best | Strong | Good (depends on model) | Manual |
+| Network | `api.anthropic.com` | Google Gemini API | `localhost:11434` | Offline |
+| Setup | API key | API key from Google AI Studio + choose a model | Install Ollama + pull a model | Nothing |
 
-Default model when Claude is selected: `claude-haiku-4-5` (cheap, fast, accurate for categorization). For Ollama, `llama3.2:3b` is the recommended default.
+Default model when Claude is selected: `claude-haiku-4-5-20251001` (cheap, fast, accurate for categorization). Gemini defaults to `gemini-3.5-flash` and lets you choose from stable text models: `gemini-3.5-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, and `gemini-2.5-pro`. For Ollama, `llama3.2:3b` is the recommended default.
 
 You can change providers any time from **Settings → AI provider**. Existing categorizations are kept.
 
 ## Requirements
 
-- **Node.js 22+**
-- **macOS 13+**, **Ubuntu 22+** (with systemd), or **Windows 11**
-- **Build tools for the menubar** (only if you want the tray; `npm run setup` will offer to install these for you if they're missing):
-  - macOS: Xcode Command Line Tools (`xcode-select --install`)
-  - Windows: .NET 8 SDK (`winget install Microsoft.DotNet.SDK.8`)
+- **[Bun 1.3+](https://bun.com)** (used as the package manager and script runner)
+- **Node.js 22+** (the runtime for the production server via `next start`)
+- **macOS 13+**, **Ubuntu 22+**, or **Windows 11**
 - A bank account with **2FA disabled** (most Israeli banks require this for automation — OneZero is the exception)
 
 ## Install
 
-> Prefer a screenshot-by-screenshot walkthrough? The [step-by-step install guides](https://shaya16.github.io/Spent/getting-started/) on the docs site cover macOS and Windows separately, with build-tool setup and tray-app gotchas spelled out.
-
 ```bash
-git clone https://github.com/Shaya16/Spent.git
+git clone https://github.com/alon710/Spent.git
 cd spent
-npm install
-npm run setup
+bun install
+bun run build
+bun start
 ```
 
-`npm run setup` does everything: builds the Next.js app, installs the always-on service (LaunchAgent on macOS / systemd on Linux / Task Scheduler on Windows), builds the platform menubar from source, installs it to the standard location, registers it to auto-start at login, and opens the dashboard. On Windows it also writes a `127.0.0.1 spent.localhost` line to your hosts file (the only step that asks for Administrator). macOS and Linux resolve `*.localhost` natively, so setup runs sudo-free there.
+`bun start` runs the production server bound to `127.0.0.1:2412` — loopback only, so it is never reachable from your LAN or the internet. Leave the process running (or wrap it in your own service manager / `tmux` / login item) for an always-on dashboard.
 
-On Linux there is no native menubar. `npm run setup` installs the service and opens the browser. Control the service with `npm run service:*` (see below).
+Open **`http://127.0.0.1:2412`** and bookmark it.
 
-First launch of the menubar on macOS/Windows shows an unsigned-binary warning (Gatekeeper / SmartScreen). That's expected: you built it locally and didn't pay for a code-signing certificate. Right-click → Open (macOS) or "More info" → "Run anyway" (Windows). One-time.
-
-Open **`http://spent.localhost:41234`** and bookmark it.
+To hack on the app with hot reload instead, run `bun dev` and open `http://127.0.0.1:3000`.
 
 ## First-time setup
 
 In the browser:
 
 1. **Connect your bank** — credentials are AES-256-GCM encrypted before they touch disk.
-2. **Choose an AI provider** — Claude (default), Ollama, or none.
+2. **Choose an AI provider** — Claude (default), Gemini, Ollama, or none.
 3. **Set your monthly ceiling** — total spend you want to stay under each month.
 4. **Set per-category budgets** — type an amount on any category to budget it; leave blank to track without a limit.
 5. **Done.** Sync starts automatically: 3 months of transactions, then AI categorization.
@@ -240,49 +254,18 @@ In the browser:
 
 | What you want | Run |
 |---|---|
-| Just use the app (no coding) | Open `http://spent.localhost:41234` |
-| Code and see changes instantly | `npm run dev` → `http://127.0.0.1:3000` |
-| Update the always-on app after editing | `npm run service:reload` |
-
-Rare cases:
-
-- Changed the menu bar app source → `npm run menubar:install:mac` (or `:windows`) to rebuild and reinstall.
-- Changed install scripts or hostname → `npm run service:uninstall && npm run service:install`.
-
-## Service commands
-
-| Command | What it does |
-|---|---|
-| `npm run service:status` | Running? Bound to loopback? |
-| `npm run service:start` / `:stop` | Start/stop now |
-| `npm run service:reload` | Rebuild and restart |
-| `npm run service:logs` | Tail server logs |
-| `npm run service:open` | Open the app in your browser |
-| `npm run service:uninstall` | Remove auto-start and hosts entry. `data/` is untouched. |
+| Just use the app | `bun start` → `http://127.0.0.1:2412` |
+| Code and see changes instantly | `bun dev` → `http://127.0.0.1:3000` |
+| Rebuild after editing | `bun run build` then restart `bun start` |
+| Run the full CI gate locally before pushing | `bun run ci` |
 
 ## Uninstall
 
-```bash
-npm run uninstall
-```
+Spent installs nothing outside the project folder. To remove it:
 
-Reverses everything `npm run setup` installed:
-
-- Stops the background service and removes the LaunchAgent / Task Scheduler entry / systemd unit.
-- Windows: removes the `127.0.0.1 spent.localhost` line from your hosts file (asks for Administrator). macOS/Linux don't have a hosts entry to remove unless you're upgrading from an older install — in that case the legacy `spent.local` line is cleaned up automatically.
-- Quits the menubar, removes the installed app, and removes it from Login Items / Startup.
-
-**Kept on purpose:**
-
-- `data/`: your transactions, budgets, and encryption key. To wipe your data: `rm -rf data/`.
-- The repo itself. To remove Spent entirely: `rm -rf data/ && cd .. && rm -rf spent/`.
-
-If you only want to remove the menubar but keep the always-on web app:
-
-- **macOS**: `rm -rf ~/Applications/Spent.app` and remove "Spent" from System Settings → General → Login Items.
-- **Windows**: delete `%LOCALAPPDATA%\Programs\Spent\` and remove `Spent.lnk` from `shell:startup`.
-
-If you only want to remove the always-on service but keep the menubar (so it's there if you reinstall later): `npm run service:uninstall`.
+- Stop the running `bun start` (or `bun dev`) process.
+- `rm -rf data/` to wipe your transactions, budgets, and encryption key.
+- Delete the repository to remove Spent entirely: `cd .. && rm -rf spent/`.
 
 ## Security at a glance
 
@@ -297,15 +280,14 @@ If you only want to remove the always-on service but keep the menubar (so it's t
 
 **Turn on full-disk encryption** (FileVault / BitLocker / LUKS). The encryption key file sits next to the database, so disk-level protection is your last line of defense if the laptop is lost.
 
-Full threat model and responsible-disclosure policy → [SECURITY.md](SECURITY.md).
+Full threat model and responsible-disclosure policy → [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Where your data lives
 
 - `data/spent.db` — transactions, categories, budgets, settings
 - `data/.encryption-key` — 32-byte AES key, mode `0600`
-- `~/Library/Logs/Spent/` (macOS) / `~/.local/state/spent/log/` (Linux) — service logs
 
-Back up `data/` like any other folder. To migrate to a new machine, copy `data/` over and run `npm run service:install`.
+Back up `data/` like any other folder. To migrate to a new machine, copy `data/` over and start the app there.
 
 ## Architecture & code map
 
@@ -322,17 +304,13 @@ spent/
 │   │   └── settings/         Per-tab settings panels
 │   ├── lib/                  Shared client-side types and helpers
 │   └── server/
-│       ├── ai/               Claude + Ollama provider implementations
+│       ├── ai/               Claude + Gemini + Ollama provider implementations
 │       ├── db/               SQLite singleton, migrations, query helpers
 │       ├── lib/              Encryption, dedup, transfer detection, pace
 │       └── scrapers/         Wrapper around israeli-bank-scrapers
-├── menubar/                  Tray companions (built locally by `npm run setup`)
-│   ├── mac/                  Swift MenuBarExtra app
-│   └── windows/              C# WinForms NotifyIcon app
-├── scripts/service/          LaunchAgent / systemd / Task Scheduler installer
+├── scripts/                  Dev utilities + the i18n / changed-file-lint CI helpers
 ├── website/                  Astro + Starlight docs site (auto-deploys to GitHub Pages)
-├── .github/workflows/        CI — docs site deploy
-├── Spent.sln                 Visual Studio solution for the Windows menubar project
+├── .github/workflows/        CI gate + docs site deploy
 └── data/                     SQLite + encryption key (gitignored)
 ```
 
@@ -340,21 +318,17 @@ spent/
 
 > The [Troubleshooting docs](https://shaya16.github.io/Spent/troubleshooting/) cover Defender, Gatekeeper, Cloudflare bot challenges, and bank-specific quirks in more depth.
 
-- **Port 41234 in use** → `lsof -nP -iTCP:41234 -sTCP:LISTEN` (Unix) or `netstat -ano | findstr :41234` (Windows). Kill the offender and re-run install.
-- **Gatekeeper blocks `Spent.app`** → right-click → Open → Open. One-time.
-- **Linux: "systemd user instance not available"** → `loginctl enable-linger $USER`.
-- **Windows: hosts edit fails / `spent.localhost` doesn't resolve** → re-run install from an elevated PowerShell (Win+X → "Terminal (Admin)") so it can edit `C:\Windows\System32\drivers\etc\hosts`. After the edit, the installer flushes the DNS cache automatically; if you edited hosts manually, run `ipconfig /flushdns`. `http://127.0.0.1:41234` always works as a fallback.
-- **Bank scrape fails with "Cloudflare"** → temporarily run with `SPENT_DISABLE_CHROMIUM_SANDBOX=1` to let Puppeteer use a real Chrome profile.
-
 ## Roadmap
 
 - [x] Hebrew UI with full RTL layout
-- [ ] Visa Cal scraper
-- [ ] Bank Leumi scraper
+- [x] Visa Cal, Bank Leumi, Mizrahi, Discount, FIBI, and the rest of the `israeli-bank-scrapers` roster
+- [x] One Zero with programmatic SMS 2FA
+- [x] Gemini as a third AI provider
+- [x] AI chat agent for asking questions about your spending
 - [ ] CSV / OFX export
 - [ ] Custom user-defined categories
 - [ ] Mobile companion (Phase 2)
-- [ ] Multiple workspaces in the menu bar / tray app
+- [ ] Multiple workspaces
 
 ## Contributing
 
@@ -370,6 +344,7 @@ Conventions:
 - TypeScript strict mode. No `any` without a comment.
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`.
 - Comments only where the "why" isn't obvious. No em dashes in code, commits, or docs.
+- Run `bun run ci` before opening a PR — same five checks GitHub Actions enforces strictly: formatter (Biome), TypeScript, i18n keys (next-intl-recommended `@lingual/i18n-check`), dead code (knip), React Compiler healthcheck, and `bun test`.
 
 ## License
 
@@ -384,4 +359,4 @@ Built on the shoulders of:
 - [`shadcn/ui`](https://ui.shadcn.com/) on top of [`base-ui`](https://base-ui.com/)
 - [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3)
 - [`next-intl`](https://next-intl.dev/) for English / Hebrew i18n
-- [Anthropic Claude](https://www.anthropic.com/) and the local-LLM crew at [Ollama](https://ollama.com/)
+- [Anthropic Claude](https://www.anthropic.com/), [Google Gemini](https://ai.google.dev/), and the local-LLM crew at [Ollama](https://ollama.com/)

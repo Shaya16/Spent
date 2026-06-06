@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
 
 interface CardShellProps {
   label?: string;
@@ -16,21 +16,14 @@ interface CardShellProps {
 export function CardShell({ label, action, children, className }: CardShellProps) {
   return (
     <div
-      className={cn(
-        "flex h-full flex-col rounded-3xl border border-border bg-card p-5 md:p-6",
-        className
-      )}
+      className={cn("flex h-full flex-col rounded-xl border border-border bg-card p-5", className)}
     >
       {(label || action) && (
         <div className="mb-4 flex items-center justify-between gap-3">
           {label && (
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              {label}
-            </h3>
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">{label}</h2>
           )}
-          {action && (
-            <div className="text-xs text-muted-foreground">{action}</div>
-          )}
+          {action && <div className="text-xs text-muted-foreground">{action}</div>}
         </div>
       )}
       {children}
@@ -40,10 +33,7 @@ export function CardShell({ label, action, children, className }: CardShellProps
 
 export function CardAction({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="underline-offset-4 hover:text-foreground hover:underline"
-    >
+    <Link href={href} className="underline-offset-4 hover:text-foreground hover:underline">
       {children}
     </Link>
   );
@@ -65,12 +55,30 @@ export function CardSkeleton({
   );
 }
 
-export function CardError({ label, className }: { label?: string; className?: string }) {
+export function CardError({
+  label,
+  className,
+  onRetry,
+}: {
+  label?: string;
+  className?: string;
+  onRetry?: () => void;
+}) {
   const t = useTranslations("home");
+  const tc = useTranslations("common");
   return (
     <CardShell label={label} className={className}>
-      <div className="flex flex-1 items-center justify-center py-8 text-sm text-muted-foreground">
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center text-sm text-muted-foreground">
         {t("couldntLoad")}
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            {tc("retry")}
+          </button>
+        )}
       </div>
     </CardShell>
   );

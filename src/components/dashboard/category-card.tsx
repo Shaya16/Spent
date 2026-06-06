@@ -1,63 +1,13 @@
 "use client";
 
+import { HelpCircle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import {
-  ShoppingBasket,
-  UtensilsCrossed,
-  TramFront,
-  ShoppingBag,
-  Ticket,
-  HeartPulse,
-  GraduationCap,
-  Receipt,
-  RefreshCw,
-  Plane,
-  Banknote,
-  ArrowLeftRight,
-  Shield,
-  Home,
-  Sparkles,
-  CircleDot,
-  HelpCircle,
-  Coffee,
-  PawPrint,
-  Gift,
-  Baby,
-  Briefcase,
-  TrendingUp,
-  RotateCcw,
-  type LucideIcon,
-} from "lucide-react";
+import { getCategoryIcon } from "@/components/category-icon";
+import type { Locale } from "@/i18n/routing";
+import { shade, tint } from "@/lib/colors";
 import { formatCurrency } from "@/lib/formatters";
 import { translateCategoryName } from "@/lib/i18n-data";
-import type { CategoryWithData, BudgetStatus } from "@/lib/types";
-import type { Locale } from "@/i18n/routing";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  "shopping-basket": ShoppingBasket,
-  "utensils-crossed": UtensilsCrossed,
-  "tram-front": TramFront,
-  "shopping-bag": ShoppingBag,
-  ticket: Ticket,
-  "heart-pulse": HeartPulse,
-  "graduation-cap": GraduationCap,
-  receipt: Receipt,
-  "refresh-cw": RefreshCw,
-  plane: Plane,
-  banknote: Banknote,
-  "arrow-left-right": ArrowLeftRight,
-  shield: Shield,
-  home: Home,
-  sparkles: Sparkles,
-  "circle-dot": CircleDot,
-  coffee: Coffee,
-  "paw-print": PawPrint,
-  gift: Gift,
-  baby: Baby,
-  briefcase: Briefcase,
-  "trending-up": TrendingUp,
-  "rotate-ccw": RotateCcw,
-};
+import type { BudgetStatus, CategoryWithData } from "@/lib/types";
 
 interface CategoryCardProps {
   data: CategoryWithData;
@@ -68,7 +18,7 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
   const t = useTranslations("dashboard");
   const tCat = useTranslations("categoriesSeeded");
   const locale = useLocale() as Locale;
-  const Icon = ICON_MAP[data.categoryIcon ?? "circle-dot"] ?? CircleDot;
+  const Icon = getCategoryIcon(data.categoryIcon);
   const percent = Math.min(999, Math.round(data.percentSpent));
   const vsLast = data.vsLastMonth;
   const isTracking = data.budgetMode === "tracking";
@@ -78,7 +28,8 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
     <button
       type="button"
       onClick={onClick}
-      className="group w-full cursor-pointer rounded-2xl border border-border bg-card p-5 text-start transition-colors duration-200 ease-out hover:border-[#D6C9AC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+      className="group w-full cursor-pointer rounded-2xl border border-border bg-card p-5 text-start transition-colors duration-200 ease-out hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <div
@@ -114,8 +65,7 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
                 <span
                   className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums"
                   style={{
-                    backgroundColor:
-                      "color-mix(in oklch, var(--status-heads-up) 18%, transparent)",
+                    backgroundColor: "color-mix(in oklch, var(--status-heads-up) 18%, transparent)",
                     color: "var(--status-heads-up)",
                   }}
                   title={t("needsReviewTooltip", { count: data.needsReviewCount })}
@@ -137,21 +87,13 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
             </div>
             <div className="mt-0.5 truncate text-xs text-muted-foreground">
               {data.transactionCount}{" "}
-              {data.transactionCount === 1
-                ? t("transactionsOne")
-                : t("transactionsOther")}
-              {data.topMerchant
-                ? ` · ${t("mostlyMerchant", { merchant: data.topMerchant })}`
-                : ""}
+              {data.transactionCount === 1 ? t("transactionsOne") : t("transactionsOther")}
+              {data.topMerchant ? ` · ${t("mostlyMerchant", { merchant: data.topMerchant })}` : ""}
             </div>
           </div>
         </div>
         {!isTracking && (
-          <ProgressDonut
-            percent={percent}
-            color={data.categoryColor}
-            status={data.status}
-          />
+          <ProgressDonut percent={percent} color={data.categoryColor} status={data.status} />
         )}
       </div>
 
@@ -198,7 +140,7 @@ export function CategoryCard({ data, onClick }: CategoryCardProps) {
                 </>
               ) : (
                 <>
-                  <span className="text-[var(--status-over)]">
+                  <span className="text-status-over">
                     {t("overAmount", {
                       amount: formatCurrency(data.spent - data.budget, "ILS", locale),
                     })}
@@ -256,8 +198,7 @@ function ProgressDonut({
   const circumference = 2 * Math.PI * radius;
   const visualPercent = Math.min(100, percent);
   const dash = (visualPercent / 100) * circumference;
-  const strokeColor =
-    status === "over" ? "var(--status-over)" : shade(color);
+  const strokeColor = status === "over" ? "var(--status-over)" : shade(color);
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
@@ -304,10 +245,7 @@ function StatusPill({ status }: { status: BudgetStatus }) {
         color: m.color,
       }}
     >
-      <span
-        className="h-1.5 w-1.5 rounded-full"
-        style={{ backgroundColor: m.color }}
-      />
+      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: m.color }} />
       {m.label}
     </span>
   );
@@ -321,34 +259,10 @@ function VsLastMonth({ pct }: { pct: number }) {
   }
   const up = rounded > 0;
   return (
-    <span
-      className={
-        up ? "text-[var(--status-over)]" : "text-[var(--status-on-track)]"
-      }
-    >
+    <span className={up ? "text-status-over" : "text-status-on-track"}>
       {up
         ? t("vsLastMonthUp", { pct: Math.abs(rounded) })
         : t("vsLastMonthDown", { pct: Math.abs(rounded) })}
     </span>
   );
-}
-
-function tint(hex: string, opacity: number): string {
-  const { r, g, b } = parseHex(hex);
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-}
-
-function shade(hex: string): string {
-  const { r, g, b } = parseHex(hex);
-  const factor = 0.78;
-  return `rgb(${Math.round(r * factor)}, ${Math.round(g * factor)}, ${Math.round(b * factor)})`;
-}
-
-function parseHex(hex: string): { r: number; g: number; b: number } {
-  const clean = hex.replace("#", "");
-  return {
-    r: parseInt(clean.slice(0, 2), 16),
-    g: parseInt(clean.slice(2, 4), 16),
-    b: parseInt(clean.slice(4, 6), 16),
-  };
 }

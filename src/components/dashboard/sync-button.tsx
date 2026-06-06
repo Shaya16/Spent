@@ -1,15 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { startSync, submitSyncOtp } from "@/lib/api";
-import { toast } from "sonner";
-import { RefreshCw } from "lucide-react";
-import {
-  SyncProgressDialog,
-  type ProviderRow,
-} from "./sync-progress-dialog";
+import { type ProviderRow, SyncProgressDialog } from "./sync-progress-dialog";
 
 interface SyncButtonProps {
   onComplete: () => void;
@@ -44,12 +41,9 @@ export function SyncButton({ onComplete, autoStart = false }: SyncButtonProps) {
     setDialogOpen(false);
   }, []);
 
-  const handleSubmitOtp = useCallback(
-    async (syncRunId: number, code: string) => {
-      await submitSyncOtp(syncRunId, code);
-    },
-    []
-  );
+  const handleSubmitOtp = useCallback(async (syncRunId: number, code: string) => {
+    await submitSyncOtp(syncRunId, code);
+  }, []);
 
   const handleSync = () => {
     setSyncing(true);
@@ -66,15 +60,11 @@ export function SyncButton({ onComplete, autoStart = false }: SyncButtonProps) {
       if (event.type === "plan") {
         const list = (event.data.providers as string[]) ?? [];
         setProviders(list);
-        setRows(
-          list.map((p) => ({ provider: p, status: "idle", added: 0, updated: 0 }))
-        );
+        setRows(list.map((p) => ({ provider: p, status: "idle", added: 0, updated: 0 })));
       } else if (event.type === "provider-start") {
         const provider = event.data.provider as string;
         setRows((prev) =>
-          prev.map((r) =>
-            r.provider === provider ? { ...r, status: "running" } : r
-          )
+          prev.map((r) => (r.provider === provider ? { ...r, status: "running" } : r)),
         );
       } else if (event.type === "provider-2fa-needed") {
         const provider = event.data.provider as string;
@@ -82,25 +72,19 @@ export function SyncButton({ onComplete, autoStart = false }: SyncButtonProps) {
         awaitingOtpRef.current.add(provider);
         setRows((prev) =>
           prev.map((r) =>
-            r.provider === provider
-              ? { ...r, status: "awaiting-otp", syncRunId }
-              : r
-          )
+            r.provider === provider ? { ...r, status: "awaiting-otp", syncRunId } : r,
+          ),
         );
       } else if (event.type === "provider-2fa-submitted") {
         const provider = event.data.provider as string;
         awaitingOtpRef.current.delete(provider);
         setRows((prev) =>
-          prev.map((r) =>
-            r.provider === provider ? { ...r, status: "running" } : r
-          )
+          prev.map((r) => (r.provider === provider ? { ...r, status: "running" } : r)),
         );
       } else if (event.type === "provider-2fa-manual") {
         const provider = event.data.provider as string;
         setRows((prev) =>
-          prev.map((r) =>
-            r.provider === provider ? { ...r, status: "manual-2fa" } : r
-          )
+          prev.map((r) => (r.provider === provider ? { ...r, status: "manual-2fa" } : r)),
         );
       } else if (event.type === "provider-done") {
         const provider = event.data.provider as string;
@@ -119,8 +103,8 @@ export function SyncButton({ onComplete, autoStart = false }: SyncButtonProps) {
                   updated,
                   errorMessage,
                 }
-              : r
-          )
+              : r,
+          ),
         );
         if (!ok && errorMessage) {
           toast.error(`${provider}: ${errorMessage}`, {
@@ -170,16 +154,11 @@ export function SyncButton({ onComplete, autoStart = false }: SyncButtonProps) {
       handleSync();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart]);
+  }, [autoStart, syncing, handleSync]);
 
   return (
     <>
-      <Button
-        size="sm"
-        onClick={handleSync}
-        disabled={syncing}
-        className="gap-1.5"
-      >
+      <Button size="sm" onClick={handleSync} disabled={syncing} className="gap-1.5">
         <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
         {syncing ? t("syncing") : t("syncAndCategorize")}
       </Button>

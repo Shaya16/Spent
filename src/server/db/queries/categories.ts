@@ -1,55 +1,63 @@
 import "server-only";
 
-import { getDb } from "../index";
+import { and, asc, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import type { Category, CategoryKind } from "@/lib/types";
+import { getDb } from "../index";
+import { getOrm } from "../orm";
+import { categories } from "../schema";
 
-const CATEGORY_COLUMNS =
-  "id, parent_id as parentId, name, color, icon, kind, budget_mode as budgetMode, description";
+const CATEGORY_PROJECTION = {
+  id: categories.id,
+  parentId: categories.parentId,
+  name: categories.name,
+  color: categories.color,
+  icon: categories.icon,
+  kind: categories.kind,
+  budgetMode: categories.budgetMode,
+  description: categories.description,
+};
 
 export function getAllCategories(
   workspaceId: number,
   kind?: CategoryKind,
-  opts?: { leavesOnly?: boolean }
+  opts?: { leavesOnly?: boolean },
 ): Category[] {
   const leavesOnly = opts?.leavesOnly === true;
-  const whereParts: string[] = ["workspace_id = ?"];
-  const params: unknown[] = [workspaceId];
 
-  if (kind) {
-    whereParts.push("kind = ?");
-    params.push(kind);
-  }
+  const filters = [eq(categories.workspaceId, workspaceId)];
+  if (kind) filters.push(eq(categories.kind, kind));
   if (leavesOnly) {
-    whereParts.push(
-      "id NOT IN (SELECT parent_id FROM categories WHERE parent_id IS NOT NULL)"
-    );
+    const parentIds = getOrm()
+      .selectDistinct({ id: categories.parentId })
+      .from(categories)
+      .where(isNotNull(categories.parentId));
+    filters.push(notInArray(categories.id, parentIds));
   }
 
-  const sql = `SELECT ${CATEGORY_COLUMNS} FROM categories WHERE ${whereParts.join(" AND ")} ORDER BY name`;
-  return getDb().prepare(sql).all(...params) as Category[];
+  return getOrm()
+    .select(CATEGORY_PROJECTION)
+    .from(categories)
+    .where(and(...filters))
+    .orderBy(asc(categories.name))
+    .all();
 }
 
-export function getCategoryById(
-  workspaceId: number,
-  id: number
-): Category | null {
+export function getCategoryById(workspaceId: number, id: number): Category | null {
   return (
-    (getDb()
-      .prepare(
-        `SELECT ${CATEGORY_COLUMNS} FROM categories WHERE workspace_id = ? AND id = ?`
-      )
-      .get(workspaceId, id) as Category | undefined) ?? null
+    getOrm()
+      .select(CATEGORY_PROJECTION)
+      .from(categories)
+      .where(and(eq(categories.workspaceId, workspaceId), eq(categories.id, id)))
+      .get() ?? null
   );
 }
 
-export function getCategoryByName(
-  workspaceId: number,
-  name: string
-): Category | null {
+export function getCategoryByName(workspaceId: number, name: string): Category | null {
+  // Raw SQL: name comparison relies on COLLATE NOCASE.
   return (
     (getDb()
       .prepare(
-        `SELECT ${CATEGORY_COLUMNS} FROM categories WHERE workspace_id = ? AND name = ? COLLATE NOCASE`
+        "SELECT id, parent_id as parentId, name, color, icon, kind, budget_mode as budgetMode, description FROM categories WHERE workspace_id = ? AND name = ? COLLATE NOCASE",
       )
       .get(workspaceId, name) as Category | undefined) ?? null
   );
@@ -62,12 +70,12 @@ export function getCategoryByName(
  * whether a row is rendered as a rollup card on the dashboard.
  */
 export function getParentIds(workspaceId: number): Set<number> {
-  const rows = getDb()
-    .prepare(
-      "SELECT DISTINCT parent_id AS id FROM categories WHERE workspace_id = ? AND parent_id IS NOT NULL"
-    )
-    .all(workspaceId) as { id: number }[];
-  return new Set(rows.map((r) => r.id));
+  const rows = getOrm()
+    .selectDistinct({ id: categories.parentId })
+    .from(categories)
+    .where(and(eq(categories.workspaceId, workspaceId), isNotNull(categories.parentId)))
+    .all();
+  return new Set(rows.map((r) => r.id).filter((id): id is number => id != null));
 }
 
 export interface CategoryTreeNode {
@@ -77,7 +85,7 @@ export interface CategoryTreeNode {
 
 export function getCategoryTree(
   workspaceId: number,
-  kind?: CategoryKind
+  kind?: CategoryKind,
 ): { tree: CategoryTreeNode[]; orphans: Category[] } {
   const all = getAllCategories(workspaceId, kind);
   const parentIds = getParentIds(workspaceId);
@@ -109,45 +117,42 @@ export function getCategoryTree(
 export function updateCategoryDescription(
   workspaceId: number,
   id: number,
-  description: string | null
+  description: string | null,
 ): boolean {
   const value = description == null ? null : description.trim() || null;
-  const result = getDb()
-    .prepare(
-      "UPDATE categories SET description = ? WHERE workspace_id = ? AND id = ?"
-    )
-    .run(value, workspaceId, id);
+  const result = getOrm()
+    .update(categories)
+    .set({ description: value })
+    .where(and(eq(categories.workspaceId, workspaceId), eq(categories.id, id)))
+    .run();
   return result.changes > 0;
 }
 
 export function updateCategoryBudgetMode(
   workspaceId: number,
   id: number,
-  mode: "budgeted" | "tracking"
+  mode: "budgeted" | "tracking",
 ): boolean {
-  const result = getDb()
-    .prepare(
-      "UPDATE categories SET budget_mode = ? WHERE workspace_id = ? AND id = ?"
-    )
-    .run(mode, workspaceId, id);
+  const result = getOrm()
+    .update(categories)
+    .set({ budgetMode: mode })
+    .where(and(eq(categories.workspaceId, workspaceId), eq(categories.id, id)))
+    .run();
   return result.changes > 0;
 }
 
-export function setBudgetModesBulk(
-  workspaceId: number,
-  budgetedIds: number[]
-): void {
-  const db = getDb();
-  db.transaction(() => {
-    db.prepare(
-      "UPDATE categories SET budget_mode = 'tracking' WHERE workspace_id = ? AND kind = 'expense'"
-    ).run(workspaceId);
+export function setBudgetModesBulk(workspaceId: number, budgetedIds: number[]): void {
+  getOrm().transaction((tx) => {
+    tx.update(categories)
+      .set({ budgetMode: "tracking" })
+      .where(and(eq(categories.workspaceId, workspaceId), eq(categories.kind, "expense")))
+      .run();
     if (budgetedIds.length === 0) return;
-    const placeholders = budgetedIds.map(() => "?").join(",");
-    db.prepare(
-      `UPDATE categories SET budget_mode = 'budgeted' WHERE workspace_id = ? AND id IN (${placeholders})`
-    ).run(workspaceId, ...budgetedIds);
-  })();
+    tx.update(categories)
+      .set({ budgetMode: "budgeted" })
+      .where(and(eq(categories.workspaceId, workspaceId), inArray(categories.id, budgetedIds)))
+      .run();
+  });
 }
 
 export type SetParentResult =
@@ -173,9 +178,9 @@ export type SetParentResult =
 export function setCategoryParent(
   workspaceId: number,
   childId: number,
-  parentId: number | null
+  parentId: number | null,
 ): SetParentResult {
-  const db = getDb();
+  const orm = getOrm();
   const child = getCategoryById(workspaceId, childId);
   if (!child) return { ok: false, reason: "not-found" };
 
@@ -191,19 +196,22 @@ export function setCategoryParent(
       return { ok: false, reason: "kind-mismatch" };
     }
 
-    const hasOwnChildren = db
-      .prepare(
-        "SELECT 1 FROM categories WHERE workspace_id = ? AND parent_id = ? LIMIT 1"
-      )
-      .get(workspaceId, childId);
+    const hasOwnChildren = orm
+      .select({ one: sql<number>`1` })
+      .from(categories)
+      .where(and(eq(categories.workspaceId, workspaceId), eq(categories.parentId, childId)))
+      .limit(1)
+      .get();
     if (hasOwnChildren) {
       return { ok: false, reason: "child-has-children" };
     }
   }
 
-  db.prepare(
-    "UPDATE categories SET parent_id = ? WHERE workspace_id = ? AND id = ?"
-  ).run(parentId, workspaceId, childId);
+  orm
+    .update(categories)
+    .set({ parentId })
+    .where(and(eq(categories.workspaceId, workspaceId), eq(categories.id, childId)))
+    .run();
 
   const updated = getCategoryById(workspaceId, childId);
   return { ok: true, category: updated as Category };
@@ -222,18 +230,25 @@ export function createParentCategory(
     color?: string;
     icon?: string;
     description?: string | null;
-  }
+  },
 ): Category {
   const trimmed = input.name.trim();
   const color = input.color ?? pickColor(trimmed.toLowerCase());
   const icon = input.icon ?? "circle-dot";
   const description = input.description?.trim() || null;
 
-  const result = getDb()
-    .prepare(
-      "INSERT INTO categories (workspace_id, parent_id, name, color, icon, kind, description) VALUES (?, NULL, ?, ?, ?, ?, ?)"
-    )
-    .run(workspaceId, trimmed, color, icon, input.kind, description);
+  const result = getOrm()
+    .insert(categories)
+    .values({
+      workspaceId,
+      parentId: null,
+      name: trimmed,
+      color,
+      icon,
+      kind: input.kind,
+      description,
+    })
+    .run();
 
   return {
     id: Number(result.lastInsertRowid),
@@ -317,7 +332,7 @@ export function ensureCategory(
   workspaceId: number,
   name: string,
   icon = "circle-dot",
-  kind: CategoryKind = "expense"
+  kind: CategoryKind = "expense",
 ): Category {
   const trimmed = name.trim();
   const existing = getCategoryByName(workspaceId, trimmed);
@@ -331,11 +346,10 @@ export function ensureCategory(
   }
 
   const color = pickColor(trimmed.toLowerCase());
-  const result = getDb()
-    .prepare(
-      "INSERT INTO categories (workspace_id, parent_id, name, color, icon, kind) VALUES (?, ?, ?, ?, ?, ?)"
-    )
-    .run(workspaceId, parentId, trimmed, color, icon, kind);
+  const result = getOrm()
+    .insert(categories)
+    .values({ workspaceId, parentId, name: trimmed, color, icon, kind })
+    .run();
 
   return {
     id: Number(result.lastInsertRowid),
@@ -354,15 +368,12 @@ export interface CategoryChildRef {
   name: string;
 }
 
-export function listCategoryChildren(
-  workspaceId: number,
-  parentId: number
-): CategoryChildRef[] {
+export function listCategoryChildren(workspaceId: number, parentId: number): CategoryChildRef[] {
   return getDb()
     .prepare(
       `SELECT id, name FROM categories
        WHERE workspace_id = ? AND parent_id = ?
-       ORDER BY name COLLATE NOCASE`
+       ORDER BY name COLLATE NOCASE`,
     )
     .all(workspaceId, parentId) as CategoryChildRef[];
 }
@@ -375,10 +386,7 @@ export type DeleteCategoryResult =
       children?: CategoryChildRef[];
     };
 
-export function deleteCategory(
-  workspaceId: number,
-  categoryId: number
-): DeleteCategoryResult {
+export function deleteCategory(workspaceId: number, categoryId: number): DeleteCategoryResult {
   const db = getDb();
   const category = getCategoryById(workspaceId, categoryId);
   if (!category) {
@@ -392,7 +400,7 @@ export function deleteCategory(
 
   const txnCountRow = db
     .prepare(
-      "SELECT COUNT(*) as count FROM transactions WHERE workspace_id = ? AND category_id = ?"
+      "SELECT COUNT(*) as count FROM transactions WHERE workspace_id = ? AND category_id = ?",
     )
     .get(workspaceId, categoryId) as { count: number };
 
@@ -400,17 +408,19 @@ export function deleteCategory(
     db.prepare(
       `UPDATE transactions
        SET category_id = NULL, category_source = NULL, updated_at = datetime('now')
-       WHERE workspace_id = ? AND category_id = ?`
+       WHERE workspace_id = ? AND category_id = ?`,
     ).run(workspaceId, categoryId);
 
     db.prepare("DELETE FROM budgets WHERE category_id = ?").run(categoryId);
-    db.prepare(
-      "DELETE FROM merchant_categories WHERE workspace_id = ? AND category_id = ?"
-    ).run(workspaceId, categoryId);
+    db.prepare("DELETE FROM merchant_categories WHERE workspace_id = ? AND category_id = ?").run(
+      workspaceId,
+      categoryId,
+    );
 
-    db.prepare(
-      "DELETE FROM categories WHERE workspace_id = ? AND id = ?"
-    ).run(workspaceId, categoryId);
+    db.prepare("DELETE FROM categories WHERE workspace_id = ? AND id = ?").run(
+      workspaceId,
+      categoryId,
+    );
   });
 
   run();

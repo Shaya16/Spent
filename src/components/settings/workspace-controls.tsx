@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,20 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SettingCard } from "./section-shell";
-import {
-  deleteWorkspace,
-  listWorkspaces,
-  renameWorkspace,
-} from "@/lib/api";
-import {
-  setActiveWorkspaceId,
-  useActiveWorkspaceId,
-} from "@/lib/workspace-store";
+import { deleteWorkspace, listWorkspaces, renameWorkspace } from "@/lib/api";
 import type { Workspace } from "@/lib/types";
+import { setActiveWorkspaceId, useActiveWorkspaceId } from "@/lib/workspace-store";
+import { SettingCard } from "./section-shell";
 
 function useActiveWorkspace() {
   const activeId = useActiveWorkspaceId();
@@ -86,10 +79,7 @@ function WorkspaceNameCardInner({ workspace }: { workspace: Workspace }) {
             {t("slugLabel")} <code className="rounded bg-muted px-1">{workspace.slug}</code>
           </p>
         </div>
-        <Button
-          onClick={() => rename.mutate(name.trim())}
-          disabled={!dirty || rename.isPending}
-        >
+        <Button onClick={() => rename.mutate(name.trim())} disabled={!dirty || rename.isPending}>
           {rename.isPending ? tCommon("saving") : tCommon("save")}
         </Button>
       </div>
@@ -148,19 +138,11 @@ function DangerCard({
   return (
     <>
       <SettingCard title={t("dangerTitle")} description={t("dangerDescription")}>
-        <Button
-          variant="destructive"
-          onClick={() => setOpen(true)}
-          disabled={disabled}
-        >
+        <Button variant="destructive" onClick={() => setOpen(true)} disabled={disabled}>
           <Trash2 className="me-2 size-4" />
           {t("deleteButton")}
         </Button>
-        {disabled ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {t("lastOneHint")}
-          </p>
-        ) : null}
+        {disabled ? <p className="mt-2 text-xs text-muted-foreground">{t("lastOneHint")}</p> : null}
       </SettingCard>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -173,11 +155,7 @@ function DangerCard({
             <Button variant="outline" onClick={() => setOpen(false)}>
               {tCommon("cancel")}
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => del.mutate()}
-              disabled={del.isPending}
-            >
+            <Button variant="destructive" onClick={() => del.mutate()} disabled={del.isPending}>
               {del.isPending ? tCommon("deleting") : t("deleteButton")}
             </Button>
           </DialogFooter>
