@@ -1,6 +1,7 @@
 import type {
   SetupStatus,
   AppSettings,
+  ChatSession,
   TransactionWithCategory,
   DashboardSummary,
   Category,
@@ -12,6 +13,7 @@ import type {
   HomePayload,
   ActivitySnapshot,
 } from "./types";
+import type { UIMessage } from "ai";
 import { getActiveWorkspaceIdSync } from "./workspace-store";
 
 const BASE = "";
@@ -133,8 +135,10 @@ export function testBankConnection(
 }
 
 export function saveAIConfig(config: {
-  provider: "claude" | "ollama" | "none";
-  apiKey?: string;
+  provider: "claude" | "gemini" | "ollama" | "none";
+  claudeApiKey?: string;
+  geminiApiKey?: string;
+  geminiModel?: string;
   ollamaUrl?: string;
   ollamaModel?: string;
 }) {
@@ -147,6 +151,31 @@ export function saveAIConfig(config: {
 
 export function getSettings() {
   return fetchJSON<AppSettings>("/api/settings");
+}
+
+export function listChatSessions() {
+  return fetchJSON<ChatSession[]>("/api/chat/sessions");
+}
+
+export function getChatSession(id: string) {
+  return fetchJSON<{ session: ChatSession; messages: UIMessage[] }>(
+    `/api/chat/sessions/${encodeURIComponent(id)}`
+  );
+}
+
+export function renameChatSession(id: string, title: string) {
+  return fetchJSON<ChatSession>(`/api/chat/sessions/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+}
+
+export function deleteChatSession(id: string) {
+  return fetchJSON<{ success: boolean }>(
+    `/api/chat/sessions/${encodeURIComponent(id)}`,
+    { method: "DELETE" }
+  );
 }
 
 export function updateSettings(settings: Partial<AppSettings>) {

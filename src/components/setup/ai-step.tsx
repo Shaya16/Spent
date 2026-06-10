@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  RECOMMENDED_GEMINI_MODELS,
   RECOMMENDED_OLLAMA_MODELS,
   type OllamaModelInfo,
 } from "@/lib/types";
@@ -17,7 +18,7 @@ import {
   type PullEvent,
 } from "@/lib/api";
 
-type AIChoice = "claude" | "ollama" | "none";
+type AIChoice = "claude" | "gemini" | "ollama" | "none";
 
 interface AIStepProps {
   onComplete: () => void;
@@ -34,6 +35,7 @@ interface PullState {
 
 const TINTS = {
   claude: { bg: "#fad6c0", mid: "#e89968", ink: "#7a4222" },
+  gemini: { bg: "#d3e3fd", mid: "#7fa6f0", ink: "#2b4a8a" },
   ollama: { bg: "#dbedd1", mid: "#a8d18d", ink: "#3e5a2e" },
   none: { bg: "#e6dfd1", mid: "#a89978", ink: "#5b5240" },
 } as const;
@@ -55,6 +57,12 @@ const PROVIDERS: ProviderMeta[] = [
     recommended: true,
   },
   {
+    id: "gemini",
+    title: "Gemini",
+    tagline: "Google AI Studio, generous free tier",
+    icon: "✧",
+  },
+  {
     id: "ollama",
     title: "Ollama",
     tagline: "Runs locally, free and private",
@@ -72,6 +80,11 @@ export function AIStep({ onComplete, onBack }: AIStepProps) {
   const [choice, setChoice] = useState<AIChoice>("claude");
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const [geminiKey, setGeminiKey] = useState("");
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+  const [geminiModel, setGeminiModel] = useState(
+    RECOMMENDED_GEMINI_MODELS[0].name
+  );
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [ollamaModel, setOllamaModel] = useState("llama3.2:3b");
   const [installedModels, setInstalledModels] = useState<string[]>([]);
@@ -107,6 +120,7 @@ export function AIStep({ onComplete, onBack }: AIStepProps) {
   const canContinue =
     choice === "none" ||
     (choice === "claude" && /^sk-ant-/.test(apiKey) && apiKey.length > 25) ||
+    (choice === "gemini" && /^AIza/.test(geminiKey) && geminiKey.length > 30) ||
     (choice === "ollama" && modelInstalled);
 
   const handlePull = () => {
@@ -149,7 +163,9 @@ export function AIStep({ onComplete, onBack }: AIStepProps) {
     try {
       await saveAIConfig({
         provider: choice,
-        apiKey: choice === "claude" ? apiKey : undefined,
+        claudeApiKey: choice === "claude" ? apiKey : undefined,
+        geminiApiKey: choice === "gemini" ? geminiKey : undefined,
+        geminiModel: choice === "gemini" ? geminiModel : undefined,
         ollamaUrl: choice === "ollama" ? ollamaUrl : undefined,
         ollamaModel: choice === "ollama" ? ollamaModel : undefined,
       });
@@ -194,12 +210,31 @@ export function AIStep({ onComplete, onBack }: AIStepProps) {
                 >
                   <div className="pt-1.5">
                     {p.id === "claude" && (
-                      <ClaudeConfig
+                      <ApiKeyConfig
+                        id="claude-api-key"
                         apiKey={apiKey}
                         setApiKey={setApiKey}
                         showKey={showKey}
                         setShowKey={setShowKey}
+                        placeholder="sk-ant-api03-..."
+                        getKeyUrl="https://console.anthropic.com"
                       />
+                    )}
+                    {p.id === "gemini" && (
+                      <ApiKeyConfig
+                        id="gemini-api-key"
+                        apiKey={geminiKey}
+                        setApiKey={setGeminiKey}
+                        showKey={showGeminiKey}
+                        setShowKey={setShowGeminiKey}
+                        placeholder="AIza..."
+                        getKeyUrl="https://aistudio.google.com/apikey"
+                      >
+                        <GeminiModelPicker
+                          model={geminiModel}
+                          setModel={setGeminiModel}
+                        />
+                      </ApiKeyConfig>
                     )}
                     {p.id === "ollama" && (
                       <OllamaConfig
@@ -300,52 +335,107 @@ function ProviderRow({
   );
 }
 
-function ClaudeConfig({
+function ApiKeyConfig({
+  id,
   apiKey,
   setApiKey,
   showKey,
   setShowKey,
+  placeholder,
+  getKeyUrl,
+  children,
 }: {
+  id: string;
   apiKey: string;
   setApiKey: (v: string) => void;
   showKey: boolean;
   setShowKey: (v: boolean) => void;
+  placeholder: string;
+  getKeyUrl: string;
+  children?: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2 rounded-xl border border-border bg-card/60 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <Label htmlFor="claude-api-key" className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-          API key
-        </Label>
-        <a
-          href="https://console.anthropic.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-[11px] font-medium text-primary hover:underline"
-        >
-          Get a key ↗
-        </a>
+    <div className="space-y-3 rounded-xl border border-border bg-card/60 p-4">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor={id} className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+            API key
+          </Label>
+          <a
+            href={getKeyUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[11px] font-medium text-primary hover:underline"
+          >
+            Get a key ↗
+          </a>
+        </div>
+        <div className="relative">
+          <Input
+            id={id}
+            type={showKey ? "text" : "password"}
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={placeholder}
+            className="font-mono pe-14"
+          />
+          <button
+            type="button"
+            onClick={() => setShowKey(!showKey)}
+            className="absolute end-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+          >
+            {showKey ? "hide" : "show"}
+          </button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Encrypted with AES-256-GCM and stored locally.
+        </p>
       </div>
-      <div className="relative">
-        <Input
-          id="claude-api-key"
-          type={showKey ? "text" : "password"}
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="sk-ant-api03-..."
-          className="font-mono pe-14"
-        />
-        <button
-          type="button"
-          onClick={() => setShowKey(!showKey)}
-          className="absolute end-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
-        >
-          {showKey ? "hide" : "show"}
-        </button>
+      {children}
+    </div>
+  );
+}
+
+function GeminiModelPicker({
+  model,
+  setModel,
+}: {
+  model: string;
+  setModel: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+        Pick a model
+      </Label>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        {RECOMMENDED_GEMINI_MODELS.map((m) => (
+          <button
+            key={m.name}
+            type="button"
+            onClick={() => setModel(m.name)}
+            className={`rounded-lg border bg-background p-2 text-start transition-colors ${
+              model === m.name
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/40"
+            }`}
+          >
+            <div className="flex items-baseline justify-between gap-1">
+              <span className="truncate text-[11px] font-bold tracking-tight">
+                {m.name}
+              </span>
+              {m.recommended && (
+                <span className="rounded-full bg-primary/10 px-1 py-0 text-[8px] font-bold uppercase tracking-wider text-primary">
+                  rec
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+              {m.description}
+            </p>
+          </button>
+        ))}
       </div>
-      <p className="text-[11px] text-muted-foreground">
-        Encrypted with AES-256-GCM and stored locally.
-      </p>
     </div>
   );
 }
@@ -475,7 +565,7 @@ function ManualNote() {
     <div className="rounded-xl border border-border bg-card/60 p-4 text-[12px] leading-relaxed text-muted-foreground">
       Spent will leave transactions <span className="text-foreground">uncategorized</span>;
       you can assign categories from the transactions table any time. Switch to
-      Claude or Ollama later in{" "}
+      Claude, Gemini, or Ollama later in{" "}
       <span className="font-bold text-foreground">Settings → AI</span>.
     </div>
   );

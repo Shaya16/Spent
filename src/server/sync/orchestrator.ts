@@ -76,16 +76,28 @@ export interface WorkspaceSummary {
   aiWarning: string | null;
 }
 
-export function friendlyAIError(err: unknown, modelName: string): string {
+export function friendlyAIError(
+  err: unknown,
+  modelName: string,
+  provider?: string
+): string {
   const msg = err instanceof Error ? err.message : String(err);
-  if (/model.*not found|pull.*model|404/i.test(msg)) {
-    return `Ollama model "${modelName}" is not installed. Run: ollama pull ${modelName}`;
+  const isNetwork = /ECONNREFUSED|fetch failed|ENOTFOUND|ETIMEDOUT/i.test(msg);
+  const isAuth = /api[_-]?key|401|403/i.test(msg);
+
+  if (provider === "ollama") {
+    if (/model.*not found|pull.*model|404/i.test(msg)) {
+      return `Ollama model "${modelName}" is not installed. Run: ollama pull ${modelName}`;
+    }
+    if (isNetwork) {
+      return "Ollama is not reachable. Make sure it's installed and that no firewall is blocking port 11434.";
+    }
   }
-  if (/ECONNREFUSED|fetch failed/i.test(msg)) {
-    return "Ollama is not reachable. Make sure it's installed and that no firewall is blocking port 11434.";
+  if (provider === "claude" && (isNetwork || isAuth)) {
+    return "Claude API request failed. Check your API key and connection in settings.";
   }
-  if (/Anthropic|api[_-]?key|401|403/i.test(msg)) {
-    return "Claude API request was rejected. Check your API key in settings.";
+  if (provider === "gemini" && (isNetwork || isAuth)) {
+    return "Gemini API request failed. Check your API key and connection in settings.";
   }
   return `AI categorization failed: ${msg}`;
 }
@@ -541,7 +553,11 @@ export async function syncWorkspace(
               err
             );
             if (!aiWarning) {
-              aiWarning = friendlyAIError(err, settings.ollamaModel);
+              aiWarning = friendlyAIError(
+                err,
+                settings.ollamaModel,
+                settings.aiProvider
+              );
             }
           }
         }

@@ -5,14 +5,14 @@ import { NextResponse, type NextRequest } from "next/server";
  *
  * Spent runs on 127.0.0.1 only, but any webpage you visit can fire a POST
  * to http://127.0.0.1:3000/api/sync from inside your browser. This
- * middleware rejects state-changing requests whose Origin or Referer
+ * proxy rejects state-changing requests whose Origin or Referer
  * isn't the app itself, so a malicious tab can't trick your localhost
  * into syncing, deleting integrations, or applying categorizations.
  */
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (!MUTATING_METHODS.has(request.method)) {
     return NextResponse.next();
   }

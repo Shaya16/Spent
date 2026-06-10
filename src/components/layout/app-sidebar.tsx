@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Wallet,
   ArrowLeftRight,
+  Sparkles,
   Settings as SettingsIcon,
   Star,
 } from "lucide-react";
@@ -22,6 +24,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { getSettings } from "@/lib/api";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 interface NavDef {
@@ -50,6 +53,12 @@ const NAV: NavDef[] = [
     Icon: ArrowLeftRight,
     match: (p: string) => p.startsWith("/transactions"),
   },
+  {
+    href: "/chat",
+    labelKey: "chat",
+    Icon: Sparkles,
+    match: (p: string) => p.startsWith("/chat"),
+  },
 ];
 
 const FOOTER_NAV: NavDef[] = [
@@ -64,6 +73,12 @@ const FOOTER_NAV: NavDef[] = [
 export function AppSidebar() {
   const pathname = usePathname();
   const t = useTranslations("nav");
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: getSettings,
+    staleTime: 60_000,
+  });
+  const chatDisabled = settings != null && settings.aiProvider === "none";
 
   return (
     <Sidebar collapsible="icon">
@@ -100,6 +115,23 @@ export function AppSidebar() {
             <SidebarMenu>
               {NAV.map((item) => {
                 const label = t(item.labelKey);
+                const disabled = item.href === "/chat" && chatDisabled;
+                const tooltip = disabled ? t("chatDisabledHint") : label;
+                if (disabled) {
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        disabled
+                        aria-disabled
+                        tooltip={tooltip}
+                        className="cursor-not-allowed opacity-50"
+                      >
+                        <item.Icon />
+                        <span>{label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
@@ -110,7 +142,7 @@ export function AppSidebar() {
                         </Link>
                       }
                       isActive={item.match(pathname)}
-                      tooltip={label}
+                      tooltip={tooltip}
                     />
                   </SidebarMenuItem>
                 );

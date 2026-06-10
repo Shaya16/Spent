@@ -6,6 +6,16 @@ export interface Workspace {
   updatedAt: string;
 }
 
+export interface ChatSession {
+  id: string;
+  workspaceId: number;
+  title: string;
+  titleSource: "auto" | "manual";
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Transaction {
   id: number;
   accountNumber: string;
@@ -280,7 +290,8 @@ export interface SetupStatus {
 
 export interface AppSettings {
   monthsToSync: number;
-  aiProvider: "claude" | "ollama" | "none";
+  aiProvider: "claude" | "gemini" | "ollama" | "none";
+  geminiModel: string;
   ollamaUrl: string;
   ollamaModel: string;
   showBrowser: boolean;
@@ -371,6 +382,36 @@ export const RECOMMENDED_OLLAMA_MODELS: OllamaModelInfo[] = [
     name: "qwen2.5:3b",
     sizeGb: 1.9,
     description: "Alternative 3B model from Alibaba.",
+  },
+];
+
+export interface GeminiModelInfo {
+  name: string;
+  description: string;
+  recommended?: boolean;
+}
+
+export const RECOMMENDED_GEMINI_MODELS: GeminiModelInfo[] = [
+  {
+    name: "gemini-3.5-flash",
+    description: "Latest stable Flash model. Best default for categorization.",
+    recommended: true,
+  },
+  {
+    name: "gemini-3.1-flash-lite",
+    description: "Stable low-latency option with lower cost.",
+  },
+  {
+    name: "gemini-2.5-flash",
+    description: "Stable balanced model for high-volume tasks.",
+  },
+  {
+    name: "gemini-2.5-flash-lite",
+    description: "Stable fastest and most budget-friendly 2.5 model.",
+  },
+  {
+    name: "gemini-2.5-pro",
+    description: "Stable higher-quality model for more complex categorization.",
   },
 ];
 
