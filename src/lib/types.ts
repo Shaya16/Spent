@@ -6,6 +6,16 @@ export interface Workspace {
   updatedAt: string;
 }
 
+export interface ChatSession {
+  id: string;
+  workspaceId: number;
+  title: string;
+  titleSource: "auto" | "manual";
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Transaction {
   id: number;
   accountNumber: string;
