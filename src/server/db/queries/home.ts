@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getDb } from "../index";
-import { toLocalISODate } from "../../lib/date-utils";
+import { toLocalISODate, txLocalDay } from "../../lib/date-utils";
 import type {
   HomeBankHealthItem,
   HomeCashFlow,
@@ -22,7 +22,7 @@ export function getCashFlow(
     .prepare(
       `SELECT COALESCE(SUM(charged_amount), 0) as total
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ?
+       WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ?
          AND status = 'completed' AND kind = 'income' AND is_excluded = 0`
     )
     .get(workspaceId, from, to) as { total: number };
@@ -30,7 +30,7 @@ export function getCashFlow(
     .prepare(
       `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ?
+       WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ?
          AND status = 'completed' AND kind = 'expense' AND is_excluded = 0`
     )
     .get(workspaceId, from, to) as { total: number };
@@ -65,7 +65,7 @@ export function getHistoricalTrend(
   const stmt = db.prepare(
     `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total
      FROM transactions
-     WHERE workspace_id = ? AND date >= ? AND date <= ?
+     WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ?
        AND status = 'completed' AND kind = 'expense' AND is_excluded = 0`
   );
 
@@ -235,7 +235,7 @@ export function getCategorySnapshot(
     .prepare(
       `SELECT category_id as categoryId, SUM(ABS(charged_amount)) as amount
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ?
+       WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ?
          AND status = 'completed' AND kind = 'expense'
          AND category_id IS NOT NULL AND is_excluded = 0
        GROUP BY category_id`

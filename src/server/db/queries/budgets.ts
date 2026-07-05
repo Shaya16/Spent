@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getDb } from "../index";
-import { toLocalISODate } from "../../lib/date-utils";
+import { toLocalISODate, txLocalDay } from "../../lib/date-utils";
 
 export interface BudgetRow {
   categoryId: number;
@@ -106,7 +106,7 @@ export function getAutoBudgetAverage(
       .prepare(
         `SELECT category_id as categoryId, SUM(ABS(charged_amount)) as amount
          FROM transactions
-         WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND category_id IS NOT NULL
+         WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ? AND status = 'completed' AND category_id IS NOT NULL
          GROUP BY category_id`
       )
       .all(workspaceId, from, to) as AutoSpend[];

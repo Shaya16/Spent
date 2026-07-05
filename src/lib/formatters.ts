@@ -26,17 +26,28 @@ export function formatCurrency(
   }).format(Math.abs(amount));
 }
 
+/**
+ * Bank transaction dates mean "this calendar day in Israel". Always render
+ * them in this timezone so the displayed day matches the bank statement,
+ * regardless of the viewer's browser timezone.
+ */
+export const BANK_TIMEZONE = "Asia/Jerusalem";
+
 export function formatDate(isoDate: string): string {
-  const d = new Date(isoDate);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: BANK_TIMEZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(isoDate));
 }
 
 export function formatMonth(isoDate: string, locale?: Locale): string {
-  const d = new Date(isoDate);
-  return d.toLocaleDateString(bcp47(locale), { month: "short", year: "numeric" });
+  return new Date(isoDate).toLocaleDateString(bcp47(locale), {
+    timeZone: BANK_TIMEZONE,
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function toLocalDateString(d: Date): string {
@@ -117,7 +128,7 @@ export function formatLastSync(
 
 export function formatJerusalemTimeOfDay(iso: string, locale?: Locale): string {
   return new Intl.DateTimeFormat(bcp47(locale), {
-    timeZone: "Asia/Jerusalem",
+    timeZone: BANK_TIMEZONE,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
