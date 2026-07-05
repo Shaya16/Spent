@@ -166,6 +166,61 @@ async function runScrape(
     args: chromiumArgs,
   });
 
+  // Discount/Mercantile scraper workaround. The library's Discount scraper
+  // checks the final URL once after a single waitForNavigation against a
+  // narrow exact-match list. Discount's login redirect chain may land on
+  // retail variants outside that list, producing UNKNOWN_ERROR. This block
+  // widens the SUCCESS match and polls until the URL settles on a
+  // retail/lobby page (or 45s elapses).
+  if (provider === "discount" || provider === "mercantile") {
+    const s = scraper as unknown as {
+      page: {
+        evaluate: <T>(fn: () => T) => Promise<T>;
+      };
+      getLoginOptions: (
+        c: Record<string, string>,
+      ) => {
+        postAction?: () => Promise<void>;
+        possibleResults: Record<
+          string,
+          Array<
+            string | RegExp | ((o: { page: unknown; value: string }) => unknown)
+          >
+        >;
+      };
+    };
+    const original = s.getLoginOptions.bind(scraper);
+    s.getLoginOptions = (c) => {
+      const opts = original(c);
+      const originalPostAction = opts.postAction;
+      const successMatcher = async () => {
+        const href = await s.page.evaluate(() => window.location.href);
+        return /\/apollo\/retail/i.test(href);
+      };
+      (opts.possibleResults.SUCCESS ??= []).push(successMatcher);
+      opts.postAction = async () => {
+        try {
+          await originalPostAction?.();
+        } catch {
+          // The library's single waitForNavigation can reject mid-redirect.
+          // Ignore it; the poll below determines the real outcome.
+        }
+        const deadline = Date.now() + 45_000;
+        while (Date.now() < deadline) {
+          const href = await s.page.evaluate(() => window.location.href);
+          if (
+            /\/apollo\/retail/i.test(href) ||
+            /masterPage\.html#\/(LOGIN_PAGE|PWD_RENEW)/i.test(href)
+          ) {
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      };
+      return opts;
+    };
+  }
+
   // credentials shape varies by provider; the library accepts different types per bank
   const result = await scraper.scrape(
     credentials as Parameters<typeof scraper.scrape>[0]

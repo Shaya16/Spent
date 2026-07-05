@@ -3,6 +3,7 @@ import "server-only";
 import { getDb } from "../index";
 import { computeDedupHash } from "../../lib/dedup";
 import { detectKind } from "../../lib/transfers";
+import { txLocalDay, TX_DATE_SHIFT } from "../../lib/date-utils";
 import type {
   TransactionWithCategory,
   MonthlySummary,
@@ -198,11 +199,11 @@ export function queryTransactions(
   const values: (string | number)[] = [workspaceId];
 
   if (params.from) {
-    conditions.push("t.date >= ?");
+    conditions.push(`${txLocalDay("t.date")} >= ?`);
     values.push(params.from);
   }
   if (params.to) {
-    conditions.push("t.date <= ?");
+    conditions.push(`${txLocalDay("t.date")} <= ?`);
     values.push(params.to);
   }
   if (params.search) {
@@ -338,11 +339,11 @@ export function getMonthlySummary(
 ): MonthlySummary[] {
   return getDb()
     .prepare(
-      `SELECT strftime('%Y-%m', date) as month,
+      `SELECT strftime('%Y-%m', date, '${TX_DATE_SHIFT}') as month,
               SUM(ABS(charged_amount)) as amount
        FROM transactions
        WHERE workspace_id = ?
-         AND date >= date('now', '-' || ? || ' months')
+         AND ${txLocalDay()} >= date('now', '-' || ? || ' months')
          AND status = 'completed'
          AND kind = 'expense'
          AND is_excluded = 0
@@ -364,7 +365,7 @@ export function getTopMerchants(
               SUM(ABS(charged_amount)) as amount,
               COUNT(*) as count
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'
+       WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ? AND status = 'completed' AND kind = 'expense'
          AND is_excluded = 0
        GROUP BY description
        ORDER BY amount DESC
@@ -388,7 +389,7 @@ export function getCategoryBreakdown(
          COUNT(*) as count
        FROM transactions t
        LEFT JOIN categories c ON t.category_id = c.id
-       WHERE t.workspace_id = ? AND t.date >= ? AND t.date <= ? AND t.status = 'completed' AND t.kind = 'expense'
+       WHERE t.workspace_id = ? AND ${txLocalDay("t.date")} >= ? AND ${txLocalDay("t.date")} <= ? AND t.status = 'completed' AND t.kind = 'expense'
          AND t.is_excluded = 0
        GROUP BY t.category_id
        ORDER BY amount DESC`
@@ -413,7 +414,7 @@ export function getCategorySpendInRange(
               SUM(ABS(charged_amount)) as amount,
               COUNT(*) as count
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense' AND category_id IS NOT NULL
+       WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ? AND status = 'completed' AND kind = 'expense' AND category_id IS NOT NULL
          AND is_excluded = 0
        GROUP BY category_id`
     )
@@ -438,7 +439,7 @@ export function getTopMerchantPerCategory(
          SELECT category_id, description, SUM(ABS(charged_amount)) as amount,
                 ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY SUM(ABS(charged_amount)) DESC) as rn
          FROM transactions
-         WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense' AND category_id IS NOT NULL
+         WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ? AND status = 'completed' AND kind = 'expense' AND category_id IS NOT NULL
            AND is_excluded = 0
          GROUP BY category_id, description
        )
@@ -469,7 +470,7 @@ export function getCategorySpendByDay(
               COALESCE(SUM(ABS(t.charged_amount)), 0) as amount
        FROM days
        LEFT JOIN transactions t
-         ON substr(t.date, 1, 10) = days.d
+         ON ${txLocalDay("t.date")} = days.d
          AND t.workspace_id = ?
          AND t.category_id = ?
          AND t.kind = 'expense'
@@ -501,7 +502,7 @@ export function getTopMerchantsForCategory(
               COUNT(*) as count
        FROM transactions
        WHERE workspace_id = ? AND category_id = ?
-         AND date >= ? AND date <= ?
+         AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ?
          AND status = 'completed'
          AND kind = 'expense'
          AND is_excluded = 0
@@ -521,7 +522,7 @@ export function getPeriodTotal(
     .prepare(
       `SELECT COALESCE(SUM(ABS(charged_amount)), 0) as total
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'
+       WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ? AND status = 'completed' AND kind = 'expense'
          AND is_excluded = 0`
     )
     .get(workspaceId, from, to) as { total: number };
@@ -537,7 +538,7 @@ export function getPeriodCount(
     .prepare(
       `SELECT COUNT(*) as count
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ? AND status = 'completed' AND kind = 'expense'
+       WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ? AND status = 'completed' AND kind = 'expense'
          AND is_excluded = 0`
     )
     .get(workspaceId, from, to) as { count: number };
@@ -716,8 +717,8 @@ export function getTransactionsSummary(
   const db = getDb();
   const baseConditions = [
     "workspace_id = ?",
-    "date >= ?",
-    "date <= ?",
+    `${txLocalDay()} >= ?`,
+    `${txLocalDay()} <= ?`,
     "status = 'completed'",
     "is_excluded = 0",
   ];
@@ -751,8 +752,8 @@ export function getTransactionsSummary(
     const cmp = sign === "income" ? "> 0" : "< 0";
     const tConditions = [
       "t.workspace_id = ?",
-      "t.date >= ?",
-      "t.date <= ?",
+      `${txLocalDay("t.date")} >= ?`,
+      `${txLocalDay("t.date")} <= ?`,
       "t.status = 'completed'",
       "t.is_excluded = 0",
       `t.charged_amount ${cmp}`,
@@ -817,7 +818,7 @@ export function getNeedsReviewCountByCategory(
     .prepare(
       `SELECT category_id as categoryId, COUNT(*) as count
        FROM transactions
-       WHERE workspace_id = ? AND date >= ? AND date <= ?
+       WHERE workspace_id = ? AND ${txLocalDay()} >= ? AND ${txLocalDay()} <= ?
          AND status = 'completed'
          AND kind = 'expense'
          AND needs_review = 1
