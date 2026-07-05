@@ -11,6 +11,7 @@ import type {
   Workspace,
   HomePayload,
   ActivitySnapshot,
+  CredentialAccount,
 } from "./types";
 import { getActiveWorkspaceIdSync } from "./workspace-store";
 
@@ -451,6 +452,27 @@ export function getIntegrationCredentials(credentialId: number) {
     requiresManualTwoFactor: boolean;
     hasTwoFactorToken: boolean;
   }>(`/api/integrations/${credentialId}`);
+}
+
+export function getIntegrationAccounts(credentialId: number) {
+  return fetchJSON<{ accounts: CredentialAccount[] }>(
+    `/api/integrations/${credentialId}/accounts`
+  );
+}
+
+export function setIntegrationAccountExcluded(
+  credentialId: number,
+  accountNumber: string,
+  excluded: boolean
+) {
+  return fetchJSON<{ success: boolean }>(
+    `/api/integrations/${credentialId}/accounts`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountNumber, excluded }),
+    }
+  );
 }
 
 export function deleteCategory(categoryId: number) {

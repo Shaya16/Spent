@@ -26,6 +26,7 @@ import {
   incrementMerchantHits,
 } from "@/server/lib/merchant-memory";
 import { applyMerchantRulesToSyncRun } from "@/server/db/queries/excluded-merchants";
+import { applyAccountRulesToSyncRun } from "@/server/db/queries/excluded-accounts";
 import { getAllCategories } from "@/server/db/queries/categories";
 import { getRecentCorrections } from "@/server/db/queries/category-corrections";
 import { scrapeBank } from "@/server/scrapers";
@@ -264,6 +265,7 @@ async function syncOneCredential(
     syncRunId
   );
   applyMerchantRulesToSyncRun(workspaceId, syncRunId);
+  applyAccountRulesToSyncRun(workspaceId, syncRunId);
   completeSyncRun(syncRunId, added, updated);
 
   return {
