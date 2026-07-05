@@ -724,3 +724,10 @@ export interface ExcludedMerchant {
   merchantKey: string;
   createdAt: string;
 }
+
+/** One card / bank account within a credential, with its monitoring state. */
+export interface CredentialAccount {
+  accountNumber: string;
+  transactionCount: number;
+  excluded: boolean;
+}

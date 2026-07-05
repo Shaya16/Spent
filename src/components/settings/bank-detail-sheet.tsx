@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -13,12 +13,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { ProviderBadge } from "@/components/setup/provider-badge";
 import { BANK_PROVIDERS, type BankProviderInfo, type Integration } from "@/lib/types";
 import {
   deleteIntegration,
+  getIntegrationAccounts,
   getIntegrationCredentials,
   saveBankCredentials,
+  setIntegrationAccountExcluded,
   testBankConnection,
   updateIntegrationSettings,
 } from "@/lib/api";
@@ -117,10 +120,13 @@ function SheetBody({
           onSaved={onClose}
         />
         {mode === "edit" && connected ? (
-          <RecentSyncCard
-            lastSyncAt={connected.lastSyncAt}
-            transactionCount={connected.transactionCount}
-          />
+          <>
+            <RecentSyncCard
+              lastSyncAt={connected.lastSyncAt}
+              transactionCount={connected.transactionCount}
+            />
+            <AccountsSection credentialId={connected.id} />
+          </>
         ) : null}
       </div>
 
@@ -409,6 +415,85 @@ function RecentSyncCard({
             ? `Last synced ${formatRelative(lastSyncAt)}`
             : "Never synced"}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function AccountsSection({ credentialId }: { credentialId: number }) {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ["integrationAccounts", credentialId],
+    queryFn: () => getIntegrationAccounts(credentialId),
+  });
+  const mutation = useMutation({
+    mutationFn: ({
+      accountNumber,
+      excluded,
+    }: {
+      accountNumber: string;
+      excluded: boolean;
+    }) => setIntegrationAccountExcluded(credentialId, accountNumber, excluded),
+    onSuccess: (_res, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["integrationAccounts", credentialId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
+      queryClient.invalidateQueries({ queryKey: ["home"] });
+      toast.success(
+        vars.excluded
+          ? `Account •${vars.accountNumber} is no longer monitored`
+          : `Account •${vars.accountNumber} is monitored again`
+      );
+    },
+    onError: () => {
+      toast.error("Could not update account monitoring.");
+    },
+  });
+
+  const accounts = data?.accounts ?? [];
+  if (accounts.length === 0) return null;
+
+  return (
+    <div>
+      <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        Accounts
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Turn off a card or account you don&apos;t want in your numbers. Its
+        transactions are hidden from totals, now and on future syncs.
+      </p>
+      <div className="mt-2 divide-y divide-border/60 rounded-xl border border-border bg-muted/30">
+        {accounts.map((account) => (
+          <div
+            key={account.accountNumber}
+            className="flex items-center justify-between gap-3 px-4 py-3"
+          >
+            <div className="min-w-0">
+              <div className="text-sm font-medium">
+                •{account.accountNumber}
+              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                {account.transactionCount} transaction
+                {account.transactionCount === 1 ? "" : "s"}
+                {account.excluded ? " · not monitored" : ""}
+              </div>
+            </div>
+            <Switch
+              checked={!account.excluded}
+              disabled={mutation.isPending}
+              onCheckedChange={(checked) =>
+                mutation.mutate({
+                  accountNumber: account.accountNumber,
+                  excluded: !checked,
+                })
+              }
+              aria-label={`Monitor account ${account.accountNumber}`}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
