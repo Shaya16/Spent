@@ -18,9 +18,27 @@ export function listRules(workspaceId: number): Rule[] {
     });
 }
 
+const OPS_BY_FIELD: Record<Rule["field"], Rule["op"][]> = {
+  merchant: ["contains", "equals", "regex"],
+  account: ["contains", "equals", "regex"],
+  amount: ["gt", "lt"],
+};
+
 export function createRule(workspaceId: number, rule: NewRule): number {
+  if (!OPS_BY_FIELD[rule.field]?.includes(rule.op)) {
+    throw new Error(`The ${rule.op} operator cannot be used on ${rule.field}`);
+  }
+  if (rule.field === "amount" && !(Number.isFinite(Number(rule.value)) && Number(rule.value) >= 0)) {
+    throw new Error("Amount must be a non-negative number");
+  }
   if (rule.op === "regex" && !isSafeRegex(rule.value)) {
     throw new Error("Unsafe or invalid regex pattern");
+  }
+  if (
+    rule.categoryId != null &&
+    !getDb().prepare("SELECT 1 FROM categories WHERE id = ? AND workspace_id = ?").get(rule.categoryId, workspaceId)
+  ) {
+    throw new Error("Unknown category");
   }
   return getDb()
     .prepare(

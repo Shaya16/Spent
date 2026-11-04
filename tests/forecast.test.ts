@@ -64,6 +64,14 @@ describe("forecastBill with posted charges", () => {
   });
 });
 
+describe("forecastBill posted window", () => {
+  it("counts a posted charge whose billing date is shifted off the nominal day", () => {
+    const out = forecastBill({ billingDay: 10, today: "2026-11-04", series: [], installments: [], avgDiscretionary: 0, posted: { "2026-11-09": 70, "2026-12-11": 30 } });
+    expect(out[0].parts.posted).toBe(70);
+    expect(out[1].parts.posted).toBe(30);
+  });
+});
+
 describe("forecastCards", () => {
   it("forecasts each card on its own billing day and counts what was posted to it", () => {
     const out = forecastCards({

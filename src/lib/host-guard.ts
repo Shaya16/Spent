@@ -6,10 +6,15 @@ const ALLOWED = new Set(["127.0.0.1", "localhost", "[::1]", "spent.localhost"]);
 const fromEnv = (process.env.SPENT_ALLOWED_HOSTS ?? "")
   .split(",")
   .map((h) => h.trim().toLowerCase())
-  .filter(Boolean);
+  .filter(Boolean)
+  .map((h) => (h.includes(":") && !h.startsWith("[") ? `[${h}]` : h));
 
 export function isAllowedHost(host: string | null, extra: string[] = fromEnv): boolean {
   if (!host) return false;
   const name = (host.startsWith("[") ? host.slice(0, host.indexOf("]") + 1) : host.split(":")[0]).toLowerCase();
-  return ALLOWED.has(name) || extra.some((h) => h.toLowerCase() === name);
+  const listed = extra.map((h) => {
+    const lower = h.toLowerCase();
+    return lower.includes(":") && !lower.startsWith("[") ? `[${lower}]` : lower;
+  });
+  return ALLOWED.has(name) || listed.includes(name);
 }

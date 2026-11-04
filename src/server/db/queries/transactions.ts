@@ -841,12 +841,14 @@ export function saveSyncTransactions(
   transactions: RawTransaction[],
   provider: string,
   credentialId: number,
-  syncRunId: number
+  syncRunId: number,
+  /** Every account the scrape returned, including ones with no rows (a voided charge leaves none). */
+  scrapedAccounts: string[]
 ): InsertResult & { prunedPending: number } {
   const db = getDb();
   return db.transaction(() => {
     const result = insertTransactions(workspaceId, transactions, provider, credentialId, syncRunId);
-    const accounts = [...new Set(transactions.map((t) => t.accountNumber))];
+    const accounts = [...new Set(scrapedAccounts)];
     if (accounts.length === 0) return { ...result, prunedPending: 0 };
     const keep = [...new Set(transactions.filter((t) => t.status === "pending").map(dedupHashFor))];
     const accountList = accounts.map(() => "?").join(",");

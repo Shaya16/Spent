@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { addDays, addMonths, daysBetween, israelDay, monthKey } from "@/server/lib/date-utils";
+import { addDays, addMonths, daysBetween, israelDay, israelToday, monthKey } from "@/server/lib/date-utils";
 
 describe("date helpers", () => {
   it("addMonths clamps to the month length and rolls the year", () => {
@@ -18,6 +18,9 @@ describe("date helpers", () => {
     expect(israelDay("2026-09-30T21:00:00.000Z")).toBe("2026-10-01");
     expect(israelDay("2026-01-31T22:30:00.000Z")).toBe("2026-02-01");
     expect(israelDay("2026-10-01")).toBe("2026-10-01");
+  });
+  it("israelToday uses Israeli time regardless of the host time zone", () => {
+    expect(israelToday(new Date("2026-10-31T22:30:00.000Z"))).toBe("2026-11-01");
   });
   it("israelDay leaves an unparseable value's first 10 characters", () => {
     expect(israelDay("01/10/2026 x")).toBe("01/10/2026");

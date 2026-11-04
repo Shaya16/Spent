@@ -262,7 +262,8 @@ async function syncOneCredential(
     allTransactions,
     provider,
     meta.id,
-    syncRunId
+    syncRunId,
+    result.accounts.map((a) => a.accountNumber)
   );
   applyMerchantRulesToSyncRun(workspaceId, syncRunId);
   applyRulesToSyncRun(workspaceId, syncRunId);

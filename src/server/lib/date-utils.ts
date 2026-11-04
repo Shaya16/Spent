@@ -57,6 +57,11 @@ export function monthKey(date: string, shift = 0): string {
 
 const israelFormat = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" });
 
+/** Today's date in Israel, whatever time zone the host runs in. */
+export function israelToday(now: Date = new Date()): string {
+  return israelFormat.format(now);
+}
+
 /** Israeli calendar day of a stored date. Scrapers store UTC instants, so Israeli midnight reads as 21:00/22:00Z the day before. */
 export function israelDay(value: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;

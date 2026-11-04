@@ -1,3 +1,7 @@
+import type { Series } from "@/server/insights/recurring";
+import type { BillForecast } from "@/server/insights/forecast";
+import type { Anomaly } from "@/server/insights/anomalies";
+import type { Rule } from "@/server/rules/engine";
 import type {
   SetupStatus,
   AppSettings,
@@ -675,11 +679,6 @@ export function pullOllamaModel(
 
   return { cancel: () => controller.abort() };
 }
-
-import type { Series } from "@/server/insights/recurring";
-import type { BillForecast } from "@/server/insights/forecast";
-import type { Anomaly } from "@/server/insights/anomalies";
-import type { Rule } from "@/server/rules/engine";
 
 export interface InsightsPayload {
   series: Series[];

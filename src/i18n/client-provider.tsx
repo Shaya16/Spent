@@ -39,6 +39,8 @@ export function I18nProvider({ locale, messages, children }: Props) {
     <NextIntlClientProvider
       locale={locale}
       messages={messages}
+      // Must match request.ts; without it server and browser can format dates differently and fail hydration.
+      timeZone="Asia/Jerusalem"
       onError={onError}
       getMessageFallback={getMessageFallback}
     >

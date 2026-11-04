@@ -15,6 +15,21 @@ describe("normalizeMerchant", () => {
   it("lowercases Latin and keeps mixed Hebrew/English", () => {
     expect(normalizeMerchant("  Super-Pharm תל אביב ")).toBe("super-pharm תל אביב");
   });
+  it("treats the Hebrew maqaf and a hyphen as the same character", () => {
+    expect(normalizeMerchant("תל־אביב")).toBe(normalizeMerchant("תל-אביב"));
+  });
+  it("keeps the original key for a Latin name with a branch number, so learned categories still match", () => {
+    expect(normalizeMerchant("SUPER-PHARM 123")).toBe("super-pharm");
+  });
+  it("keeps a number joined to the name", () => {
+    expect(normalizeMerchant("7-11")).toBe("7-11");
+  });
+  it("still drops a bare branch number after a Hebrew name", () => {
+    expect(normalizeMerchant("שופרסל 123")).toBe("שופרסל");
+  });
+  it("strips invisible direction marks", () => {
+    expect(normalizeMerchant("‏שופרסל‎")).toBe("שופרסל");
+  });
   it("returns empty string for empty or noise-only input", () => {
     expect(normalizeMerchant("")).toBe("");
     expect(normalizeMerchant(" *- 123 ")).toBe("");

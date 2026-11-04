@@ -24,4 +24,6 @@ export interface ScrapeResult {
   success: boolean;
   accounts: ScrapedAccount[];
   errorMessage?: string;
+  /** A transient failure worth one more attempt. */
+  retryable?: boolean;
 }

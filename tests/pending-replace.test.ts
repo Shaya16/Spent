@@ -34,28 +34,34 @@ const rows = (account: string) =>
 
 describe("saveSyncTransactions", () => {
   it("removes a pending row once the scrape returns it as completed in a different shape", () => {
-    q.saveSyncTransactions(ws, [pending("A", "Wolt", 120)], "isracard", cred, run);
-    q.saveSyncTransactions(ws, [completed("A", "Wolt", 120)], "isracard", cred, run);
+    q.saveSyncTransactions(ws, [pending("A", "Wolt", 120)], "isracard", cred, run, ["A"]);
+    q.saveSyncTransactions(ws, [completed("A", "Wolt", 120)], "isracard", cred, run, ["A"]);
     expect(rows("A")).toEqual([{ description: "Wolt", status: "completed", categoryId: null }]);
   });
 
   it("keeps a still-pending row, and the category set on it, across syncs", () => {
-    q.saveSyncTransactions(ws, [pending("B", "Super-Pharm", 80)], "isracard", cred, run);
+    q.saveSyncTransactions(ws, [pending("B", "Super-Pharm", 80)], "isracard", cred, run, ["B"]);
     const cat = (db.prepare("SELECT id FROM categories WHERE workspace_id = ? LIMIT 1").get(ws) as { id: number }).id;
     db.prepare("UPDATE transactions SET category_id = ?, category_source = 'user' WHERE account_number = 'B'").run(cat);
-    q.saveSyncTransactions(ws, [pending("B", "Super-Pharm", 80)], "isracard", cred, run);
+    q.saveSyncTransactions(ws, [pending("B", "Super-Pharm", 80)], "isracard", cred, run, ["B"]);
     expect(rows("B")).toEqual([{ description: "Super-Pharm", status: "pending", categoryId: cat }]);
   });
 
   it("leaves pending rows of accounts this scrape did not return", () => {
-    q.saveSyncTransactions(ws, [pending("C", "Aroma", 30)], "isracard", cred, run);
-    q.saveSyncTransactions(ws, [completed("D", "Rami Levy", 200)], "isracard", cred, run);
+    q.saveSyncTransactions(ws, [pending("C", "Aroma", 30)], "isracard", cred, run, ["C"]);
+    q.saveSyncTransactions(ws, [completed("D", "Rami Levy", 200)], "isracard", cred, run, ["D"]);
     expect(rows("C")).toHaveLength(1);
   });
 
   it("never deletes completed rows", () => {
-    q.saveSyncTransactions(ws, [completed("E", "IKEA", 500)], "isracard", cred, run);
-    q.saveSyncTransactions(ws, [pending("E", "Fox", 90)], "isracard", cred, run);
+    q.saveSyncTransactions(ws, [completed("E", "IKEA", 500)], "isracard", cred, run, ["E"]);
+    q.saveSyncTransactions(ws, [pending("E", "Fox", 90)], "isracard", cred, run, ["E"]);
     expect(rows("E").map((r) => (r as { status: string }).status)).toEqual(["completed", "pending"]);
+  });
+
+  it("removes a voided pending charge when the scrape returns its account with no rows", () => {
+    q.saveSyncTransactions(ws, [pending("F", "Voided", 15)], "isracard", cred, run, ["F"]);
+    q.saveSyncTransactions(ws, [], "isracard", cred, run, ["F"]);
+    expect(rows("F")).toEqual([]);
   });
 });

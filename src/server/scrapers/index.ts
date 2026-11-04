@@ -117,7 +117,15 @@ function classifyError(error: unknown): {
   return { retryable: false, friendly: null };
 }
 
+// Failures the scraper reports as a result (not a thrown error) that usually clear on a second attempt.
+// Not TIMEOUT: it also covers login and 2FA waits, and retrying means a second login, maybe a second SMS.
+const RETRYABLE_ERROR_TYPES = new Set(["NETWORK_ERROR"]);
+
 const FRIENDLY_ERRORS: Record<string, string> = {
+  WAF_BLOCKED:
+    "The bank's bot protection blocked this sync. It usually clears after a few hours (often overnight). Wait and try again.",
+  NETWORK_ERROR:
+    "Network error reaching the bank. Check your connection and try again.",
   INVALID_PASSWORD:
     "The credentials were rejected by the bank. Double-check ID, card last 6 digits, and password.",
   CHANGE_PASSWORD:
@@ -198,6 +206,7 @@ async function runScrape(
       errorMessage: friendly
         ? `${friendly} (${detail})`
         : `Scraping failed: ${detail}`,
+      retryable: RETRYABLE_ERROR_TYPES.has(errorType),
     };
   }
 
@@ -236,7 +245,11 @@ export async function scrapeBank(
       console.log(
         `[scraper] starting scrape for ${provider} from ${startDate.toISOString()} (attempt ${attempt}/${MAX_ATTEMPTS}, showBrowser=${showBrowser})`
       );
-      return await runScrape(provider, credentials, startDate, showBrowser);
+      const result = await runScrape(provider, credentials, startDate, showBrowser);
+      if (result.success || !result.retryable || attempt === MAX_ATTEMPTS) return result;
+      const backoffMs = 2000 * attempt;
+      console.log(`[scraper] retryable failure, waiting ${backoffMs}ms`);
+      await new Promise((r) => setTimeout(r, backoffMs));
     } catch (error) {
       lastError = error;
       console.error(

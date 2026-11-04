@@ -41,3 +41,18 @@ describe("applyRulesToSyncRun", () => {
     expect(() => q.createRule(ws, { field: "merchant", op: "regex", value: "(a+)+$" })).toThrow(/unsafe/i);
   });
 });
+
+describe("createRule validation", () => {
+  it("rejects an operator that cannot apply to the field", () => {
+    expect(() => q.createRule(ws, { field: "amount", op: "regex", value: "1", kind: "transfer" })).toThrow(/operator/i);
+    expect(() => q.createRule(ws, { field: "merchant", op: "gt", value: "1", kind: "transfer" })).toThrow(/operator/i);
+  });
+  it("rejects a non-numeric amount", () => {
+    expect(() => q.createRule(ws, { field: "amount", op: "gt", value: "abc", kind: "transfer" })).toThrow(/number/i);
+  });
+  it("rejects a category from another workspace", () => {
+    const other = db.prepare("INSERT INTO workspaces (name, slug) VALUES ('Other', 'other')").run().lastInsertRowid as number;
+    const foreign = db.prepare("INSERT INTO categories (workspace_id, name, color, icon, kind) VALUES (?, 'X', '#000', 'tag', 'expense')").run(other).lastInsertRowid as number;
+    expect(() => q.createRule(ws, { field: "merchant", op: "contains", value: "x", categoryId: foreign })).toThrow(/category/i);
+  });
+});

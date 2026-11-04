@@ -31,6 +31,31 @@ beforeAll(async () => {
   ], "isracard", cred, run);
 });
 
+describe("splitMessage", () => {
+  it("splits on line breaks under Telegram's limit and loses nothing", () => {
+    const text = Array.from({ length: 100 }, (_, i) => `${i} ${"x".repeat(95)}`).join("\n");
+    const parts = cmd.splitMessage(text);
+    expect(parts.length).toBeGreaterThan(1);
+    expect(parts.every((p) => p.length <= 4000)).toBe(true);
+    expect(parts.join("\n")).toBe(text);
+  });
+  it("hard-splits a single line longer than the limit", () => {
+    const parts = cmd.splitMessage("y".repeat(9000));
+    expect(parts.map((p) => p.length)).toEqual([4000, 4000, 1000]);
+  });
+});
+
+describe("splitMessage edge cases", () => {
+  it("never produces an empty part", () => {
+    expect(cmd.splitMessage("\n" + "z".repeat(4500)).every((p) => p.length > 0)).toBe(true);
+  });
+  it("does not cut an emoji in half", () => {
+    const parts = cmd.splitMessage("a" + "😀".repeat(3000));
+    expect(parts.join("")).toBe("a" + "😀".repeat(3000));
+    expect(parts.every((p) => !/[\uD800-\uDBFF]$/.test(p))).toBe(true);
+  });
+});
+
 describe("handleCommand", () => {
   it("ignores messages from any other chat", async () => {
     expect(await cmd.handleCommand("/month", 999, cfg, deps())).toBeNull();
