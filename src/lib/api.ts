@@ -675,3 +675,35 @@ export function pullOllamaModel(
 
   return { cancel: () => controller.abort() };
 }
+
+import type { Series } from "@/server/insights/recurring";
+import type { BillForecast } from "@/server/insights/forecast";
+import type { Anomaly } from "@/server/insights/anomalies";
+import type { Rule } from "@/server/rules/engine";
+
+export interface InsightsPayload {
+  series: Series[];
+  forecast: BillForecast[];
+  anomalies: Anomaly[];
+}
+
+export function getInsights() {
+  return fetchJSON<InsightsPayload>("/api/insights");
+}
+
+export function listRules() {
+  return fetchJSON<Rule[]>("/api/rules");
+}
+
+export function createRule(rule: Omit<Rule, "id">) {
+  return fetchJSON<{ id: number }>("/api/rules", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rule),
+  });
+}
+
+export async function deleteRule(id: number) {
+  const res = await fetch(`${BASE}/api/rules/${id}`, withWorkspaceHeader({ method: "DELETE" }));
+  if (!res.ok) throw new Error("Delete failed");
+}

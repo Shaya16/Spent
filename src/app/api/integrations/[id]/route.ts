@@ -8,6 +8,7 @@ import {
   updateCredentialField,
 } from "@/server/db/queries/bank-credentials";
 import { getWorkspaceIdFromRequest } from "@/server/lib/workspace-context";
+import { BANK_PROVIDERS } from "@/lib/types";
 
 function parseCredentialId(id: string): number | null {
   const credentialId = Number(id);
@@ -48,7 +49,18 @@ export async function GET(
     });
   }
 
-  const { otpLongTermToken, ...userFacing } = credentials;
+  // Secrets never go back to the browser; editing a saved bank means retyping its password.
+  const secretKeys = new Set(
+    (BANK_PROVIDERS.find((p) => p.id === meta.provider)?.credentialFields ?? [])
+      .filter((f) => f.type === "password")
+      .map((f) => f.key)
+  );
+  const userFacing = Object.fromEntries(
+    Object.entries(credentials).filter(
+      ([key]) => !secretKeys.has(key) && !/password|token|secret|pin/i.test(key)
+    )
+  );
+  const hasToken = Boolean(credentials.otpLongTermToken);
 
   return NextResponse.json({
     credentials: userFacing,
@@ -58,7 +70,7 @@ export async function GET(
       workspaceId,
       credentialId
     ),
-    hasTwoFactorToken: Boolean(otpLongTermToken),
+    hasTwoFactorToken: hasToken,
   });
 }
 

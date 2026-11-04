@@ -36,7 +36,9 @@
     "transactions": "תנועות",
     "settings": "הגדרות",
     "starOnGitHub": "תייגו ב־GitHub",
-    "brandTagline": "הכסף שלכם · קוד פתוח"
+    "brandTagline": "הכסף שלכם · קוד פתוח",
+    "insights": "תובנות",
+    "rules": "כללים"
   },
   "home": {
     "pageTitle": "בית",
@@ -727,8 +729,12 @@
         "placeholder": "הסיסמה שאתם משתמשים בה ב־digital.isracard.co.il",
         "hint": "אותה סיסמה שאתם משתמשים בה להתחברות באתר ישראכרט."
       },
-      "username": { "label": "שם משתמש" },
-      "userCode": { "label": "קוד משתמש" },
+      "username": {
+        "label": "שם משתמש"
+      },
+      "userCode": {
+        "label": "קוד משתמש"
+      },
       "num": {
         "label": "מספר חשבון",
         "discountPlaceholder": "מספר חשבון דיסקונט שלכם",
@@ -768,5 +774,47 @@
     "daysAgoShort": "לפני {count} ימים",
     "weeksAgoShort": "לפני {count} שבועות",
     "monthsAgoShort": "לפני {count} חודשים"
+  },
+  "insights": {
+    "title": "תובנות",
+    "subscriptions": "מנויים וחיובים חוזרים",
+    "noSubscriptions": "עדיין לא זוהו חיובים חוזרים.",
+    "maybe": "אולי",
+    "priceChanged": "המחיר השתנה {from} → {to}",
+    "forecast": "חיובי כרטיס קרובים",
+    "recurring": "חוזרים",
+    "installments": "תשלומים",
+    "other": "הוצאות אחרות",
+    "anomalies": "שימו לב",
+    "noAnomalies": "אין חריגות.",
+    "weekly": "שבועי",
+    "monthly": "חודשי",
+    "yearly": "שנתי",
+    "couldntLoad": "לא ניתן לטעון תובנות.",
+    "posted": "כבר חויב"
+  },
+  "rules": {
+    "title": "כללים",
+    "description": "סיווג או סימון אוטומטי של עסקאות בעת סנכרון.",
+    "when": "כאשר",
+    "merchant": "בית עסק",
+    "amount": "סכום",
+    "account": "חשבון",
+    "contains": "מכיל",
+    "equals": "שווה ל",
+    "regex": "תואם ביטוי רגולרי",
+    "gt": "גדול מ",
+    "lt": "קטן מ",
+    "value": "ערך",
+    "setCategory": "קבע קטגוריה",
+    "markAs": "סמן כ",
+    "none": "ללא",
+    "expense": "הוצאה",
+    "income": "הכנסה",
+    "transfer": "העברה (לא נספרת)",
+    "add": "הוסף כלל",
+    "delete": "מחק",
+    "empty": "אין כללים עדיין.",
+    "saveFailed": "לא ניתן לשמור את הכלל."
   }
 }

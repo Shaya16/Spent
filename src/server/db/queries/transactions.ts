@@ -826,3 +826,23 @@ export function getNeedsReviewCountByCategory(
     )
     .all(workspaceId, from, to) as NeedsReviewCount[];
 }
+
+/**
+ * Pending rows are provisional and the scraper's pending shape (identifier, date format, sign) differs from the
+ * completed shape, so they never dedupe against it. Drop them before each insert; the fresh scrape re-adds those still pending.
+ */
+export function replacePendingForAccounts(
+  workspaceId: number,
+  credentialId: number,
+  accountNumbers: string[]
+): number {
+  if (accountNumbers.length === 0) return 0;
+  const placeholders = accountNumbers.map(() => "?").join(",");
+  return getDb()
+    .prepare(
+      `DELETE FROM transactions
+       WHERE workspace_id = ? AND credential_id = ? AND status = 'pending'
+         AND account_number IN (${placeholders})`
+    )
+    .run(workspaceId, credentialId, ...accountNumbers).changes;
+}

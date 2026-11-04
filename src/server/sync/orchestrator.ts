@@ -15,6 +15,7 @@ import {
 } from "@/server/db/queries/sync-runs";
 import {
   insertTransactions,
+  replacePendingForAccounts,
   getUncategorizedIdsByKind,
   getTransactionsForCategorization,
   batchUpdateCategories,
@@ -26,6 +27,7 @@ import {
   incrementMerchantHits,
 } from "@/server/lib/merchant-memory";
 import { applyMerchantRulesToSyncRun } from "@/server/db/queries/excluded-merchants";
+import { applyRulesToSyncRun } from "@/server/db/queries/rules";
 import { getAllCategories } from "@/server/db/queries/categories";
 import { getRecentCorrections } from "@/server/db/queries/category-corrections";
 import { scrapeBank } from "@/server/scrapers";
@@ -256,6 +258,11 @@ async function syncOneCredential(
     }))
   );
 
+  replacePendingForAccounts(
+    workspaceId,
+    meta.id,
+    result.accounts.map((a) => a.accountNumber)
+  );
   const { added, updated } = insertTransactions(
     workspaceId,
     allTransactions,
@@ -264,6 +271,7 @@ async function syncOneCredential(
     syncRunId
   );
   applyMerchantRulesToSyncRun(workspaceId, syncRunId);
+  applyRulesToSyncRun(workspaceId, syncRunId);
   completeSyncRun(syncRunId, added, updated);
 
   return {

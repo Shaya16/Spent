@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isAllowedHost } from "@/lib/host-guard";
 
 /**
  * Same-origin enforcement for mutating API requests.
@@ -13,6 +14,11 @@ import { NextResponse, type NextRequest } from "next/server";
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export function middleware(request: NextRequest) {
+  // Every request, page or API, must be addressed to localhost (blocks DNS rebinding).
+  if (!isAllowedHost(request.headers.get("host"))) {
+    return new NextResponse("Forbidden: unexpected host", { status: 403 });
+  }
+
   if (!MUTATING_METHODS.has(request.method)) {
     return NextResponse.next();
   }
@@ -62,5 +68,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: ["/:path*"],
 };

@@ -36,7 +36,9 @@
     "transactions": "Transactions",
     "settings": "Settings",
     "starOnGitHub": "Star on GitHub",
-    "brandTagline": "YOUR MONEY · OPEN SOURCE"
+    "brandTagline": "YOUR MONEY · OPEN SOURCE",
+    "insights": "Insights",
+    "rules": "Rules"
   },
   "home": {
     "pageTitle": "Home",
@@ -727,8 +729,12 @@
         "placeholder": "Password you use on digital.isracard.co.il",
         "hint": "The same password you use to log in on the Isracard website."
       },
-      "username": { "label": "Username" },
-      "userCode": { "label": "User Code" },
+      "username": {
+        "label": "Username"
+      },
+      "userCode": {
+        "label": "User Code"
+      },
       "num": {
         "label": "Account Number",
         "discountPlaceholder": "Your Discount account number",
@@ -768,5 +774,47 @@
     "daysAgoShort": "{count}d ago",
     "weeksAgoShort": "{count}w ago",
     "monthsAgoShort": "{count}mo ago"
+  },
+  "insights": {
+    "title": "Insights",
+    "subscriptions": "Subscriptions and recurring charges",
+    "noSubscriptions": "No recurring charges detected yet.",
+    "maybe": "maybe",
+    "priceChanged": "Price changed {from} → {to}",
+    "forecast": "Next card bills",
+    "recurring": "Recurring",
+    "installments": "Installments",
+    "other": "Other spending",
+    "anomalies": "Heads up",
+    "noAnomalies": "Nothing unusual.",
+    "weekly": "weekly",
+    "monthly": "monthly",
+    "yearly": "yearly",
+    "couldntLoad": "Couldn't load insights.",
+    "posted": "Already charged"
+  },
+  "rules": {
+    "title": "Rules",
+    "description": "Automatically categorize or mark transactions when they sync.",
+    "when": "When",
+    "merchant": "Merchant",
+    "amount": "Amount",
+    "account": "Account",
+    "contains": "contains",
+    "equals": "equals",
+    "regex": "matches regex",
+    "gt": "is greater than",
+    "lt": "is less than",
+    "value": "Value",
+    "setCategory": "Set category",
+    "markAs": "Mark as",
+    "none": "None",
+    "expense": "Expense",
+    "income": "Income",
+    "transfer": "Transfer (not counted)",
+    "add": "Add rule",
+    "delete": "Delete",
+    "empty": "No rules yet.",
+    "saveFailed": "Couldn't save the rule."
   }
 }

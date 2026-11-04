@@ -1,6 +1,9 @@
 import "server-only";
 
 import { spawn, type ChildProcess } from "child_process";
+import { normalizeOllamaUrl } from "@/lib/url-guard";
+
+export const REMOTE_OLLAMA_ERROR = "The Ollama address must point to this computer (localhost).";
 
 declare global {
   var _ollamaProcess: ChildProcess | undefined;
@@ -8,6 +11,7 @@ declare global {
 }
 
 async function isReachable(url: string, timeoutMs = 1500): Promise<boolean> {
+  if (!normalizeOllamaUrl(url)) return false;
   try {
     const res = await fetch(`${url}/api/tags`, {
       signal: AbortSignal.timeout(timeoutMs),
@@ -43,7 +47,9 @@ export interface OllamaPullProgress {
   completed?: number;
 }
 
-export async function listOllamaModels(url: string): Promise<string[]> {
+export async function listOllamaModels(rawUrl: string): Promise<string[]> {
+  const url = normalizeOllamaUrl(rawUrl);
+  if (!url) return [];
   try {
     const res = await fetch(`${url}/api/tags`, {
       signal: AbortSignal.timeout(5000),
@@ -65,9 +71,11 @@ export async function isModelInstalled(
 }
 
 export async function* pullOllamaModel(
-  url: string,
+  rawUrl: string,
   model: string
 ): AsyncGenerator<OllamaPullProgress, void, unknown> {
+  const url = normalizeOllamaUrl(rawUrl);
+  if (!url) throw new Error(REMOTE_OLLAMA_ERROR);
   const res = await fetch(`${url}/api/pull`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -112,8 +120,10 @@ export async function* pullOllamaModel(
 }
 
 export async function ensureOllamaRunning(
-  url: string
+  rawUrl: string
 ): Promise<OllamaCheckResult> {
+  const url = normalizeOllamaUrl(rawUrl);
+  if (!url) return { ok: false, error: REMOTE_OLLAMA_ERROR };
   if (await isReachable(url)) {
     return { ok: true };
   }

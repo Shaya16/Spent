@@ -1,0 +1,40 @@
+import "server-only";
+
+import { Bot } from "grammy";
+import { handleCommand, type BotConfig } from "./commands";
+import { listAllWorkspaceIds } from "../lib/workspace-context";
+
+declare global {
+  var __spentBot: Bot | undefined;
+}
+
+/** Starts long polling when TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set; otherwise does nothing. */
+export function startBot(): void {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = Number(process.env.TELEGRAM_CHAT_ID);
+  if (!token || !chatId || globalThis.__spentBot) return;
+
+  const cfg: BotConfig = { chatId, billingDay: Number(process.env.CARD_BILLING_DAY) || 10 };
+  const bot = new Bot(token);
+
+  bot.on("message:text", async (ctx) => {
+    const reply = await handleCommand(ctx.message.text, ctx.chat.id, cfg, {
+      workspaceId: listAllWorkspaceIds()[0],
+      today: new Date().toISOString().slice(0, 10),
+      runSync: async () => {
+        const { runAllWorkspaces } = await import("../sync/orchestrator");
+        const summaries = await runAllWorkspaces(undefined, undefined, "manual");
+        const added = summaries.reduce((s, w) => s + w.added, 0);
+        const failed = summaries.flatMap((w) => w.providers).filter((p) => !p.ok);
+        return failed.length
+          ? `Sync finished with errors: ${failed.map((f) => f.label).join(", ")}`
+          : `Sync done, ${added} new transactions`;
+      },
+    });
+    if (reply) await ctx.reply(reply);
+  });
+
+  bot.catch((err) => console.error("[bot]", err.message));
+  globalThis.__spentBot = bot;
+  void bot.start();
+}

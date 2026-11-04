@@ -36,7 +36,7 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["better-sqlite3", "israeli-bank-scrapers"],
+  serverExternalPackages: ["better-sqlite3", "israeli-bank-scrapers", "@sergienko4/israeli-bank-scrapers"],
   devIndicators: false,
   async headers() {
     return [

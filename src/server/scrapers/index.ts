@@ -1,7 +1,12 @@
 import "server-only";
 
 import { CompanyTypes, createScraper } from "israeli-bank-scrapers";
-import type { ScrapeResult, ScrapedTransaction } from "./types";
+import {
+  CompanyTypes as ForkCompanyTypes,
+  createScraper as createForkScraper,
+} from "@sergienko4/israeli-bank-scrapers";
+import type { ScrapeResult } from "./types";
+import { toScrapeResult } from "./result";
 import type { BankProvider } from "@/lib/types";
 import { getWorkspaceSetting } from "../db/queries/settings";
 
@@ -154,30 +159,40 @@ async function runScrape(
     chromiumArgs.push("--no-sandbox");
   }
 
-  const scraper = createScraper({
-    companyId,
-    startDate,
-    combineInstallments: false,
-    showBrowser,
-    // Verbose logs include URLs and posted payloads (incl. credentials).
-    // Only enable when the user is also showing the browser (= they're debugging).
-    verbose: showBrowser,
-    timeout: 60000,
-    args: chromiumArgs,
-  });
+  // Isracard and Max go through the maintained fork (browserless, reports window coverage).
+  const forkCompany =
+    provider === "isracard"
+      ? ForkCompanyTypes.Isracard
+      : provider === "max"
+        ? ForkCompanyTypes.Max
+        : null;
 
-  // credentials shape varies by provider; the library accepts different types per bank
-  const result = await scraper.scrape(
-    credentials as Parameters<typeof scraper.scrape>[0]
-  );
+  const result = forkCompany
+    ? await createForkScraper({
+        companyId: forkCompany,
+        startDate,
+        shouldCombineInstallments: false,
+        shouldShowBrowser: showBrowser,
+        timeout: 60000,
+      }).scrape(credentials as never)
+    : await createScraper({
+        companyId,
+        startDate,
+        combineInstallments: false,
+        showBrowser,
+        // Verbose logs include URLs and posted payloads (incl. credentials), so never enable them.
+        verbose: false,
+        timeout: 60000,
+        args: chromiumArgs,
+      }).scrape(credentials as never);
 
   if (!result.success) {
     const errorType = result.errorType ?? "GENERIC";
-    console.error(`[scraper] failed (${errorType}):`, result.errorMessage);
     const friendly = FRIENDLY_ERRORS[errorType];
     const detail = result.errorMessage
       ? sanitizeError(new Error(result.errorMessage))
       : errorType;
+    console.error(`[scraper] failed (${errorType}):`, detail);
     return {
       success: false,
       accounts: [],
@@ -187,37 +202,12 @@ async function runScrape(
     };
   }
 
-  const txnCount = (result.accounts ?? []).reduce(
-    (sum, a) => sum + a.txns.length,
-    0
-  );
+  const mapped = toScrapeResult(result);
+  const txnCount = mapped.accounts.reduce((sum, a) => sum + a.transactions.length, 0);
   console.log(
-    `[scraper] success: ${result.accounts?.length ?? 0} account(s), ${txnCount} transaction(s)`
+    `[scraper] ${mapped.success ? "success" : "rejected"}: ${mapped.accounts.length} account(s), ${txnCount} transaction(s)`
   );
-
-  const accounts = (result.accounts ?? []).map((account) => ({
-    accountNumber: account.accountNumber,
-    transactions: account.txns.map(
-      (txn): ScrapedTransaction => ({
-        type: txn.type === "installments" ? "installments" : "normal",
-        identifier: txn.identifier ?? undefined,
-        date: txn.date,
-        processedDate: txn.processedDate,
-        originalAmount: txn.originalAmount,
-        originalCurrency: txn.originalCurrency,
-        chargedAmount: txn.chargedAmount,
-        chargedCurrency: txn.chargedCurrency ?? undefined,
-        description: txn.description,
-        memo: txn.memo ?? undefined,
-        installments: txn.installments
-          ? { number: txn.installments.number, total: txn.installments.total }
-          : undefined,
-        status: txn.status === "completed" ? "completed" : "pending",
-      })
-    ),
-  }));
-
-  return { success: true, accounts };
+  return mapped;
 }
 
 interface ScrapeBankOptions {

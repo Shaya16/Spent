@@ -2,15 +2,9 @@ import "server-only";
 
 import { getDb } from "../db/index";
 import type { CategoryKind } from "@/lib/types";
+import { normalizeMerchant } from "../rules/normalize";
 
-export function normalizeMerchant(description: string): string {
-  return description
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .replace(/\s+\d+\s*$/, "")
-    .trim();
-}
+export { normalizeMerchant };
 
 export interface MerchantMapping {
   merchantKey: string;
