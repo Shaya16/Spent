@@ -1,3 +1,5 @@
+import "server-only";
+
 // Nikud and cantillation marks (U+0591-U+05C7).
 const NIKUD = /[֑-ׇ]/g;
 // Trailing branch numbers and separator noise left by card issuers: "סניף 123*", "- 4421", "wolt*".

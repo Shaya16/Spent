@@ -37,6 +37,19 @@ interface InsertResult {
   updated: number;
 }
 
+function dedupHashFor(txn: RawTransaction): string {
+  return computeDedupHash({
+    accountNumber: txn.accountNumber,
+    date: txn.date,
+    originalAmount: txn.originalAmount,
+    originalCurrency: txn.originalCurrency,
+    description: txn.description,
+    identifier: txn.identifier,
+    installmentNumber: txn.installmentNumber,
+    installmentTotal: txn.installmentTotal,
+  });
+}
+
 export function insertTransactions(
   workspaceId: number,
   transactions: RawTransaction[],
@@ -76,16 +89,7 @@ export function insertTransactions(
 
   const batchInsert = db.transaction(() => {
     for (const txn of transactions) {
-      const hash = computeDedupHash({
-        accountNumber: txn.accountNumber,
-        date: txn.date,
-        originalAmount: txn.originalAmount,
-        originalCurrency: txn.originalCurrency,
-        description: txn.description,
-        identifier: txn.identifier,
-        installmentNumber: txn.installmentNumber,
-        installmentTotal: txn.installmentTotal,
-      });
+      const hash = dedupHashFor(txn);
 
       const batchCount = (hashCounts.get(hash) ?? 0) + 1;
       hashCounts.set(hash, batchCount);
@@ -828,21 +832,32 @@ export function getNeedsReviewCountByCategory(
 }
 
 /**
- * Pending rows are provisional and the scraper's pending shape (identifier, date format, sign) differs from the
- * completed shape, so they never dedupe against it. Drop them before each insert; the fresh scrape re-adds those still pending.
+ * Inserts a scrape and, in the same transaction, deletes pending rows of the scraped accounts that the
+ * scrape no longer returns. Some scrapers emit a pending charge in a different shape (identifier, date,
+ * sign) than its completed form, so the two never dedupe; rows still pending keep their hash and edits.
  */
-export function replacePendingForAccounts(
+export function saveSyncTransactions(
   workspaceId: number,
+  transactions: RawTransaction[],
+  provider: string,
   credentialId: number,
-  accountNumbers: string[]
-): number {
-  if (accountNumbers.length === 0) return 0;
-  const placeholders = accountNumbers.map(() => "?").join(",");
-  return getDb()
-    .prepare(
-      `DELETE FROM transactions
-       WHERE workspace_id = ? AND credential_id = ? AND status = 'pending'
-         AND account_number IN (${placeholders})`
-    )
-    .run(workspaceId, credentialId, ...accountNumbers).changes;
+  syncRunId: number
+): InsertResult & { prunedPending: number } {
+  const db = getDb();
+  return db.transaction(() => {
+    const result = insertTransactions(workspaceId, transactions, provider, credentialId, syncRunId);
+    const accounts = [...new Set(transactions.map((t) => t.accountNumber))];
+    if (accounts.length === 0) return { ...result, prunedPending: 0 };
+    const keep = [...new Set(transactions.filter((t) => t.status === "pending").map(dedupHashFor))];
+    const accountList = accounts.map(() => "?").join(",");
+    const keepClause = keep.length ? `AND dedup_hash NOT IN (${keep.map(() => "?").join(",")})` : "";
+    const prunedPending = db
+      .prepare(
+        `DELETE FROM transactions
+         WHERE workspace_id = ? AND credential_id = ? AND status = 'pending'
+           AND account_number IN (${accountList}) ${keepClause}`
+      )
+      .run(workspaceId, credentialId, ...accounts, ...keep).changes;
+    return { ...result, prunedPending };
+  })();
 }

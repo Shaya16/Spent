@@ -1,7 +1,7 @@
 import "server-only";
 
 import { loadInsights } from "../insights/data";
-import { forecastBill } from "../insights/forecast";
+import { forecastCards } from "../insights/forecast";
 import { getLastSyncRun } from "../db/queries/sync-runs";
 
 export interface BotConfig {
@@ -10,9 +10,11 @@ export interface BotConfig {
 }
 
 export interface BotDeps {
-  workspaceId: number;
+  /** Undefined until the app has been set up. */
+  workspaceId: number | undefined;
   today: string;
   runSync: () => Promise<string>;
+  isSyncRunning?: () => boolean;
 }
 
 const money = (n: number) => `₪${Math.round(n).toLocaleString("en-US")}`;
@@ -34,15 +36,17 @@ export async function handleCommand(
 ): Promise<string | null> {
   if (fromChatId !== cfg.chatId) return null;
   const cmd = text.trim().split(/\s+/)[0].toLowerCase().replace(/@.*$/, "");
+  const workspaceId = deps.workspaceId;
+  if (workspaceId === undefined) return "Spent is not set up yet. Finish setup in the app first.";
 
   switch (cmd) {
     case "/month": {
-      const i = loadInsights(deps.workspaceId, deps.today);
+      const i = loadInsights(workspaceId, deps.today);
       const lines = i.topCategories.map((c) => `${c.name}: ${money(c.total)}`);
       return [`Spent this month: ${money(i.monthTotal)}`, ...lines].join("\n");
     }
     case "/subs": {
-      const i = loadInsights(deps.workspaceId, deps.today);
+      const i = loadInsights(workspaceId, deps.today);
       if (i.series.length === 0) return "No subscriptions detected yet.";
       return i.series
         .map((s) => {
@@ -52,26 +56,23 @@ export async function handleCommand(
         .join("\n");
     }
     case "/forecast": {
-      const i = loadInsights(deps.workspaceId, deps.today);
-      return forecastBill({
-        billingDay: cfg.billingDay,
-        today: deps.today,
-        series: i.series,
-        installments: i.installments,
-        avgDiscretionary: i.avgDiscretionary,
-        posted: i.posted,
-      })
+      const i = loadInsights(workspaceId, deps.today, cfg.billingDay);
+      const forecast = forecastCards({ today: deps.today, cards: i.cards, series: i.series, installments: i.installments });
+      if (forecast.length === 0) return "No card activity yet.";
+      return forecast
         .map(
           (f) =>
-            `${f.date}: ${money(f.total)} (posted ${money(f.parts.posted)}, recurring ${money(f.parts.recurring)}, installments ${money(f.parts.installments)}, other ${money(f.parts.discretionary)})`
+            `${f.date} card ${f.account?.slice(-4)}: ${money(f.total)} (posted ${money(f.parts.posted)}, recurring ${money(f.parts.recurring)}, installments ${money(f.parts.installments)}, other ${money(f.parts.discretionary)})`
         )
         .join("\n");
     }
     case "/status": {
-      const run = getLastSyncRun(deps.workspaceId);
+      const run = getLastSyncRun(workspaceId);
       return run ? `Last sync: ${run.status} at ${run.startedAt}` : "No sync yet.";
     }
     case "/sync":
+      // Two syncs at once hit the bank twice and race on the same rows.
+      if (deps.isSyncRunning?.()) return "A sync is already running. Try again when it finishes.";
       return deps.runSync();
     default:
       return HELP;

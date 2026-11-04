@@ -1,6 +1,5 @@
 import "server-only";
 
-import { normalizeOllamaUrl } from "@/lib/url-guard";
 import type { AIProvider } from "./types";
 import { ClaudeProvider } from "./providers/claude";
 import { OllamaProvider } from "./providers/ollama";
@@ -27,7 +26,7 @@ export function createAIProvider(): AIProvider | null {
   }
 
   if (provider === "ollama") {
-    const url = normalizeOllamaUrl(getSetting("ai_ollama_url") ?? "") ?? "http://localhost:11434";
+    const url = getSetting("ai_ollama_url") ?? "http://localhost:11434";
     const model = getSetting("ai_ollama_model") ?? "llama3.1";
     return new OllamaProvider(url, model);
   }

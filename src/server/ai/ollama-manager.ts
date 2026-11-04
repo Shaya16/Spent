@@ -1,9 +1,7 @@
 import "server-only";
 
 import { spawn, type ChildProcess } from "child_process";
-import { normalizeOllamaUrl } from "@/lib/url-guard";
-
-export const REMOTE_OLLAMA_ERROR = "The Ollama address must point to this computer (localhost).";
+import { normalizeOllamaUrl, OLLAMA_URL_ERROR } from "@/lib/url-guard";
 
 declare global {
   var _ollamaProcess: ChildProcess | undefined;
@@ -75,7 +73,7 @@ export async function* pullOllamaModel(
   model: string
 ): AsyncGenerator<OllamaPullProgress, void, unknown> {
   const url = normalizeOllamaUrl(rawUrl);
-  if (!url) throw new Error(REMOTE_OLLAMA_ERROR);
+  if (!url) throw new Error(OLLAMA_URL_ERROR);
   const res = await fetch(`${url}/api/pull`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -123,7 +121,7 @@ export async function ensureOllamaRunning(
   rawUrl: string
 ): Promise<OllamaCheckResult> {
   const url = normalizeOllamaUrl(rawUrl);
-  if (!url) return { ok: false, error: REMOTE_OLLAMA_ERROR };
+  if (!url) return { ok: false, error: OLLAMA_URL_ERROR };
   if (await isReachable(url)) {
     return { ok: true };
   }

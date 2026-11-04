@@ -1,9 +1,14 @@
-import { addMonths, type ProjectedPayment } from "./installments";
+import "server-only";
+
+import { addDays, addMonths, daysBetween, monthDate } from "../lib/date-utils";
+import type { ProjectedPayment } from "./installments";
 import { isActive, type Series } from "./recurring";
 
 export interface BillForecast {
   /** Card billing date, YYYY-MM-DD. */
   date: string;
+  /** Card account, set by forecastCards. */
+  account?: string;
   total: number;
   parts: { posted: number; recurring: number; installments: number; discretionary: number };
 }
@@ -17,24 +22,6 @@ interface ForecastOptions {
   avgDiscretionary: number;
   /** Charges already made that will land on an upcoming bill, by billing date. When given, the first bill's remaining spend is scaled to the days left. */
   posted?: Record<string, number>;
-}
-
-function monthDate(year: number, month1: number, day: number): string {
-  const last = new Date(Date.UTC(year, month1, 0)).getUTCDate();
-  return `${year}-${String(month1).padStart(2, "0")}-${String(Math.min(day, last)).padStart(2, "0")}`;
-}
-
-function addDays(date: string, days: number): string {
-  const [y, m, d] = date.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
-}
-
-function daysBetween(a: string, b: string): number {
-  const ms = (d: string) => {
-    const [y, m, day] = d.split("-").map(Number);
-    return Date.UTC(y, m - 1, day);
-  };
-  return Math.round((ms(b) - ms(a)) / 86_400_000);
 }
 
 /** Dates (strictly after `after`, up to `until`) on which a series is expected to charge. */
@@ -83,4 +70,33 @@ export function forecastBill(opts: ForecastOptions): BillForecast[] {
       parts: { posted, recurring, installments, discretionary },
     };
   });
+}
+
+export interface CardForecastInput {
+  account: string;
+  billingDay: number;
+  /** Charges already made on this card, by the billing date they land on. */
+  posted: Record<string, number>;
+  avgDiscretionary: number;
+}
+
+/** Next 3 bills of every card, each on its own billing day, with only that card's subscriptions and installments. */
+export function forecastCards(opts: {
+  today: string;
+  cards: CardForecastInput[];
+  series: Series[];
+  installments: ProjectedPayment[];
+}): BillForecast[] {
+  return opts.cards
+    .flatMap((card) =>
+      forecastBill({
+        billingDay: card.billingDay,
+        today: opts.today,
+        series: opts.series.filter((s) => s.account === card.account),
+        installments: opts.installments.filter((p) => p.account === card.account),
+        avgDiscretionary: card.avgDiscretionary,
+        posted: card.posted,
+      }).map((f) => ({ ...f, account: card.account }))
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
 }

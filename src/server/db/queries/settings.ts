@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getDb } from "../index";
-import { normalizeOllamaUrl } from "@/lib/url-guard";
+import { normalizeOllamaUrl, OLLAMA_URL_ERROR } from "@/lib/url-guard";
 import type { AppSettings } from "@/lib/types";
 
 // Global settings live in the `settings` table and apply to every workspace.
@@ -98,7 +98,7 @@ export function updateAppSettings(
     }
     if (settings.ollamaUrl !== undefined) {
       const url = normalizeOllamaUrl(settings.ollamaUrl);
-      if (!url) throw new Error("The Ollama address must point to this computer (localhost).");
+      if (!url) throw new Error(OLLAMA_URL_ERROR);
       setGlobalSetting("ai_ollama_url", url);
     }
     if (settings.ollamaModel !== undefined) {

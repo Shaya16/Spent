@@ -8,6 +8,7 @@ import type {
   TransactionForCategorization,
 } from "../types";
 import { buildCategorizationPrompt, SYSTEM_PROMPT } from "../prompts";
+import { normalizeOllamaUrl, OLLAMA_URL_ERROR } from "@/lib/url-guard";
 
 function parseConfidence(raw: unknown): number | undefined {
   const n = typeof raw === "number" ? raw : Number(raw);
@@ -37,7 +38,9 @@ export class OllamaProvider implements AIProvider {
       pastCorrections
     );
 
-    const response = await fetch(`${this.baseUrl}/api/chat`, {
+    const baseUrl = normalizeOllamaUrl(this.baseUrl);
+    if (!baseUrl) throw new Error(OLLAMA_URL_ERROR);
+    const response = await fetch(`${baseUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

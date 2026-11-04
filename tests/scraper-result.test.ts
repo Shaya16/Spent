@@ -77,13 +77,13 @@ describe("toScrapeResult", () => {
     expect(toScrapeResult({ success: true, accounts: [{ accountNumber: "1", txns: [txn], windowCoverage: audit }] }).success).toBe(true);
   });
 
-  it("converts UTC instants to the Israeli calendar day", () => {
+  it("stores dates exactly as the scraper returned them, so dedup hashes of existing rows still match", () => {
     const r = toScrapeResult({
       success: true,
       accounts: [{ accountNumber: "1", txns: [{ ...txn, date: "2026-09-30T21:00:00.000Z", processedDate: "2026-10-09T21:00:00.000Z" }] }],
     });
     const t = r.accounts[0].transactions[0];
-    expect(t.date.slice(0, 10)).toBe("2026-10-01");
-    expect(t.processedDate.slice(0, 10)).toBe("2026-10-10");
+    expect(t.date).toBe("2026-09-30T21:00:00.000Z");
+    expect(t.processedDate).toBe("2026-10-09T21:00:00.000Z");
   });
 });

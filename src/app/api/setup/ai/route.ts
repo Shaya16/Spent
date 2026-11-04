@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { setSetting } from "@/server/db/queries/settings";
 import { encrypt } from "@/server/lib/encryption";
-import { normalizeOllamaUrl } from "@/lib/url-guard";
+import { normalizeOllamaUrl, OLLAMA_URL_ERROR } from "@/lib/url-guard";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   };
 
   if (body.provider === "ollama" && body.ollamaUrl && !normalizeOllamaUrl(body.ollamaUrl)) {
-    return NextResponse.json({ error: "The Ollama address must point to this computer (localhost)." }, { status: 400 });
+    return NextResponse.json({ error: OLLAMA_URL_ERROR }, { status: 400 });
   }
 
   setSetting("ai_provider", body.provider);

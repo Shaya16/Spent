@@ -15,7 +15,7 @@ describe("projectInstallments", () => {
   it("projects the remaining payments monthly on the same day", () => {
     const out = projectInstallments([t()], "2026-11-04");
     expect(out).toHaveLength(9);
-    expect(out[0]).toMatchObject({ date: "2026-11-10", month: "2026-11", amount: 100, merchant: "ikea" });
+    expect(out[0]).toMatchObject({ date: "2026-11-10", month: "2026-11", amount: 100, merchant: "ikea", account: "1" });
     expect(out[8].date).toBe("2027-07-10");
   });
   it("uses only the latest payment of a plan", () => {

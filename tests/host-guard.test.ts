@@ -19,6 +19,14 @@ describe("isAllowedHost", () => {
 const req = (host: string, method = "GET", path = "/api/insights") =>
   new NextRequest(`http://${host}${path}`, { method, headers: { host } });
 
+describe("isAllowedHost with SPENT_ALLOWED_HOSTS", () => {
+  it("accepts extra host names the user listed, on any port", () => {
+    expect(isAllowedHost("homeserver:41234", ["homeserver"])).toBe(true);
+    expect(isAllowedHost("HomeServer", ["homeserver"])).toBe(true);
+    expect(isAllowedHost("evil.com", ["homeserver"])).toBe(false);
+  });
+});
+
 describe("middleware host guard", () => {
   it("blocks a DNS-rebound GET to the API", () => {
     expect(middleware(req("attacker.com:41234")).status).toBe(403);

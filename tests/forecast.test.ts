@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { forecastBill } from "@/server/insights/forecast";
+import { forecastBill, forecastCards } from "@/server/insights/forecast";
 import { findAnomalies } from "@/server/insights/anomalies";
 import type { Series } from "@/server/insights/recurring";
 
 const sub = (o: Partial<Series> = {}): Series => ({
-  merchant: "netflix", currency: "ILS", cadence: "monthly", expectedAmount: 50,
+  merchant: "netflix", account: "1", currency: "ILS", cadence: "monthly", expectedAmount: 50,
   occurrences: 4, status: "suggested", lastDate: "2026-10-05", ...o,
 });
 
@@ -13,7 +13,7 @@ describe("forecastBill", () => {
     const out = forecastBill({
       billingDay: 10, today: "2026-11-04",
       series: [sub()],
-      installments: [{ merchant: "ikea", date: "2026-11-10", month: "2026-11", amount: 100 }],
+      installments: [{ merchant: "ikea", account: "1", date: "2026-11-10", month: "2026-11", amount: 100 }],
       avgDiscretionary: 1000,
     });
     expect(out.map((f) => f.date)).toEqual(["2026-11-10", "2026-12-10", "2027-01-10"]);
@@ -61,6 +61,29 @@ describe("forecastBill with posted charges", () => {
       billingDay: 10, today: "2026-11-04", series: [sub({ lastDate: "2024-01-10" })], installments: [], avgDiscretionary: 0,
     });
     expect(out.every((f) => f.parts.recurring === 0)).toBe(true);
+  });
+});
+
+describe("forecastCards", () => {
+  it("forecasts each card on its own billing day and counts what was posted to it", () => {
+    const out = forecastCards({
+      today: "2026-11-01",
+      cards: [
+        { account: "A", billingDay: 2, posted: { "2026-11-02": 300 }, avgDiscretionary: 0 },
+        { account: "B", billingDay: 10, posted: {}, avgDiscretionary: 0 },
+      ],
+      series: [sub({ account: "B", lastDate: "2026-10-05" })],
+      installments: [{ merchant: "ikea", account: "A", date: "2026-12-02", month: "2026-12", amount: 100 }],
+    });
+    const a = out.filter((f) => f.account === "A");
+    const b = out.filter((f) => f.account === "B");
+    expect(a.map((f) => f.date)).toEqual(["2026-11-02", "2026-12-02", "2027-01-02"]);
+    expect(a[0].parts.posted).toBe(300);
+    expect(a[1].parts.installments).toBe(100);
+    expect(a.every((f) => f.parts.recurring === 0)).toBe(true);
+    expect(b[0].date).toBe("2026-11-10");
+    expect(b[0].parts.recurring).toBe(50);
+    expect(out.map((f) => f.date)).toEqual([...out.map((f) => f.date)].sort());
   });
 });
 

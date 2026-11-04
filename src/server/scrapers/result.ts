@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { ScrapeResult, ScrapedTransaction } from "./types";
 
 interface RawTxn {
@@ -35,15 +37,6 @@ const LOSS_CAVEATS = new Set([
   "walkOrderViolated",
 ]);
 
-const israelDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" });
-
-/** The fork reports UTC instants; Israeli midnight is 21:00/22:00Z the day before. Unparseable values pass through. */
-function toIsraelDate(value: string): string {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return `${israelDay.format(d)}T00:00:00.000Z`;
-}
-
 /** A window problem worth failing the sync for, or null. A quiet or brand-new card with no rows is fine. */
 function windowProblem(account: RawAccount): string | null {
   const w = account.windowCoverage;
@@ -76,8 +69,8 @@ export function toScrapeResult(result: RawScrapeResult): ScrapeResult {
         (txn): ScrapedTransaction => ({
           type: txn.type === "installments" ? "installments" : "normal",
           identifier: txn.identifier ?? undefined,
-          date: toIsraelDate(txn.date),
-          processedDate: toIsraelDate(txn.processedDate),
+          date: txn.date,
+          processedDate: txn.processedDate,
           originalAmount: txn.originalAmount,
           originalCurrency: txn.originalCurrency,
           chargedAmount: txn.chargedAmount,

@@ -28,8 +28,10 @@ export function InsightsView() {
         <CardContent>
           <ul className="grid gap-3">
             {data.forecast.map((f) => (
-              <li key={f.date} className="flex flex-wrap items-baseline justify-between gap-x-4">
-                <span className="tabular-nums" dir="ltr">{f.date}</span>
+              <li key={`${f.account}|${f.date}`} className="flex flex-wrap items-baseline justify-between gap-x-4">
+                <span className="tabular-nums" dir="ltr">
+                  {f.date} · {t("card")} {f.account?.slice(-4)}
+                </span>
                 <span className="text-lg font-semibold tabular-nums">{money(f.total)}</span>
                 <span className="w-full text-sm text-muted-foreground">
                   {t("posted")} {money(f.parts.posted)} · {t("recurring")} {money(f.parts.recurring)} · {t("installments")} {money(f.parts.installments)} · {t("other")} {money(f.parts.discretionary)}

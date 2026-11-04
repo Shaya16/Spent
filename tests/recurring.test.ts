@@ -3,6 +3,7 @@ import { detectRecurring, isActive, type RecurringTxn } from "@/server/insights/
 
 const t = (date: string, amount: number, o: Partial<RecurringTxn> = {}): RecurringTxn => ({
   merchant: "netflix",
+  account: "1",
   currency: "ILS",
   amount,
   date,
@@ -39,6 +40,13 @@ describe("detectRecurring", () => {
     expect(s).toHaveLength(1);
     expect(s[0].occurrences).toBe(3);
   });
+  it("keeps the same merchant on two cards as two series", () => {
+    const s = detectRecurring([
+      t("2026-08-10", -50), t("2026-09-10", -50), t("2026-10-10", -50),
+      t("2026-08-12", -50, { account: "2" }), t("2026-09-12", -50, { account: "2" }), t("2026-10-12", -50, { account: "2" }),
+    ]);
+    expect(s.map((x) => x.account).sort()).toEqual(["1", "2"]);
+  });
   it("never merges different currencies", () => {
     const s = detectRecurring([t("2026-09-10", -10, { currency: "USD" }), t("2026-10-10", -10, { currency: "ILS" })]);
     expect(s).toEqual([]);
@@ -68,7 +76,7 @@ describe("detectRecurring", () => {
 });
 
 describe("isActive", () => {
-  const base = { merchant: "x", currency: "ILS", expectedAmount: 10, occurrences: 3, status: "suggested" as const };
+  const base = { merchant: "x", account: "1", currency: "ILS", expectedAmount: 10, occurrences: 3, status: "suggested" as const };
   it("is true within 1.5 cycles of the last charge", () => {
     expect(isActive({ ...base, cadence: "monthly", lastDate: "2026-10-05" }, "2026-11-04")).toBe(true);
   });

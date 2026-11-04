@@ -24,6 +24,10 @@ beforeAll(async () => {
     { ...b, type: "installments" as const, date: "2026-09-10T00:00:00.000Z", processedDate: "2026-10-10T00:00:00.000Z", installmentNumber: 2, installmentTotal: 12 },
     { ...b, type: "installments" as const, date: "2026-10-10T00:00:00.000Z", processedDate: "2026-11-10T00:00:00.000Z", installmentNumber: 3, installmentTotal: 12 },
   ], "isracard", cred, run);
+  // Israeli midnight on Oct 1 is stored as a UTC instant on Sep 30.
+  insertTransactions(ws, [
+    { ...b, type: "normal" as const, description: "Cafe", originalAmount: -40, chargedAmount: -40, date: "2026-09-30T21:00:00.000Z", processedDate: "2026-11-09T22:00:00.000Z" },
+  ], "isracard", cred, run);
 });
 
 describe("loadInsights", () => {
@@ -31,7 +35,13 @@ describe("loadInsights", () => {
     expect(loadInsights(ws, "2026-11-04").series).toEqual([]);
   });
   it("reports charges already posted to an upcoming bill date", () => {
-    expect(loadInsights(ws, "2026-11-04").posted["2026-11-10"]).toBe(100);
+    expect(loadInsights(ws, "2026-11-04").cards.find((c) => c.account === "1")?.posted["2026-11-10"]).toBe(140);
+  });
+  it("buckets a stored UTC instant into its Israeli calendar day", () => {
+    expect(loadInsights(ws, "2026-10-15").monthTotal).toBe(140);
+  });
+  it("derives each card's billing day from its own history, not the fallback", () => {
+    expect(loadInsights(ws, "2026-11-04", 2).cards).toEqual([expect.objectContaining({ account: "1", billingDay: 10 })]);
   });
   it("projects the remaining installments", () => {
     expect(loadInsights(ws, "2026-11-04").installments.length).toBe(9);

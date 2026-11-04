@@ -45,10 +45,25 @@ describe("handleCommand", () => {
   });
   it("/forecast lists the next 3 billing dates", async () => {
     const out = (await cmd.handleCommand("/forecast", 42, cfg, deps()))!;
-    for (const d of ["2026-11-10", "2026-12-10", "2027-01-10"]) expect(out).toContain(d);
+    // Seeded charges mostly bill on the 5th, so the card's billing day is derived as 5, not the configured 10.
+    for (const d of ["2026-11-05", "2026-12-05", "2027-01-05"]) expect(out).toContain(d);
   });
   it("/sync runs the injected sync and reports its summary", async () => {
     expect(await cmd.handleCommand("/sync", 42, cfg, deps())).toContain("synced");
+  });
+  it("says setup is needed when there is no workspace", async () => {
+    const out = await cmd.handleCommand("/month", 42, cfg, { ...deps(), workspaceId: undefined });
+    expect(out).toMatch(/not set up/i);
+  });
+  it("/sync refuses to start a second sync while one is running", async () => {
+    let called = false;
+    const out = await cmd.handleCommand("/sync", 42, cfg, {
+      ...deps(),
+      isSyncRunning: () => true,
+      runSync: async () => { called = true; return "synced"; },
+    });
+    expect(out).toMatch(/already running/i);
+    expect(called).toBe(false);
   });
   it("unknown text gets the help list", async () => {
     expect(await cmd.handleCommand("hello", 42, cfg, deps())).toContain("/month");

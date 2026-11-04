@@ -14,8 +14,7 @@ import {
   failSyncRun,
 } from "@/server/db/queries/sync-runs";
 import {
-  insertTransactions,
-  replacePendingForAccounts,
+  saveSyncTransactions,
   getUncategorizedIdsByKind,
   getTransactionsForCategorization,
   batchUpdateCategories,
@@ -258,12 +257,7 @@ async function syncOneCredential(
     }))
   );
 
-  replacePendingForAccounts(
-    workspaceId,
-    meta.id,
-    result.accounts.map((a) => a.accountNumber)
-  );
-  const { added, updated } = insertTransactions(
+  const { added, updated } = saveSyncTransactions(
     workspaceId,
     allTransactions,
     provider,

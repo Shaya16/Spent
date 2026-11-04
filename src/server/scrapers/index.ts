@@ -7,6 +7,7 @@ import {
 } from "@sergienko4/israeli-bank-scrapers";
 import type { ScrapeResult } from "./types";
 import { toScrapeResult } from "./result";
+import { usesScraperFork } from "./select";
 import type { BankProvider } from "@/lib/types";
 import { getWorkspaceSetting } from "../db/queries/settings";
 
@@ -159,13 +160,11 @@ async function runScrape(
     chromiumArgs.push("--no-sandbox");
   }
 
-  // Isracard and Max go through the maintained fork (browserless, reports window coverage).
-  const forkCompany =
-    provider === "isracard"
+  const forkCompany = !usesScraperFork(provider)
+    ? null
+    : provider === "isracard"
       ? ForkCompanyTypes.Isracard
-      : provider === "max"
-        ? ForkCompanyTypes.Max
-        : null;
+      : ForkCompanyTypes.Max;
 
   const result = forkCompany
     ? await createForkScraper({

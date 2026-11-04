@@ -1,3 +1,7 @@
+import "server-only";
+
+import { addDays, monthKey } from "../lib/date-utils";
+
 export interface AnomalyTxn {
   merchant: string;
   category: string;
@@ -17,17 +21,6 @@ export interface Anomaly {
 const SPIKE_RATIO = 1.5;
 const SPIKE_MIN = 300;
 const LARGE_CHARGE = 500;
-
-function shiftDays(date: string, days: number): string {
-  const [y, m, d] = date.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
-}
-
-function monthKey(date: string, shift = 0): string {
-  const [y, m] = date.split("-").map(Number);
-  const idx = y * 12 + (m - 1) + shift;
-  return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, "0")}`;
-}
 
 export function findAnomalies(txns: AnomalyTxn[], today: string): Anomaly[] {
   const out: Anomaly[] = [];
@@ -51,7 +44,7 @@ export function findAnomalies(txns: AnomalyTxn[], today: string): Anomaly[] {
     }
   }
 
-  const recentFrom = shiftDays(today, -7);
+  const recentFrom = addDays(today, -7);
   const recent = spend.filter((t) => t.date > recentFrom);
 
   const seenBefore = new Set(spend.filter((t) => t.date <= recentFrom).map((t) => t.merchant));

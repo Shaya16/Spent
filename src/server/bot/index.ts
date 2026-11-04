@@ -3,6 +3,8 @@ import "server-only";
 import { Bot } from "grammy";
 import { handleCommand, type BotConfig } from "./commands";
 import { listAllWorkspaceIds } from "../lib/workspace-context";
+import { toLocalISODate } from "../lib/date-utils";
+import { getActivitySnapshot } from "../sync/activity";
 
 declare global {
   var __spentBot: Bot | undefined;
@@ -20,7 +22,8 @@ export function startBot(): void {
   bot.on("message:text", async (ctx) => {
     const reply = await handleCommand(ctx.message.text, ctx.chat.id, cfg, {
       workspaceId: listAllWorkspaceIds()[0],
-      today: new Date().toISOString().slice(0, 10),
+      today: toLocalISODate(new Date()),
+      isSyncRunning: () => getActivitySnapshot().sync.active,
       runSync: async () => {
         const { runAllWorkspaces } = await import("../sync/orchestrator");
         const summaries = await runAllWorkspaces(undefined, undefined, "manual");

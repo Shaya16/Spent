@@ -1,3 +1,7 @@
+import "server-only";
+
+import { addMonths } from "../lib/date-utils";
+
 export interface InstallmentTxn {
   merchant: string;
   account: string;
@@ -11,24 +15,12 @@ export interface InstallmentTxn {
 
 export interface ProjectedPayment {
   merchant: string;
+  account: string;
   /** YYYY-MM-DD */
   date: string;
   /** YYYY-MM */
   month: string;
   amount: number;
-}
-
-function daysInMonth(year: number, month1: number): number {
-  return new Date(Date.UTC(year, month1, 0)).getUTCDate();
-}
-
-export function addMonths(date: string, months: number): string {
-  const [y, m, d] = date.split("-").map(Number);
-  const idx = y * 12 + (m - 1) + months;
-  const year = Math.floor(idx / 12);
-  const month = (idx % 12) + 1;
-  const day = Math.min(d, daysInMonth(year, month));
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 /** Future payments of each installment plan, from its latest seen payment. Plans are keyed by account, merchant, amount and total. */
@@ -46,7 +38,7 @@ export function projectInstallments(txns: InstallmentTxn[], today: string): Proj
     for (let k = 1; k <= t.total - t.number; k++) {
       const date = addMonths(t.date, k);
       if (date < today) continue;
-      out.push({ merchant: t.merchant, date, month: date.slice(0, 7), amount: Math.abs(t.amount) });
+      out.push({ merchant: t.merchant, account: t.account, date, month: date.slice(0, 7), amount: Math.abs(t.amount) });
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));

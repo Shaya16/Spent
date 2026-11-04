@@ -1,6 +1,12 @@
+import "server-only";
+
+import { dayNumber } from "../lib/date-utils";
+
 export interface RecurringTxn {
   /** Normalized merchant key. */
   merchant: string;
+  /** Card account the charge was made on. */
+  account: string;
   currency: string;
   /** Charges are negative; refunds and income (>= 0) are ignored. */
   amount: number;
@@ -12,6 +18,7 @@ export type Cadence = "weekly" | "monthly" | "yearly";
 
 export interface Series {
   merchant: string;
+  account: string;
   currency: string;
   cadence: Cadence;
   /** Latest charge, or the mean when the price never changed. */
@@ -39,17 +46,12 @@ export function isActive(s: Series, today: string): boolean {
   return dayNumber(today) - dayNumber(s.lastDate) <= cadence.max * 1.5;
 }
 
-function dayNumber(date: string): number {
-  const [y, m, d] = date.split("-").map(Number);
-  return Math.round(Date.UTC(y, m - 1, d) / 86_400_000);
-}
-
 // shortcut: gap windows stand in for the +/-2 day-of-month rule, and one price change per series; refine if real data shows false positives.
 export function detectRecurring(txns: RecurringTxn[]): Series[] {
   const groups = new Map<string, RecurringTxn[]>();
   for (const t of txns) {
     if (!(t.amount < 0)) continue;
-    const key = `${t.merchant}|${t.currency}`;
+    const key = `${t.account}|${t.merchant}|${t.currency}`;
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }
 
@@ -87,6 +89,7 @@ export function detectRecurring(txns: RecurringTxn[]): Series[] {
     const amounts = chain.map((c) => Math.abs(c.amount));
     out.push({
       merchant: sorted[0].merchant,
+      account: sorted[0].account,
       currency: sorted[0].currency,
       cadence: cadence.name,
       expectedAmount: change ? amounts[amounts.length - 1] : amounts.reduce((a, b) => a + b, 0) / amounts.length,

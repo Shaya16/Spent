@@ -2,9 +2,11 @@ import "server-only";
 
 import { getDb } from "../db/index";
 import { normalizeMerchant } from "../rules/normalize";
+import { israelDay, monthKey } from "../lib/date-utils";
 import { detectRecurring, isActive, type Series } from "./recurring";
 import { projectInstallments, type ProjectedPayment } from "./installments";
 import { findAnomalies, type Anomaly } from "./anomalies";
+import type { CardForecastInput } from "./forecast";
 
 interface Row {
   description: string;
@@ -23,33 +25,48 @@ function loadRows(workspaceId: number): Row[] {
     .prepare(
       `SELECT t.description, t.charged_amount as amount,
               COALESCE(t.charged_currency, t.original_currency) as currency,
-              substr(t.date, 1, 10) as date, substr(t.processed_date, 1, 10) as billingDate,
+              t.date as date, t.processed_date as billingDate,
               t.account_number as account, t.installment_number as num, t.installment_total as total,
               c.name as category
        FROM transactions t LEFT JOIN categories c ON t.category_id = c.id
        WHERE t.workspace_id = ? AND t.status = 'completed' AND t.kind = 'expense' AND t.is_excluded = 0`
     )
-    .all(workspaceId) as Row[];
+    .all(workspaceId)
+    // Stored dates are whatever the scraper returned (often UTC instants); bucket them by Israeli calendar day here
+    // rather than rewriting them on insert, which would change dedup hashes of rows already stored.
+    .map((r) => {
+      const row = r as Row;
+      return { ...row, date: israelDay(row.date), billingDate: israelDay(row.billingDate) };
+    });
 }
 
 export interface Insights {
   series: Series[];
   installments: ProjectedPayment[];
-  /** Charges already made, by the billing date they will land on (upcoming dates only). */
-  posted: Record<string, number>;
+  /** Per-card inputs for forecastCards. */
+  cards: CardForecastInput[];
   anomalies: Anomaly[];
-  avgDiscretionary: number;
   monthTotal: number;
   topCategories: { name: string; total: number }[];
 }
 
-function monthKey(date: string, shift: number): string {
-  const [y, m] = date.split("-").map(Number);
-  const idx = y * 12 + (m - 1) + shift;
-  return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, "0")}`;
+const monthlyEquivalent = (s: Series) =>
+  s.cadence === "weekly" ? s.expectedAmount * 4.33 : s.cadence === "yearly" ? s.expectedAmount / 12 : s.expectedAmount;
+
+/** The day of month a card is billed on: the most common day among its billing dates. */
+function billingDayOf(billingDates: string[], fallback: number): number {
+  const counts = new Map<number, number>();
+  for (const d of billingDates) {
+    const day = Number(d.slice(8, 10));
+    if (day) counts.set(day, (counts.get(day) ?? 0) + 1);
+  }
+  let best = fallback;
+  let bestCount = 0;
+  for (const [day, n] of counts) if (n > bestCount) [best, bestCount] = [day, n];
+  return best;
 }
 
-export function loadInsights(workspaceId: number, today: string): Insights {
+export function loadInsights(workspaceId: number, today: string, fallbackBillingDay = 10): Insights {
   const rows = loadRows(workspaceId);
   // Scrapers store expenses negative; refunds (positive) are kept so recurring detection can ignore them.
   const norm = rows.map((r) => ({ ...r, merchant: normalizeMerchant(r.description) }));
@@ -58,13 +75,9 @@ export function loadInsights(workspaceId: number, today: string): Insights {
   const series = detectRecurring(
     norm
       .filter((r) => !(r.total != null && r.total > 1))
-      .map((r) => ({ merchant: r.merchant, currency: r.currency, amount: r.amount, date: r.date }))
+      .map((r) => ({ merchant: r.merchant, account: r.account, currency: r.currency, amount: r.amount, date: r.date }))
   ).filter((s) => isActive(s, today));
 
-  const posted: Record<string, number> = {};
-  for (const r of rows) {
-    if (r.billingDate >= today && r.amount < 0) posted[r.billingDate] = (posted[r.billingDate] ?? 0) - r.amount;
-  }
   const installments = projectInstallments(
     norm
       .filter((r) => r.num != null && r.total != null)
@@ -85,6 +98,7 @@ export function loadInsights(workspaceId: number, today: string): Insights {
 
   const spent = (r: Row) => Math.max(0, -r.amount);
   const thisMonth = monthKey(today, 0);
+  const nextMonth = monthKey(today, 1);
   const prior = [-1, -2, -3].map((s) => monthKey(today, s));
   const monthRows = rows.filter((r) => r.date.slice(0, 7) === thisMonth);
   const monthTotal = monthRows.reduce((s, r) => s + spent(r), 0);
@@ -99,25 +113,27 @@ export function loadInsights(workspaceId: number, today: string): Insights {
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 
-  const nextMonth = monthKey(today, 1);
-  const installmentsNextMonth = installments.filter((p) => p.month === nextMonth).reduce((s, p) => s + p.amount, 0);
-  // shortcut: discretionary = prior 3-month mean spend minus monthly-equivalent recurring; refine once forecasts are compared with real bills.
-  const priorMean = rows.filter((r) => prior.includes(r.date.slice(0, 7))).reduce((s, r) => s + spent(r), 0) / 3;
-  const monthlyRecurring = series
-    .filter((s) => s.status === "suggested")
-    .reduce(
-      (sum, s) =>
-        sum + (s.cadence === "weekly" ? s.expectedAmount * 4.33 : s.cadence === "yearly" ? s.expectedAmount / 12 : s.expectedAmount),
-      0
-    );
+  const cards: CardForecastInput[] = [...new Set(rows.map((r) => r.account))].sort().map((account) => {
+    const own = rows.filter((r) => r.account === account);
+    const posted: Record<string, number> = {};
+    for (const r of own) {
+      if (r.billingDate >= today && r.amount < 0) posted[r.billingDate] = (posted[r.billingDate] ?? 0) - r.amount;
+    }
+    // shortcut: discretionary = prior 3-month mean spend minus recurring and next month's installments; refine once forecasts are compared with real bills.
+    const priorMean = own.filter((r) => prior.includes(r.date.slice(0, 7))).reduce((s, r) => s + spent(r), 0) / 3;
+    const recurring = series
+      .filter((s) => s.account === account && s.status === "suggested")
+      .reduce((sum, s) => sum + monthlyEquivalent(s), 0);
+    const nextInstallments = installments
+      .filter((p) => p.account === account && p.month === nextMonth)
+      .reduce((sum, p) => sum + p.amount, 0);
+    return {
+      account,
+      billingDay: billingDayOf(own.map((r) => r.billingDate), fallbackBillingDay),
+      posted,
+      avgDiscretionary: Math.max(0, priorMean - recurring - nextInstallments),
+    };
+  });
 
-  return {
-    series,
-    installments,
-    posted,
-    anomalies,
-    avgDiscretionary: Math.max(0, priorMean - monthlyRecurring - installmentsNextMonth),
-    monthTotal,
-    topCategories,
-  };
+  return { series, installments, cards, anomalies, monthTotal, topCategories };
 }

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { normalizeMerchant } from "./normalize";
 
 export type TxnKind = "expense" | "income" | "transfer";
