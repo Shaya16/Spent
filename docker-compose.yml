@@ -1,0 +1,28 @@
+services:
+  spent:
+    build:
+      context: .
+      args:
+        # Set by Spent-docker.ps1 / Spent-update.ps1 from git, so the update check knows the running version.
+        SPENT_COMMIT: ${SPENT_COMMIT:-unknown}
+    image: spent:latest
+    container_name: spent
+    restart: unless-stopped
+    ports:
+      # Reachable from this computer only.
+      - "127.0.0.1:41234:41234"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # The container is the sandbox; Chromium's own sandbox needs privileges a container does not have.
+      SPENT_DISABLE_CHROMIUM_SANDBOX: "1"
+      # Tell the user (in Telegram) when a newer version exists. Nothing is installed automatically.
+      SPENT_UPDATE_CHECK: ${SPENT_UPDATE_CHECK:-1}
+    volumes:
+      - spent-data:/data
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  spent-data:

@@ -1,0 +1,14 @@
+# Never send local data, secrets or build output into the image.
+data
+backups
+.env
+.env.*
+!.env.example
+node_modules
+.next
+.git
+.superpowers
+.claude
+docs/superpowers
+*.log
+tsconfig.tsbuildinfo

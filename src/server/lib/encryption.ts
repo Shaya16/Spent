@@ -3,12 +3,22 @@ import "server-only";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import { dataDir } from "./data-dir";
 
-const KEY_PATH = path.join(process.cwd(), "data", ".encryption-key");
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
 
-function assertKeyFileMode(stat: fs.Stats): void {
+// The key lives next to the database, so a Docker volume or SPENT_DATA_DIR keeps both together.
+function keyPath(): string {
+  return path.join(dataDir(), ".encryption-key");
+}
+
+// Before SPENT_DATA_DIR applied to the key, it was always written to ./data.
+function legacyKeyPath(): string {
+  return path.join(process.cwd(), "data", ".encryption-key");
+}
+
+function assertKeyFileMode(stat: fs.Stats, file: string): void {
   // POSIX-only. Windows NTFS ACLs don't map to mode bits meaningfully,
   // so skip there and rely on the default user profile permissions.
   if (process.platform === "win32") return;
@@ -16,25 +26,33 @@ function assertKeyFileMode(stat: fs.Stats): void {
   const mode = stat.mode & 0o777;
   if (mode !== 0o600) {
     throw new Error(
-      `Refusing to read encryption key: ${KEY_PATH} has mode ${mode.toString(8).padStart(3, "0")}, expected 600. ` +
-        `Fix with: chmod 600 ${KEY_PATH}`,
+      `Refusing to read encryption key: ${file} has mode ${mode.toString(8).padStart(3, "0")}, expected 600. ` +
+        `Fix with: chmod 600 ${file}`,
     );
   }
 }
 
 function getOrCreateKey(): Buffer {
-  const dir = path.dirname(KEY_PATH);
+  const file = keyPath();
+  const dir = path.dirname(file);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  if (fs.existsSync(KEY_PATH)) {
-    assertKeyFileMode(fs.statSync(KEY_PATH));
-    return Buffer.from(fs.readFileSync(KEY_PATH, "utf-8").trim(), "hex");
+  // Adopt a key from the old location; a new key would make saved credentials unreadable.
+  const legacy = legacyKeyPath();
+  if (!fs.existsSync(file) && legacy !== file && fs.existsSync(legacy)) {
+    assertKeyFileMode(fs.statSync(legacy), legacy);
+    fs.writeFileSync(file, fs.readFileSync(legacy, "utf-8").trim(), { mode: 0o600 });
+  }
+
+  if (fs.existsSync(file)) {
+    assertKeyFileMode(fs.statSync(file), file);
+    return Buffer.from(fs.readFileSync(file, "utf-8").trim(), "hex");
   }
 
   const key = crypto.randomBytes(32);
-  fs.writeFileSync(KEY_PATH, key.toString("hex"), { mode: 0o600 });
+  fs.writeFileSync(file, key.toString("hex"), { mode: 0o600 });
   return key;
 }
 

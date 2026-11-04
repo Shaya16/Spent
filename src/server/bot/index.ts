@@ -5,6 +5,7 @@ import { handleCommand, splitMessage, type BotConfig } from "./commands";
 import { listAllWorkspaceIds } from "../lib/workspace-context";
 import { israelToday } from "../lib/date-utils";
 import { getActivitySnapshot } from "../sync/activity";
+import { checkForUpdate, createUpdateNotifier } from "../update/check";
 
 declare global {
   var __spentBot: Bot | undefined;
@@ -40,4 +41,25 @@ export function startBot(): void {
   bot.catch((err) => console.error("[bot]", err.message));
   globalThis.__spentBot = bot;
   void bot.start();
+  scheduleUpdateCheck((text) => bot.api.sendMessage(chatId, text).then(() => undefined));
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** With SPENT_UPDATE_CHECK=1, tells the user in Telegram when the tracked branch has a newer commit. Never installs anything. */
+function scheduleUpdateCheck(send: (text: string) => Promise<void>): void {
+  const current = process.env.SPENT_COMMIT ?? "";
+  if (process.env.SPENT_UPDATE_CHECK !== "1" || !current || current === "unknown") return;
+
+  const notify = createUpdateNotifier(send);
+  const run = async () => {
+    const info = await checkForUpdate({
+      repo: process.env.SPENT_UPDATE_REPO || "Shaya16/Spent",
+      branch: process.env.SPENT_UPDATE_BRANCH || "main",
+      current,
+    });
+    if (info) await notify(info).catch((err) => console.error("[update]", err.message));
+  };
+  setTimeout(() => void run(), 60_000).unref();
+  setInterval(() => void run(), DAY_MS).unref();
 }

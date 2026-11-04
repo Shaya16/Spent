@@ -226,6 +226,22 @@ First launch of the menubar on macOS/Windows shows an unsigned-binary warning (G
 
 Open **`http://spent.localhost:41234`** and bookmark it.
 
+### Docker (optional)
+
+Runs Spent, its scrapers and Chromium in a container, isolated from your machine. Requires Docker Desktop (or Docker Engine).
+
+```bash
+docker compose up -d --build
+```
+
+On Windows, double-click `Spent-docker.bat` instead: it builds, starts and opens `http://127.0.0.1:41234`.
+
+- The app is published on `127.0.0.1` only. The database and encryption key live in the `spent-data` volume and survive updates.
+- Settings go in `.env` (copied from `.env.example`); compose reads it automatically.
+- The image build runs the test suite. If the tests fail, no image is produced.
+- **Updates:** with Telegram configured, Spent tells you when a newer version exists (`SPENT_UPDATE_CHECK`, on by default in compose). Nothing installs itself. Run `Spent-update.bat` (or `Spent-update.ps1`): it pulls with `--ff-only`, backs up the database and key to `/data/backups` (newest five kept), builds (tests included), switches, and rolls back to the previous image if the new one is not healthy.
+- Ollama on the host: set `SPENT_ALLOW_REMOTE_OLLAMA=1` and use `http://host.docker.internal:11434`.
+
 ## First-time setup
 
 In the browser:
