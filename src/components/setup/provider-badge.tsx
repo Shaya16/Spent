@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { providerLogoSrc } from "@/lib/provider-logos";
 
 interface ProviderBadgeProps {
   color: string;
@@ -25,10 +26,8 @@ export function ProviderBadge({
     .slice(0, 2)
     .join("");
 
-  // Google's S2 favicon API: free, no key. sz=128 returns 128px PNG.
-  const logoUrl = domain
-    ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
-    : null;
+  // Bundled with the app; no third-party request reveals which banks the user has.
+  const logoUrl = providerLogoSrc(domain);
 
   const showImage = imageOk === true && logoUrl != null;
   const imageInset = Math.max(2, Math.round(size * 0.12));
@@ -52,16 +51,7 @@ export function ProviderBadge({
           alt=""
           width={imageSize}
           height={imageSize}
-          onLoad={(e) => {
-            // Google returns a 16x16 fallback when the requested size isn't
-            // available. If both width and height are 16, treat as missing.
-            const img = e.currentTarget;
-            if (img.naturalWidth <= 16 && img.naturalHeight <= 16) {
-              setImageOk(false);
-            } else {
-              setImageOk(true);
-            }
-          }}
+          onLoad={() => setImageOk(true)}
           onError={() => setImageOk(false)}
           className={
             showImage

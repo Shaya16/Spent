@@ -16,8 +16,8 @@ const SECURITY_HEADERS = [
     value: "camera=(), microphone=(), geolocation=(), payment=()",
   },
   // CSP for a local-only app: only same-origin scripts/styles + Google
-  // fonts + bank favicons (s2/favicons redirects to *.gstatic.com). Inline
-  // styles allowed for shadcn/Tailwind.
+  // fonts. Bank logos are bundled in public/banks. Inline styles allowed
+  // for shadcn/Tailwind.
   // 'unsafe-inline' on scripts is necessary because Next dev injects them.
   {
     key: "Content-Security-Policy",
@@ -26,7 +26,7 @@ const SECURITY_HEADERS = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://www.google.com https://*.gstatic.com",
+      "img-src 'self' data: blob:",
       "connect-src 'self' https://api.anthropic.com http://localhost:11434 ws://127.0.0.1:* ws://localhost:*",
       "frame-ancestors 'none'",
       "base-uri 'self'",
