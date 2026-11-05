@@ -8,6 +8,7 @@ import {
 import type { ScrapeResult } from "./types";
 import { toScrapeResult } from "./result";
 import { usesScraperFork } from "./select";
+import { preparePage } from "./user-agent";
 import type { BankProvider } from "@/lib/types";
 import { getWorkspaceSetting } from "../db/queries/settings";
 
@@ -191,6 +192,7 @@ async function runScrape(
         verbose: false,
         timeout: 60000,
         args: chromiumArgs,
+        preparePage,
       }).scrape(credentials as never);
 
   if (!result.success) {
